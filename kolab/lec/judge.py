@@ -5,7 +5,10 @@ def naming(name, ins):
 
 
 def testData(f, data):
-  result = f(*data)
+  if isinstance(data, tuple):
+    result = f(*data)
+  else:
+    result = f(data)
   return result
 
 

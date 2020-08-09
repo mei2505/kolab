@@ -1,6 +1,6 @@
 from kolab.judge import Judge
 
-calc_data = [
+judge_data = [
     {
         'input': ('1'),
         'output': 1,
@@ -59,8 +59,11 @@ calc_data = [
     },
 ]
 
+print(Judge)
+
 def judge(function):
-  oj = Judge(gcd_data)
+  global Judge
+  oj = Judge(judge_data)
   oj.judge('calc', function)
 
 

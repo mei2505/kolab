@@ -1,4 +1,4 @@
-import kolab.judge
+from kolab.judge import Judge
 
 calc_data = [
     {

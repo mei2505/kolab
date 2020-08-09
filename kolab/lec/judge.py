@@ -40,6 +40,7 @@ class Judge(object):
         input_data = data.get('input', tuple())
         if not isinstance(input_data, tuple):
           input_data = tuple(input_data)
+        print('input@', input_data)
         result = testFunction(f, input_data)
       except Exception as e:
         result = e

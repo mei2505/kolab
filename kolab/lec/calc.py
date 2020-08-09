@@ -1,4 +1,4 @@
-from kolab.judge import Judge
+from kolab.lec.judge import Judge
 
 judge_data = [
     {
@@ -59,11 +59,8 @@ judge_data = [
     },
 ]
 
-print(Judge)
-
-def judge(function):
-  global Judge
+def judge0(func):
   oj = Judge(judge_data)
-  oj.judge('calc', function)
+  oj.judge('calc', func)
 
 

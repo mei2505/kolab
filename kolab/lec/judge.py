@@ -34,7 +34,10 @@ class Judge(object):
       else:
         testFunction = testData
       try:
-        result = testFunction(f, data.get('input', []))
+        input_data = data.get('input', tuple())
+        if not isinstance(input_data, tuple):
+          input_data = tuple(input_data)
+        result = testFunction(f, input_data)
       except Exception as e:
         result = e
       # data
@@ -55,10 +58,13 @@ class Judge(object):
       print(f'[{i}] {title} => {chk(checked)} {result.__class__.__name__}')
       print(' エラー:', result)
       return
-    print(f'[{i}] {title} => {chk(checked)} {result}')
+    print(f'[{i}] {title} => {chk(checked)} {repr(result)}')
     if not checked:
-      print(' 正解:', output)
-      print(' 誤り:', result)
+      if type(output) != type(result):
+        print(' 結果の型が違う:', '(正)', type(output), '(誤)', type(result))
+      else:
+        print(' 正解:', repr(output))
+      #print(' 誤り:', result)
 
   def showall(self, c, results):
     print(f'[{c}/{len(results)}] AC')

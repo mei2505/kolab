@@ -39,8 +39,7 @@ class Judge(object):
       try:
         input_data = data.get('input', tuple())
         if not isinstance(input_data, tuple):
-          input_data = tuple(input_data)
-        print('input@', input_data)
+          input_data = (input_data,)
         result = testFunction(f, input_data)
       except Exception as e:
         result = e
@@ -65,7 +64,7 @@ class Judge(object):
     print(f'[{i}] {title} => {chk(checked)} {repr(result)}')
     if not checked:
       if type(output) != type(result):
-        print(' 結果の型が違う:', '(正)', type(output), '(誤)', type(result))
+        print(' 結果の型が異なります:', '(正)', type(output), '(誤)', type(result))
       else:
         print(' 正解:', repr(output))
       #print(' 誤り:', result)

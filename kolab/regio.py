@@ -8,11 +8,11 @@ magic_pos = 0
 def In(lines, src):
   global magic_buffer
   magic_buffer = []
-  for line in lines.split('\n'):
+  for line in src.split('\n'):
     if len(line) == 0:
       continue
     magic_buffer.append(line)
-  return lines, magic_buffer
+  return src, magic_buffer
 
 def input(prompt = ''):
   global magic_buffer, magic_pos

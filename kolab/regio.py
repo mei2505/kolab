@@ -12,7 +12,7 @@ def In(lines, src):
     if len(line) == 0:
       continue
     magic_buffer.append(line)
-  return magic_buffer
+  return lines, magic_buffer
 
 def input(prompt = ''):
   global magic_buffer, magic_pos

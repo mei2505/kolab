@@ -8,6 +8,7 @@ magic_pos = 0
 def In(lines, src):
   global magic_buffer
   magic_buffer = []
+  magic_pos = 0
   for line in src.split('\n'):
     if len(line) == 0:
       continue

@@ -6,14 +6,14 @@ magic_pos = 0
 
 @register_cell_magic
 def In(lines, src):
-  global magic_buffer
+  global magic_buffer, magic_pos
   magic_buffer = []
   magic_pos = 0
   for line in src.split('\n'):
     if len(line) == 0:
       continue
     magic_buffer.append(line)
-  return src, magic_buffer
+  return magic_pos, magic_buffer
 
 def input(prompt = ''):
   global magic_buffer, magic_pos

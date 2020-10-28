@@ -18,10 +18,10 @@ setup(
     license='MIT',
     author='Kimio Kuramitsu',
     description='Sharable in Google Colab',
-    install_requires=['setuptools'],
-        packages=['kolab'],
-        package_data={'kolab': [
-            'lec/*', '*.tpeg', '*/*.csv', '*/*.txt']},
+    install_requires=['setuptools', 'pegtree'],
+    packages=['kolab'],
+    package_data={'kolab': [
+        '*/*', '*/*.tpeg', '*/*.csv', '*/*.txt']},
     # entry_points={
     #     'console_scripts': [
     #         'kolab = kolab.main:main'
@@ -30,11 +30,10 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Text Processing',
     ],

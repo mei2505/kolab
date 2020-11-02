@@ -13,7 +13,7 @@ twine upload --repository pypi dist/*
 
 setup(
     name='kolab',
-    version='0.0.2',
+    version='0.0.3',
     url='https://github.com/KuramitsuLab/kolab.git',
     license='MIT',
     author='Kimio Kuramitsu',
@@ -21,7 +21,7 @@ setup(
     install_requires=['setuptools', 'pegtree'],
     packages=['kolab'],
     package_data={'kolab': [
-        '*/*', '*/*.tpeg', '*/*.csv', '*/*.txt']},
+        '*/*', '*/*/*', '*/*.tpeg', '*/*.csv', '*/*.txt']},
     # entry_points={
     #     'console_scripts': [
     #         'kolab = kolab.main:main'

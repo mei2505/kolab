@@ -52,10 +52,13 @@ class Tokenizer(object):
     def acceptBlock(self, tree):
         self.pushTrees(tree, '[BGN]', '[SEP]', '[END]')
 
-    def acceptTrueExpr(self, tree):
+    def acceptNone(self, tree):
+        self.push('None')
+
+    def acceptTrue(self, tree):
         self.push('True')
 
-    def acceptFalseExpr(self, tree):
+    def acceptFalse(self, tree):
         self.push('False')
 
     def acceptInt(self, tree):
@@ -162,13 +165,11 @@ class Tokenizer(object):
     def acceptExpression(self, tree):
         self.visit(tree[0])
 
-    # a = []    [#VarDecl left: [#Name 'a']right: [#List '[]']]
     def acceptVarDecl(self, tree):
-        self.visit(tree.left)
+        self.visit(tree.name)
         self.push('=')
-        self.visit(tree.right)
+        self.visit(tree.expr)
 
-    # a,b = c [#MultiAssignment left: [# [#Name 'a'][#Name 'b']]right: [#Name 'c']]
     def acceptMultiAssignment(self, tree):
         self.pushTrees(tree.left, '', ',', '')
         self.push('=')
@@ -204,6 +205,10 @@ class Tokenizer(object):
     def acceptPass(self, tree):
         self.push('pass')
 
+    # if a > 0: pass
+    def acceptEmpty(self, tree):
+        pass
+    
     # assert a > 0
     def acceptAssert(self, tree):
         self.push('assert')

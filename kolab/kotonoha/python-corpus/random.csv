@@ -1,0 +1,13 @@
+Python,PJ
+random.random,0.0から1までの範囲の乱数
+os.system,コマンド{}を実行する
+subprocess.call,コマンド{}を実行する
+datetime.datetime.now,本日の日付と現在時刻
+.date,{}から変換した日付
+.strftime,{0}を{1}の書式でフォーマットした文字列
+datetime.datetime.strptime,文字列{0}からテンプレート{1}を用いて構文解析された日付時間
+.encode,{0}を文字コード{1}で復号化した文字列
+.decode,{0}を文字コード{1}で符号化したバイト列
+.decode,{0}を文字コード{1}で{2}ポリシーに基づき符号化したバイト列
+
+

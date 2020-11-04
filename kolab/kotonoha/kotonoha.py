@@ -1,7 +1,9 @@
 import sys
 import csv, pathlib
 import pegtree as pg
-#from pjcorpus import get_corpus
+
+from logging import getLogger
+logger = getLogger(__name__)
 
 METHODS = {
 
@@ -34,7 +36,10 @@ class Visitor(object):
         while env is not None:
             if key in env:
                 return env[key]
-            env = env.get(PARENT, None)  
+            env = env.get(PARENT, None)
+        if '.' in key:
+            key = key[key.find('.')+1:]
+            return self.getenv(key, default_value)
         return default_value
     
     def hasenv(self, key):
@@ -103,11 +108,13 @@ class Visitor(object):
                 else:
                     self.pushBOS('## ' + str(t))
 
-    def pushApplication(self, name, params, defined, ext=''):
+    def pushApplication(self, name, params, defined=None, ext=''):
         #print('@', p)
         for i in range(len(params)):
             if not isinstance(params[i], str):
                 params[i] = self.stringfy(params[i])
+        if defined is None:
+            defined = self.getenv(name)
         if len(params) in defined:
             template = defined[len(params)].replace(InsertionPoint, ext)
             self.push(template.format(*params))
@@ -209,23 +216,23 @@ def read_corpus(module, env={}):
             if len(row) >= 2 and row[1] != '':
                 check_pair(row[0], row[1], env)
 
-PARAMS = ('{}', '{0}', '{1}', '{2}', '{3}')
+PARAMS = ('{}', '{0}', '{1}', '{2}', '{3}', '{4}', '{5}')
 
 def check_pair(key, value, env):
     if 'A' in value:
         value = value.replace('A', '{0}')
         value = value.replace('B', '{1}')
         value = value.replace('C', '{2}')
-        value = value.replace('C', '{3}')
+        value = value.replace('D', '{3}')
 
     localkey = sum(value.count(x) for x in PARAMS)
-    if ':' in key:
-        key, localkey = key.split(':')
+    if '@' in key:
+        key, localkey = key.split('@')
     if key not in env:
         env[key] = {}
     entry = env[key]
-    if localkey in entry:
-        print('@duplicated', key, localkey, entry[localkey], value)
+    if localkey in entry and entry[localkey] == value:
+        logger.warn(f'duplicated key: {key}@{localkey}')
     entry[localkey] = value
     #print(value, and_then(value), and_noun(value)+'とき', not_nai(value))
 
@@ -233,6 +240,17 @@ PYTHON = {}
 read_corpus('python3', PYTHON)
 read_corpus('builtin', PYTHON)
 read_corpus('random', PYTHON)
+
+TYPES = {
+    'List': 'list', 'Set': 'set', 'Int': 'int', 'QString': 'str',
+    'True': 'bool', 'False': 'bool', 'Float': 'float', 'Double': 'float',
+}
+
+def guess_type(tree, default_type=''):
+    tag = tree.getTag()
+    if tag in TYPES:
+        return TYPES[tag]
+    return default_type
 
 py = 'py'
 ja = 'ja'
@@ -335,6 +353,7 @@ class Kotonoha(Visitor):
 
     # a,b = c [#MultiAssignment left: [# [#Name 'a'][#Name 'b']]right: [#Name 'c']]
     def acceptMultiAssignment(self, tree):
+        self.pushParallelCorpus(tree)
         if len(tree.left) == 2 and len(tree.right) == 2:
             A = str(tree.left[0])
             B = str(tree.left[1])
@@ -354,9 +373,15 @@ class Kotonoha(Visitor):
         
     # a += 1
     def acceptSelfAssignment(self, tree):
+        self.pushParallelCorpus(tree)
         name = str(tree.name)
-        p = [self.stringfy(tree.left), self.stringfy(tree.right)]
-        self.pushApplication(name, p, self.getenv(name))
+        self.pushSentence(name, [tree.left, tree.right])
+        self.pushStatement(name, [tree.left, tree.right])
+
+    def acceptDelete(self, tree):
+        self.pushParallelCorpus(tree)
+        self.pushSentence('del', tree.expr)
+        self.pushStatement('del', tree.expr)
 
     def acceptExpression(self, tree):
         self.pushParallelCorpus(tree)
@@ -435,17 +460,6 @@ class Kotonoha(Visitor):
             else:
                 self.push(str(tree))
 
-    # [#IndexExpr 'a']
-    def acceptIndexExpr(self, tree):
-        recv = self.stringfy(tree.recv)
-        index = self.stringfy(tree.index)
-        if index == '0':
-            self.push(f'{recv}の先頭')
-        elif index == '-1':
-            self.push(f'{recv}の末尾')
-        else:
-            self.push(f'{recv}[{index}]')
-
     #  o.name
     def acceptGetExpr(self, tree):
         recv = self.stringfy(tree.recv)
@@ -460,6 +474,38 @@ class Kotonoha(Visitor):
         else:
             self.push(f'{recv}.{name}')
 
+    def acceptIndexExpr(self, tree):
+        suffix = str(tree)
+        suffix = suffix[suffix.rfind('['):]
+        defined = self.getenv(suffix+'C')
+        if len(defined)>0 and 1 in defined:
+            self.pushApplication(suffix, [tree.recv], defined)
+            return
+        self.pushApplication('[]', [tree.recv, tree.index])
+
+    def acceptSliceExpr(self, tree):
+        suffix = str(tree)
+        suffix = suffix[suffix.rfind('['):]
+        defined = self.getenv(suffix+'C')
+        if len(defined)>0 and 1 in defined:
+            self.pushApplication(suffix, [tree.recv], defined)
+            return
+        if not tree.has('end') and not tree.has('step'):
+            self.pushApplication('[:]', [tree.recv, tree.start])
+            return 
+        params = [tree.recv]
+        if tree.has('start'):
+            params.append(tree.start)
+        else:
+            params.append('先頭')
+        if tree.has('end'):
+            params.append(tree.end)
+        else:
+            params.append('末尾')
+        if tree.has('step'):
+            params.append(tree.step)
+        self.pushApplication('[::]', params)
+
     def acceptUnary(self, tree):
         name = str(tree.name)
         p = [self.stringfy(tree.expr)]
@@ -469,6 +515,12 @@ class Kotonoha(Visitor):
         name = str(tree.name)
         p = [self.stringfy(tree.left), self.stringfy(tree.right)]
         self.pushApplication(name, p, self.getenv(name))
+
+    def acceptMul(self, tree):
+        if tree.left == 'List':
+            self.pushApplication('list.*', [tree.left, tree.right])
+        else:
+            self.pushApplication('list.*', [tree.left, tree.right])
 
     def acceptAnd(self, tree):
         p = [self.stringfy(tree.left, trf=and_then), self.stringfy(tree.right)]
@@ -547,18 +599,6 @@ class Kotonoha(Visitor):
             self.pushApplication('for', [tree.append, vars, tree.list, self.stringfy(tree.cond, trf=and_noun)], defined)
         else:
             self.pushApplication('for', [tree.append, vars, tree.list], defined)
-
-
-'''
-puppy_peg = pg.grammar('puppy2.tpeg')
-puppy_parser = pg.generate(puppy_peg)
-
-
-def isMultiLine(tree):
-    return '\n' in str(tree)
-
-
-'''
 
 if __name__ == '__main__':
     transpiler = Kotonoha()

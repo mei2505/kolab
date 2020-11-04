@@ -1,0 +1,1 @@
+from kolab.kotonoha.kotonoha import Kotonoha

@@ -1,41 +1,47 @@
 Python,PJ
-import:code,import {}
+import@code,import {}
 import,{}モジュールを用いる,use the {} module
-assert:code,assert {}
+assert@code,assert {}
 assert,{}なければならない,
-=:code,{0} = {1}
+=@code,{0} = {1}
 =,{1}を{0}とする,let {0} be {1}
-=A:code,{0} = {1}
+=A@code,{0} = {1}
 =A,{1}を{0}にする,let {0} be {1}
-=SWAP:code,"{0}, {1} = {1}, {0}"
+=SWAP@code,"{0}, {1} = {1}, {0}"
 =SWAP,{0}と{1}を入れ替える,swap {0} and {1}
-=D:code,{0} = {1}
+=D@code,{0} = {1}
 =D,{1}を展開し順に{0}とする,let {0} be {1}
-if:code,if {} :
+del@code,del {0}
+del,{0}を削除する
+global@code,global {0}
+global,{0}はグローバル変数とする
+nonlocal@code,nonlocal {0}
+nonlocal,{0}は非ローカル変数とする
+if@code,if {} :
 if,{}とき、,if {}
 if,{0}とき{1}、そうでなければ{2},{1} if {0}; otherwise {2}
-elif:code,elif {} :
+elif@code,elif {} :
 elif,そうでなく、{}とき、
-else:code,else :
+else@code,else :
 else:そうでなければ、
-pass:code,pass
+pass@code,pass
 pass,何もしない,do nothing
-while:code,while {} :
+while@code,while {} :
 while,{}間、繰り返す
-continue:code,continue
+continue@code,continue
 continue,最初からもう一度、繰り返す
-break:code,break
+break@code,break
 break,繰り返すのを中断する 
-for:code,for {} in {} :
+for@code,for {} in {} :
 for,{1}の各要素を順に{0}として、繰り返す 
 for,{2}の各要素を{1}とし、{0}の列
 for,{2}の各要素を{1}とし、{3}ときの{0}の列
-def:code,def {} {} :
+def@code,def {} {} :
 def,関数{0}を{1}のパラメータを持つように定義する
-return:code,return {}
+return@code,return {}
 return,関数処理を中断する
 return,{0}を関数出力とする
-:code,{}
+@code,{}
 ,{} 
 +,{}に{}を加えた値
 -,-{}
@@ -59,25 +65,22 @@ return,{0}を関数出力とする
 >,{}が{}より大きいかどうか,whether {} is greater than {}
 >=,{}が{}以上かどうか,whether {} is greater than or equal to {}
 in,{}が{}に含まれるかどうか,whether {} is contained in {}
+[:]C,{0}の先頭から末尾まで(のコピー)
+[:-1]C,{0}の末尾を除いた部分
+[::-1]C,{0}の逆順
+[1:]C,{0}の先頭を除いた部分
+[:],{0}の先頭{1}個を取り除いた部分
+[::],{0}の先頭から位置{1}までの部分
+[::],{0}の位置{1}から位置{2}までの部分
+[::],{0}の位置{1}から{3}間隔で位置{2}までの部分
 None,未定値,none
 True,真,true
 False,偽,false
+[0]C,{}の最初値
+[-1]C,{}の末尾値
 [],空列, an empty list
 [],({})からなる列, a list of {}
+[],{}({})
 (),({})の組, a tuple of {}
 {},空辞書, an empty dictionary
 {},({})からなる辞書, a dictionary of {}
-KA,書くかどうか
-KA2,書いたかどうか
-KA3,検索したかどうか
-KA4,検索されたかどうか
-SA,探すかどうか
-TA,勝つかどうか
-NA,死ぬかどうか
-MA,生むかどうか
-RA,切るかどうか
-WA,笑うかどうか
-GA,防ぐかどうか
-BA,遊ぶかどうか
-V1,書けるかどうか
-V2,読んだかどうか

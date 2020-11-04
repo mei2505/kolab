@@ -358,6 +358,7 @@ LeftHand =
     Name (
 	     { recv:^ "." name: Name #GetExpr }
     	/ { recv:^ "[" index: Expression "]" #IndexExpr }
+        / _SliceExpr
     )*
 
 Expressions = {
@@ -421,7 +422,7 @@ NonLocalStatement = {
 }
 
 DeleteStatement = {
-    "del" LeftHand
+    "del" expr: LeftHand
     (doc: ParallelCorpus)?
     #Delete
 }
@@ -815,4 +816,9 @@ finally:
     E
 '''
 
-example Expression np.where(a == 1)
+example Source '''
+urllib.parse.unquote(url).decode('utf8') # decode url `url` from UTF-16 code to UTF-8 code
+del lst[:] # empty a list `lst`
+del lst1[:] # empty a list `lst`
+'''
+

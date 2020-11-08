@@ -209,13 +209,6 @@ def and_noun(s):  # +とき
 
 base = pathlib.Path(__file__).parent.resolve()
 
-def read_corpus(module, env={}):
-    with open(f'{base}/python-corpus/{module}.csv') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            if len(row) >= 2 and row[1] != '':
-                check_pair(row[0], row[1], env)
-
 PARAMS = ('{}', '{0}', '{1}', '{2}', '{3}', '{4}', '{5}')
 
 def check_pair(key, value, env):
@@ -224,6 +217,8 @@ def check_pair(key, value, env):
         value = value.replace('B', '{1}')
         value = value.replace('C', '{2}')
         value = value.replace('D', '{3}')
+        value = value.replace('E', '{4}')
+        value = value.replace('F', '{5}')
 
     localkey = sum(value.count(x) for x in PARAMS)
     if '@' in key:
@@ -232,14 +227,28 @@ def check_pair(key, value, env):
         env[key] = {}
     entry = env[key]
     if localkey in entry and entry[localkey] == value:
-        logger.warn(f'duplicated key: {key}@{localkey}')
+        logger.warning(f'duplicated key: {key}@{localkey}')
     entry[localkey] = value
     #print(value, and_then(value), and_noun(value)+'とき', not_nai(value))
 
+def read_corpus(module, env={}, experimental=False):
+    file = module
+    if not module.endswith('.csv'):
+        if '/' in module:
+            file = f'{base}/{module}.csv'
+        else:
+            file = f'{base}/python-corpus/{module}.csv'
+    with open(file) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) >= 2 and row[1] != '':
+                if experimental and len(row) >= 3:
+                    check_pair(row[0], row[2], env)
+                else:
+                    check_pair(row[0], row[1], env)
+
+
 PYTHON = {}
-read_corpus('python3', PYTHON)
-read_corpus('builtin', PYTHON)
-read_corpus('random', PYTHON)
 
 TYPES = {
     'List': 'list', 'Set': 'set', 'Int': 'int', 'QString': 'str',
@@ -262,9 +271,15 @@ class Kotonoha(Visitor):
         self.parser = pg.generate(peg)
         self.rootEnv = PYTHON
 
+    def load(self, modules, experimental=False):
+        for module in modules.split(':'):
+            read_corpus(module, self.rootEnv, experimental)            
+
     def compile(self, source):
         tree = self.parser(source)
         self.buffers = []
+        if len(self.rootEnv) == 0:
+            self.load('python3:builtin:random')
         self.env = { PARENT: self.rootEnv }
         self.indent = 0
         self.level=0
@@ -491,7 +506,10 @@ class Kotonoha(Visitor):
             self.pushApplication(suffix, [tree.recv], defined)
             return
         if not tree.has('end') and not tree.has('step'):
-            self.pushApplication('[:]', [tree.recv, tree.start])
+            if tree.has('start'):
+                self.pushApplication('[:]', [tree.recv, tree.start])
+            else:
+                self.pushApplication('[:]', [tree.recv])
             return 
         params = [tree.recv]
         if tree.has('start'):
@@ -602,6 +620,7 @@ class Kotonoha(Visitor):
 
 if __name__ == '__main__':
     transpiler = Kotonoha()
+    transpiler.load('python3:builtin:random', experimental=True)
     print(transpiler.compile("if defined:"))
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as f:

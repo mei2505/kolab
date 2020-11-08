@@ -26,7 +26,7 @@ class ASubject(object):
     self.parent = parent
 
   def theme_color(self, c=None):
-    if isinstance(c, int) or isinstance(c, None):
+    if isinstance(c, int) or c is None:
       return random_color(c)
     return c
 

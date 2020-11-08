@@ -269,7 +269,7 @@ class Kotonoha(Visitor):
     def __init__(self, grammar='../pegtree/puppy2.tpeg'):
         peg = pg.grammar(grammar)
         self.parser = pg.generate(peg)
-        self.rootEnv = PYTHON
+        self.rootEnv = {}
 
     def load(self, modules, experimental=False):
         for module in modules.split(':'):

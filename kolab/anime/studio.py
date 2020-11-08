@@ -26,9 +26,7 @@ class ASubject(object):
     self.parent = parent
 
   def theme_color(self, c=None):
-    if isinstance(c, int) or c is None:
-      return random_color(c)
-    return c
+    return random_color(c)
 
   def taken(self, draw):
     logger.warning(f'TODO: taken(draw) in {self.__class__.__name__}')

@@ -1,6 +1,6 @@
 import os, IPython
 from PIL import Image, ImageDraw, ImageFont
-import random
+from kolab.anime.color import ColorTheme
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -10,55 +10,61 @@ try:
 except ModuleNotFoundError:
   logger.error(f'!pip install APNG  を忘れないで')
 
-colors = '#de9610,#c93a40,#fff001,#d06d8c,#65ace4,#a0c238,#56a764,#d16b16,#cc528b,#9460a0,#f2cf01,#0074bf'.split(',')
-
-def random_color(i=None):
-  if i is None:
-    i = random.randint(0, len(colors)-1)
-  if isinstance(i, int):
-    return colors[i % len(colors)]
-  return i
+DefaultColorTheme = ColorTheme()
 
 class ASubject(object):
   parent: object
-
-  def setParent(self, parent):
-    self.parent = parent
-
-  def theme_color(self, c=None):
-    return random_color(c)
 
   def taken(self, draw):
     logger.warning(f'TODO: taken(draw) in {self.__class__.__name__}')
     pass
 
-class AComposite(object):
+  def isVisible(self):
+    return True
+
+  def setParent(self, parent):
+    self.parent = parent
+
+  def autoColor(self, c=None):
+    return DefaultColorTheme.color(c)
+
+
+class AComposite(ASubject):
   width: int
   height: int
   subjects: list # 被写体のリスト
 
-  def __init__(self, width=400, height=400, color='white'):
+  def __init__(self, width=400, height=400):
     self.width = width
     self.height = height
-    self.color = color
     self.subjects = []
 
   def add(self, subject):
     subject.setParent(self)
     self.subjects.append(subject)
 
+  def remove(self, subject):
+    if subject in self.subjects:
+      self.subjects.remove(subject)
+
   def taken(self, draw):
     for subject in self.subjects:
-      subject.taken(draw)
+      if subject.isVisible():
+        subject.taken(draw)
 
 class AStudio(AComposite):
+  background: object
   files: list # 撮影した写真ファイルのリスト
-  def __init__(self, width=400, height=400, background='white'):
-    super().__init__(width, height, background)
+
+  def __init__(self, width=400, height=400, background='white', theme=None):
+    global DefaultColorTheme
+    super().__init__(width, height)
+    self.background = background
     self.files = []
+    DefaultColorTheme = ColorTheme(theme)
 
   def take(self):
-    canvas = Image.new('RGBA', (self.width, self.height), self.color)
+    canvas = Image.new('RGBA', (self.width, self.height), self.background)
     draw = ImageDraw.Draw(canvas)
     self.taken(draw)
     index = len(self.files)
@@ -74,15 +80,21 @@ class AStudio(AComposite):
     return filename
 
 class Rectangle(ASubject):
-  def __init__(self, x, y, width, height, color=None):
-    self.x = x
-    self.y = y
+  def __init__(self, cx, cy, width, height, color=None):
+    self.cx = cx
+    self.cy = cy
     self.width = width
     self.height = height
-    self.color = self.theme_color(color)
+    self.color = self.autoColor(color)
+
+  def magnify(self, xscale, yscale):
+    self.width *= mx
+    self.height *= yscale
 
   def taken(self, draw):
-    x, y = self.x, self.y
+    cx = self.cx
+    cy = self.cy
     dx = self.width // 2
     dy = self.height // 2
-    draw.rectangle((x-dx, y-dy, x+dx, y+dx), fill=self.color)
+    draw.rectangle((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
+

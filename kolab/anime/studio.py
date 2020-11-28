@@ -88,7 +88,7 @@ class Rectangle(ASubject):
     self.color = self.autoColor(color)
 
   def magnify(self, xscale, yscale):
-    self.width *= mx
+    self.width *= xscale
     self.height *= yscale
 
   def taken(self, draw):
@@ -98,3 +98,21 @@ class Rectangle(ASubject):
     dy = self.height // 2
     draw.rectangle((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
 
+def totext(f):  #  変数も文字列に変更する
+  try:
+    return str(f())
+  except:
+    return str(f)
+
+class Caption(ASubject):
+  def __init__(self, text, x, y, fontsize=40, color=None):
+    self.text = text
+    self.x = x
+    self.y = y 
+    self.text = text
+    self.font = ImageFont.truetype('/usr/share/fonts/truetype/humor-sans/Humor-Sans.ttf', fontsize)
+    self.color = self.autoColor(color)
+
+  def taken(self, draw): 
+    text = totext(self.text)
+    draw.text((self.x, self.y), text, font=self.font, fill=self.color)

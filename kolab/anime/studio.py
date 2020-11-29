@@ -1,14 +1,10 @@
 import os, IPython
 from PIL import Image, ImageDraw, ImageFont
 from kolab.anime.color import ColorTheme
+from apng import APNG
 
 from logging import getLogger
 logger = getLogger(__name__)
-
-try:
-  from apng import APNG
-except ModuleNotFoundError:
-  logger.error(f'!pip install APNG  を忘れないで')
 
 DefaultColorTheme = ColorTheme()
 
@@ -44,9 +40,10 @@ class AComposite(ASubject):
     self.height = height
     self.subjects = []
 
-  def add(self, subject):
-    subject.setParent(self)
-    self.subjects.append(subject)
+  def add(self, *subjects):
+    for subject in subjects:
+      subject.setParent(self)
+      self.subjects.append(subject)
 
   def remove(self, subject):
     if subject in self.subjects:
@@ -77,20 +74,26 @@ class AStudio(AComposite):
     canvas.save(filename)
     self.files.append(filename)
 
-  def create(self, filename='anime.png', delay=100):
+  def create(self, filename='anime.png', delay=200):
     APNG.from_files(self.files, delay=delay).save(filename)
     for image in self.files:
       os.remove(image) # 不要なファイルは消す
     self.files = []
     return filename
 
+# 被写体
+
 class Rectangle(ASubject):
-  def __init__(self, cx, cy, width, height, color=None):
+  def __init__(self, cx, cy, width, height=None, color=None):
     self.cx = cx
     self.cy = cy
     self.width = width
-    self.height = height
+    self.height = width if height is None else height
     self.color = self.autoColor(color)
+
+  def setPosition(self, cx, cy):
+    self.cx = cx
+    self.cy = cy
 
   def magnify(self, xscale, yscale):
     self.width *= xscale
@@ -103,24 +106,16 @@ class Rectangle(ASubject):
     dy = self.height // 2
     draw.rectangle((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
 
-class Circle(ASubject):
+class Circle(Rectangle):
   def __init__(self, cx, cy, width, height=None, color=None):
-    self.cx = cx
-    self.cy = cy
-    self.width = width
-    self.height = width if height is None else height
-    self.color = self.autoColor(color)
-
-  def magnify(self, xscale, yscale):
-    self.width *= xscale
-    self.height *= yscale
+    Rectangle.__init__(self, cx, cy, width, height, color)    
 
   def taken(self, draw):
     cx = self.cx
     cy = self.cy
     dx = self.width // 2
     dy = self.height // 2
-    draw.eclipse((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
+    draw.ellipse((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
 
 def totext(f):  #  変数も文字列に変更する
   try:

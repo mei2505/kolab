@@ -22,11 +22,16 @@ class ASubject(object):
   def isVisible(self):
     return True
 
+  def autoColor(self, c=None):
+    return DefaultColorTheme.color(c)
+
   def setParent(self, parent):
     self.parent = parent
 
-  def autoColor(self, c=None):
-    return DefaultColorTheme.color(c)
+  def removed(self):
+    if self.parent is not None:
+      self.parent.remove(self)
+      self.parent = None
 
 
 class AComposite(ASubject):
@@ -97,6 +102,25 @@ class Rectangle(ASubject):
     dx = self.width // 2
     dy = self.height // 2
     draw.rectangle((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
+
+class Circle(ASubject):
+  def __init__(self, cx, cy, width, height=None, color=None):
+    self.cx = cx
+    self.cy = cy
+    self.width = width
+    self.height = width if height is None else height
+    self.color = self.autoColor(color)
+
+  def magnify(self, xscale, yscale):
+    self.width *= xscale
+    self.height *= yscale
+
+  def taken(self, draw):
+    cx = self.cx
+    cy = self.cy
+    dx = self.width // 2
+    dy = self.height // 2
+    draw.eclipse((cx-dx, cy-dy, cx+dx, cy+dx), fill=self.color)
 
 def totext(f):  #  変数も文字列に変更する
   try:

@@ -1,1 +1,1 @@
-from kolab.anime.studio import AStudio, ASubject, AComposite, Rectangle
+from kolab.anime.studio import AStudio, ASubject, AComposite, Rectangle, Circle, Caption

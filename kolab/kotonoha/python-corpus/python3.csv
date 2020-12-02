@@ -29,15 +29,15 @@ del,{0}を削除する,delete {}
 global,{0}はグローバル変数とする,let {0} be global 
 nonlocal,{0}は非ローカル変数とする,let {0} be not local
 if,{}とき、,if {}
-if,{0}とき{1}、そうでなければ{2},{1} if {0}; otherwise {2}
+if,{0}とき{1}、そうでなければ{2},{1} if {0}, otherwise {2}
 elif,そうでなく、{}とき、{},otherwise if {}
-else:そうでなければ、;otherwise
+else:そうでなければ、,otherwise
 pass,何もしない,do nothing
 while,{}間、繰り返す,iterate if {}
 continue,最初からもう一度、繰り返す,iterates again
 break,繰り返すのを中断する,break the iteration
-for,{1}の各要素を順に{0}として、繰り返す; let {0} be an element of {1}
-for,{2}の各要素を{1}とし、{0}の列;an list of {}, where {1} is an element of {2}
+for,{1}の各要素を順に{0}として、繰り返す,let {0} be an element of {1}
+for,{2}の各要素を{1}とし、{0}の列,an list of {}, where {1} is an element of {2}
 for,{2}の各要素を{1}とし、{3}ときの{0}の列,an list of {}, where {1} is an element of {2} and {3}
 def,関数{0}を{1}のパラメータを持つように定義する, define a function {0} with {1}
 return,関数処理を中断する,the function is over

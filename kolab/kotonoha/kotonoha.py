@@ -1,6 +1,7 @@
 import sys
 import csv, pathlib
 import pegtree as pg
+from pegtree import ParseTree
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -49,7 +50,7 @@ class Visitor(object):
         self.env[key] = value
     
     def stringfy(self, tree, trf=None):
-        if self.level < 5 and not isinstance(tree, str):
+        if self.level < 5 and isinstance(tree, ParseTree):
             stored_buffer = self.buffers
             stored_level = self.level
             self.buffers = []
@@ -75,23 +76,31 @@ class Visitor(object):
     def pushStatement(self, key, tree=None, tree2=None):
         self.pushBOS('')
         d = self.getenv(key)
-        if tree is None:
-            self.push(d['code'])
-        elif tree2 is None:
-            e = str(tree)
-            self.push(d['code'].format(e))
-        else:
-            e = str(tree)
-            e2 = str(tree2)
-            self.push(d['code'].format(e, e2))
+        try:
+            if tree is None:
+                self.push(d['code'])
+            elif tree2 is None:
+                e = str(tree)
+                self.push(d['code'].format(e))
+            else:
+                e = str(tree)
+                e2 = str(tree2)
+                self.push(d['code'].format(e, e2))
+        except KeyError:
+            print('@FIXME_KeyError', key, repr(tree))
+            self.push(str(tree))
 
     def pushSentence(self, key, *tree):
         self.pushBOS('# ')
         self.level = 0
         params = [t if isinstance(t, str) else self.stringfy(t) for t in tree]
         defined = self.getenv(key)
-        #print('@', key, len(tree), defined)
-        self.push(defined[len(tree)].format(*params))
+        # print('@', key, len(tree), defined)
+        try:
+            self.push(defined[len(tree)].format(*params))
+        except KeyError:
+            print('@FIXME_KeyError', key, repr(tree), defined)
+            self.push(str(tree))
 
     def pushParallelCorpus(self, tree):
         if tree.has('doc'):
@@ -620,8 +629,8 @@ class Kotonoha(Visitor):
 
 if __name__ == '__main__':
     transpiler = Kotonoha()
-    transpiler.load('python3:builtin:random', experimental=True)
-    print(transpiler.compile("if defined:"))
+    transpiler.load('python3:builtin:random')
+    # print(transpiler.compile("if defined:"))
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as f:
             print(transpiler.compile(f.read()))

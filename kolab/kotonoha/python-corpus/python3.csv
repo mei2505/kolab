@@ -18,6 +18,12 @@ break@code,break
 for@code,for {} in {} :
 def@code,def {} {} :
 return@code,return {}
++=@code,{} += {}
+-=@code,{} -= {}
+*=@code,{} *= {}
+/=@code,{} /= {}
+//=@code,{} //= {}
+%=@code,{} %= {}
 @code,{}
 import,{}モジュールを用いる,use the {} module
 assert,{}なければならない,assure {}
@@ -30,8 +36,8 @@ global,{0}はグローバル変数とする,let {0} be global
 nonlocal,{0}は非ローカル変数とする,let {0} be not local
 if,{}とき、,if {}
 if,{0}とき{1}、そうでなければ{2},{1} if {0}, otherwise {2}
-elif,そうでなく、{}とき、{},otherwise if {}
-else:そうでなければ、,otherwise
+elif,そうでなく、{}とき、,otherwise if {}
+else,そうでなければ、,otherwise
 pass,何もしない,do nothing
 while,{}間、繰り返す,iterate if {}
 continue,最初からもう一度、繰り返す,iterates again

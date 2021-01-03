@@ -101,7 +101,7 @@ class Visitor(object):
         try:
             self.push(defined[len(tree)].format(*params))
         except KeyError:
-            print('@FIXME_KeyError', key, repr(tree), defined)
+            print('@FIXME_KeyError', key, len(tree), repr(tree), defined)
             self.push(str(tree))
 
     def pushParallelCorpus(self, tree):
@@ -342,21 +342,28 @@ class Kotonoha(Visitor):
             for t in tree.get('elif').getSubNodes():
                 self.visit(t)
         if tree.has('else'):
-            self.pushSentence('else')
-            self.pushStatement('else')
             self.visit(tree.get('else'))
 
-    def acceptElif(self, tree, ):
+    def acceptElif(self, tree):
         self.pushSentence('elif', self.stringfy(tree.cond, trf=and_noun))
         self.pushStatement('elif', tree.cond)
         self.visit(tree.get('then'))
+
+    def acceptElse(self, tree):
+        self.pushSentence('else')
+        self.pushStatement('else')
+        self.visit(tree[0])
 
     def acceptWhile(self, tree):
         self.pushSentence('while', self.stringfy(tree.cond, trf=and_noun))
         self.pushStatement('while', tree.cond)
         self.visit(tree.body)
 
+    def acceptTry(self, tree):
+        self.visit(tree.body)
+
     # break
+
     def acceptBreak(self, tree):
         self.pushSentence('break')
         self.pushStatement('break')
@@ -414,8 +421,8 @@ class Kotonoha(Visitor):
     def acceptSelfAssignment(self, tree):
         self.pushParallelCorpus(tree)
         name = str(tree.name)
-        self.pushSentence(name, [tree.left, tree.right])
-        self.pushStatement(name, [tree.left, tree.right])
+        self.pushSentence(name, tree.left, tree.right)
+        self.pushStatement(name, tree.left, tree.right)
 
     def acceptDelete(self, tree):
         self.pushParallelCorpus(tree)
@@ -558,11 +565,11 @@ class Kotonoha(Visitor):
         p = [self.stringfy(tree.left), self.stringfy(tree.right)]
         self.pushApplication(name, p, self.getenv(name))
 
-    def acceptMul(self, tree):
-        if tree.left == 'List':
-            self.pushApplication('list.*', [tree.left, tree.right])
-        else:
-            self.pushApplication('list.*', [tree.left, tree.right])
+    # def acceptMul(self, tree):
+    #     if tree.left == 'List':
+    #         self.pushApplication('list.*', [tree.left, tree.right])
+    #     else:
+    #         self.pushApplication('list.*', [tree.left, tree.right])
 
     def acceptAnd(self, tree):
         p = [self.stringfy(tree.left, trf=and_then), self.stringfy(tree.right)]
@@ -582,7 +589,10 @@ class Kotonoha(Visitor):
         self.visit(tree[0])
 
     def acceptTuple(self, tree):
-        self.push(f'({self.groupfy(tree)})の組')
+        if len(tree) == 1:
+            self.visit(tree[0])
+        else:
+            self.push(f'({self.groupfy(tree)})の組')
 
     def acceptSet(self, tree):
         self.push(f'({self.groupfy(tree)})の集合')
@@ -651,7 +661,6 @@ class Kotonoha(Visitor):
 if __name__ == '__main__':
     transpiler = Kotonoha()
     transpiler.load('python3:builtin:random')
-    # print(transpiler.compile("if defined:"))
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as f:
             print(transpiler.compile(f.read()))

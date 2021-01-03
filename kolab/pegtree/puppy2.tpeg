@@ -9,7 +9,7 @@
 /* Top Level */
 
 Source = EOL? {
-    (Statement (";" Statement)* ";"? EOL)*
+    (Statement _SKIP (";" Statement _SKIP )* ";"? EOL)*
     #Source
 } EOF
 
@@ -17,13 +17,13 @@ Source = EOL? {
 
 EOF          = !.
 LF           = '\n' / EOF
-S            = [ \t\u200B\v\r　]
+S            = [ \t\u200B\v\r　] / '\\\n'
 
 _            = ( S / BLOCKCOMMENT )*
 _A           = ( S / BLOCKCOMMENT / LINECOMMENT )*
 __           = ( S / '\n' / BLOCKCOMMENT / LINECOMMENT )*
 SPC          = ( S / BLOCKCOMMENT / LINECOMMENT )+
-SKIP         = ('\n' _ &'\n')*
+_SKIP         = ('\n' _ &'\n')*
 
 BLOCKCOMMENT = '/*' ( !'*/' . )* '*/'
 LINECOMMENT  = [#＃] ( !LF . )*
@@ -44,13 +44,15 @@ Statement =
     / TryStatement
     / WithStatement 
     / AssignmentStatement
-    / { Expression (doc: ParallelCorpus)? #Expression }
+    / { Expression DOC? #Expression } 
     / Documentation
+
+DOC = (doc: ParallelCorpus)
 
 Block = {
     @scope(
-        @symbol(INDENT) (Statement (";" Statement)* ";"? / _ &EOL)
-        (SKIP @match(INDENT) (Statement (";" Statement)* ";"? / _ &EOL) )*
+        @symbol(INDENT) (Statement (";" Statement)* ";"? _SKIP / _SKIP &EOL)
+        (@match(INDENT) (Statement (";" Statement)* ";"? _SKIP / _SKIP &EOL) )*
     )
     #Block
 }
@@ -136,14 +138,14 @@ FuncDecl = {
     (async: "async")?
     "def" 
     name: Name 
-    params: FuncParams ("->" type: Type)? ":" (doc: ParallelCorpus)?
+    params: FuncParams ("->" type: Type)? ":" (doc: ParallelCorpus)? _SKIP
     body: (Block / Statement)
     #FuncDecl
 }
 
 Decorator = {
     '@'
-    name: Name
+    name: ModuleName
     ("(" params: Arguments ")")? __
     #Decorator
 }
@@ -289,14 +291,16 @@ ForStatement = {
 
 WhileStatement = {
     "while"
-    cond: Expression ":" (doc: ParallelCorpus)?
+    cond: Expression ":" DOC?
     body: (Block / SingleBlock)
     (else: ElseStatement)?
     #While
 }
 
+/* try */
+
 TryStatement = {
-    "try" ":" (doc: ParallelCorpus)?
+    "try" ":" DOC?
     body: (Block / SingleBlock)
     (except: ExceptStatements)?
     (else: ElseStatement)?
@@ -308,17 +312,15 @@ ExceptStatements = {
     ExceptStatement+
 }
 
-ExceptStatement = {
-    (@match(INDENT) / LF)
+ExceptStatement = (@match(INDENT) / LF) {
     "except" 
-    (cond: Name ("as" as: Name)?)? ":" (doc: ParallelCorpus)?
+    (cond: Name ("as" as: Name)?)? ":" DOC?
     body: (Block / SingleBlock)
     #Except
 }
 
-FinallyStatement = {
-    (@match(INDENT) / LF)
-    "finally" ":" (doc: ParallelCorpus)?
+FinallyStatement = (@match(INDENT) / LF) {
+    "finally" ":" DOC?
     (Block / SingleBlock)
     #Finally
 }
@@ -684,16 +686,18 @@ FormatString = [Ff] (
     / '"' { FormatContent1D* #Format } '"' ) _
 
 FormatContent3 =
-    '{' Expression '}' / { (!'\'\'\'' !'{' .)* #StringPart }
+    '{' Expression FORMAT_OPTION? '}' / { (!'\'\'\'' !'{' .)* #StringPart }
 
 FormatContent1 =
-    '{' Expression '}' / { (!'\'' !'{' .)* #StringPart }
+    '{' Expression FORMAT_OPTION? '}' / { (!'\'' !'{' .)* #StringPart }
 
 FormatContent3D =
-    '{' Expression '}' / { (!'"""' !'{' .)* #StringPart }
+    '{' Expression FORMAT_OPTION? '}' / { (!'"""' !'{' .)* #StringPart }
 
 FormatContent1D =
-    '{' Expression '}' / { (!'"' !'{' .)* #StringPart }
+    '{' Expression FORMAT_OPTION? '}' / { (!'"' !'{' .)* #StringPart }
+
+FORMAT_OPTION = ':' (!'}' .)*
 
 LongString = 
     '\'\'' { '\'' ( ESCAPE / ![\\'] . / !'\'\'\'' '\'' )* '\'' #MultiString } '\'\'' _

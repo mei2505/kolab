@@ -4,7 +4,10 @@ from pegtree import ParseTree
 from kolab.kotonoha.visitor import TransCompiler
 
 RESERVED = {
-    'math', 'numpy', 'np', 'pandas', 'pd'
+    'math', 'numpy', 'np', 'pandas', 'pd',
+    'datetime', 'urllib', 'random', 'io', 'itertools', 'functools',
+    'os', 'sys', 'subprocess', 'time', 're', 'requests',
+    'int', 'str', 'float'
 }
 
 
@@ -22,17 +25,22 @@ class PythonCode(TransCompiler):
     def compile(self, source):
         tree = self.parser(source)
         self.indent = 0
-        self.names = {}
         return self.stringfy(tree, ' ')
 
+    def init(self):
+        self.names = {}
+
     def isIndexedName(self, name):
+        if name.endswith('Error'):
+            return False
         return name not in RESERVED
 
     def index_name(self, name):
         if self.isIndexedName(name):
             if name not in self.names:
-                s = chr(ord('A')+len(self.names))
-                self.names[name] = f'[${s}]'
+                s = chr(ord('A')+(len(self.names) % 27))
+                #self.names[name] = f'[${s}]'
+                self.names[name] = s
             return self.names[name]
         else:
             return name
@@ -125,6 +133,15 @@ class PythonCode(TransCompiler):
         self.push(':')
         self.visit(tree[0])
 
+    def acceptWith(self, tree):
+        self.pushBOS()
+        self.push('with')
+        self.visit(tree.expr)
+        self.push('as')
+        self.visit(tree.name)
+        self.push(':')
+        self.visit(tree.body)
+
     # break
 
     def acceptBreak(self, tree):
@@ -205,6 +222,10 @@ class PythonCode(TransCompiler):
         if tree.has('expr'):
             self.visit(tree.expr)
 
+    def acceptRaise(self, tree):
+        self.push('raise')
+        self.visit(tree.expr)
+
     # Expression
     def acceptName(self, tree):
         name = self.index_name(str(tree))
@@ -226,6 +247,14 @@ class PythonCode(TransCompiler):
         self.push('(')
         self.acceptSeq(tree.params)
         self.push(')')
+
+    def acceptOption(self, tree):
+        for i, t in enumerate(tree):
+            if i > 0:
+                self.push(',')
+            self.push(str(t.name))
+            self.push('=')
+            self.visit(t.value)
 
     #  o.name
     def acceptGetExpr(self, tree):
@@ -265,9 +294,9 @@ class PythonCode(TransCompiler):
         self.visit(tree.right)
 
     def acceptMul(self, tree: ParseTree):
-        self.visit(tree.get('left', 0))
+        self.visit(tree[0])
         self.push('*')
-        self.visit(tree.get('right', 1))
+        self.visit(tree[1])
 
     def acceptAnd(self, tree):
         self.visit(tree.left)
@@ -281,7 +310,7 @@ class PythonCode(TransCompiler):
 
     def acceptNot(self, tree):
         self.push('not')
-        self.visit(tree.expr)
+        self.visit(tree[0])
 
     def acceptListArgument(self, tree):
         self.push('*')
@@ -301,7 +330,9 @@ class PythonCode(TransCompiler):
         self.push(')')
 
     def acceptSet(self, tree):
-        self.push(f'({self.groupfy(tree)})の集合')
+        self.push('{')
+        self.acceptSeq(tree, ',')
+        self.push('}')
 
     def acceptList(self, tree):
         if len(tree) == 1 and tree[0] == 'ForExpr':
@@ -320,6 +351,9 @@ class PythonCode(TransCompiler):
         self.push(str(tree.name))
         self.push(':')
         self.visit(tree.value)
+
+    def acceptEmpty(self, tree):
+        pass
 
     def acceptNull(self, tree):
         self.push('None')
@@ -340,7 +374,15 @@ class PythonCode(TransCompiler):
         self.push(str(tree))
 
     def acceptQString(self, tree):
-        self.push(str(tree))
+        key = str(tree)
+        if key.startswith('"'):
+            key = "'" + key[1:-1] + "'"
+        if self.hasenv(key):
+            key = self.getenv(key)[0]
+        self.push(key)
+
+    def acceptMultiString(self, tree):
+        self.push(self.index_name(str(tree)))
 
     def acceptFormat(self, tree):
         self.push(str(tree))

@@ -174,9 +174,16 @@ LambdaExpression = {
 }
 
 LambdaParams = {
-    Name? ( "," Name )*
-    #Param
+    LambdaFuncParam? ( "," LambdaFuncParam )* _
+    #FuncParam
 }
+
+LambdaFuncParam = {
+    name: Name 
+    ( "=" value: Expression)?
+    #ParamDecl
+}
+
 
 /* control statement */
 
@@ -541,14 +548,14 @@ Arguments = {
 }
 
 ListArgument = {
-    '*' _ Expression
+    '*' '*'? _ Expression
     #ListArgument
 }
 
 NamedArguments = {
     ("," __ )?
     NamedArgument ( "," __ NamedArgument )*
-    #Data
+    #Option
 }
 
 NamedArgument = {

@@ -304,10 +304,10 @@ class Kotonoha(TransCompiler):
                     param_size = param_max
             self.push(prefix + defined[param_size].format(*params))
         except ValueError:
-            print(f'@FIXME key={key}', defined, tree)
+            print(f'@FIXME ValueError key={key}', defined, tree, file=sys.stderr)
             self.push('[MASK]')
         except:
-            print(f'@FIXME key={key}', defined, tree)
+            print(f'@FIXME key={key}', defined, tree, file=sys.stderr)
             self.push('[MASK]')
 
     def parseOption(self, funcname, defined, tree):

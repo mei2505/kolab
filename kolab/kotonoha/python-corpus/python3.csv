@@ -97,6 +97,7 @@ in,{}が{}に含まれるかどうか,whether {} is contained in {}
 notin,{}が{}に含まれないかどうか,whether {} is not contained in {}
 and,{}かつ{}
 or,{}または{}
+not,{}
 .,{}の{}
 .x,{}のx座標
 .y,{}のy座標
@@ -104,7 +105,7 @@ or,{}または{}
 a*,{}の{}回分の列
 a[0],{}の先頭,the first element of {}
 a[-1],{}の末尾,the last element of {}
-a[],{}の位置{}の値
+a[],{}の{}番目
 a[:],{0}のコピーされた列
 a[:-1],{0}の末尾を除いた部分列
 a[1:],{0}の先頭を除いた部分列

@@ -1,11 +1,11 @@
 #Python,PJ
-abs,{}の絶対値,the absolute value of {}
-all,{}が全てが真かどうか,whether {} is all true
-any,{}が少なくともひとつは真かどうか,whether at least one of the {} is true
+abs,{}の絶対値
+all,{}が全てが真かどうか
+any,{}が少なくともひとつは真かどうか
 ascii,
-bin,{}の2進数文字列,binary string of {}
-bool,論理値,bool
-bool,{}の論理値,the Boolean value of {}
+bin,{}の2進数文字列
+bool,論理値
+bool,{}の論理値
 breakpoint,
 bytearray,{}のバイト列
 bytes,{}のバイト列

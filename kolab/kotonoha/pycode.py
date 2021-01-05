@@ -11,13 +11,47 @@ RESERVED = {
 }
 
 
+class VocabMap(object):
+    voc: dict
+
+    def __init__(self, env, token_format='{}'):
+        self.token = token_format
+        self.env = env
+        self.voc = {}
+
+    def init(self):
+        self.voc = {}
+
+    def new_name(self, old_name=None):
+        s = self.token.format(chr(ord('A')+(len(self.voc) % 27)))
+        if old_name is not None:
+            self.names[old_name] = s
+        return s
+
+    def isIndexedName(self, name):
+        if name.endswith('Error'):
+            return False
+        return name not in RESERVED
+
+    def rename(self, name):
+        if name.startswith('"'):
+            name = "'" + name[1:-1] + "'"
+        if name not in self.voc:
+            if self.isIndexedName(name):
+                return self.new_name(name)
+            return name
+        else:
+            return self.voc[name]
+
+
 class PythonCode(TransCompiler):
+    vocmap: VocabMap
 
     def __init__(self, grammar='../pegtree/puppy2.tpeg'):
         TransCompiler.__init__(self)
         peg = pg.grammar(grammar)
         self.parser = pg.generate(peg)
-        self.rootEnv = {}
+        self.vocmap = None
 
     def load(self, modules, experimental=False):
         pass
@@ -27,23 +61,8 @@ class PythonCode(TransCompiler):
         self.indent = 0
         return self.stringfy(tree, ' ')
 
-    def init(self):
-        self.names = {}
-
-    def isIndexedName(self, name):
-        if name.endswith('Error'):
-            return False
-        return name not in RESERVED
-
-    def index_name(self, name):
-        if self.isIndexedName(name):
-            if name not in self.names:
-                s = chr(ord('A')+(len(self.names) % 27))
-                #self.names[name] = f'[${s}]'
-                self.names[name] = s
-            return self.names[name]
-        else:
-            return name
+    def set_vocmap(self, vocmap):
+        self.vocmap = vocmap
 
     def acceptSeq(self, tree, sep=','):
         for i, e in enumerate(tree.getSubNodes()):
@@ -165,8 +184,7 @@ class PythonCode(TransCompiler):
         self.push(name)
 
     def acceptVarDecl(self, tree):
-        name = self.index_name(str(tree.get('name')))
-        self.push(name)
+        self.visit(tree.name)
         self.push('=')
         self.visit(tree.expr)
 
@@ -228,7 +246,9 @@ class PythonCode(TransCompiler):
 
     # Expression
     def acceptName(self, tree):
-        name = self.index_name(str(tree))
+        name = str(tree)
+        if self.vocmap is not None:
+            name = self.vocmap.rename(name)
         self.push(name)
 
     # [#ApplyExpr 'a']
@@ -374,15 +394,16 @@ class PythonCode(TransCompiler):
         self.push(str(tree))
 
     def acceptQString(self, tree):
-        key = str(tree)
-        if key.startswith('"'):
-            key = "'" + key[1:-1] + "'"
-        if self.hasenv(key):
-            key = self.getenv(key)[0]
-        self.push(key)
+        s = str(tree)
+        if self.vocmap is not None:
+            s = self.vocmap.rename(s)
+        self.push(s)
 
     def acceptMultiString(self, tree):
-        self.push(self.index_name(str(tree)))
+        s = str(tree)
+        if self.vocmap is not None:
+            s = self.vocmap.rename(s)
+        self.push(s)
 
     def acceptFormat(self, tree):
         self.push(str(tree))

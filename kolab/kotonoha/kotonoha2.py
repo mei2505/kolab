@@ -6,7 +6,7 @@ from collections import Counter
 from pegtree import ParseTree
 
 from kolab.kotonoha.visitor import TransCompiler
-from kolab.kotonoha.pycode import PythonCode
+from kolab.kotonoha.pycode import VocabMap, PythonCode
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -163,6 +163,10 @@ py = 'py'
 ja = 'ja'
 
 
+def special_token(s):
+    return f'<{s}>'
+
+
 class Camma(object):
     tree: ParseTree
 
@@ -230,6 +234,7 @@ UNK = []
 class Kotonoha(TransCompiler):
     parser: object
     pycode: PythonCode
+    vocmap: VocabMap
 
     def __init__(self, grammar='../pegtree/puppy2.tpeg'):
         TransCompiler.__init__(self)
@@ -237,6 +242,9 @@ class Kotonoha(TransCompiler):
         self.parser = pg.generate(peg)
         self.pycode = PythonCode(grammar)
         self.env = {}
+        self.vocmap = VocabMap(self.env)
+        self.isBlockMode = False
+        self.isAllowMath = True
 
     def load(self, modules, experimental=False):
         for module in modules.split(':'):
@@ -261,10 +269,6 @@ class Kotonoha(TransCompiler):
         return ''.join(self.buffers)
 
     # Sentence
-
-    def extend(tree):
-        if isinstance(tree, ParseTree):
-            return [tree]
 
     def pushSentence(self, key, *tree):
         self.level = 0
@@ -304,15 +308,16 @@ class Kotonoha(TransCompiler):
                     param_size = param_max
             self.push(prefix + defined[param_size].format(*params))
         except ValueError:
-            print(f'@FIXME key={key}', defined, tree)
-            self.push('[MASK]')
+            print(f'@FIXME ValueError key={key}',
+                  defined, tree, file=sys.stderr)
+            self.pushMASK()
         except:
-            print(f'@FIXME key={key}', defined, tree)
-            self.push('[MASK]')
+            print(f'@FIXME key={key}', defined, tree, file=sys.stderr)
+            self.pushMASK()
 
     def parseOption(self, funcname, defined, tree):
         ss = []
-        #print('@', repr(tree))
+        # print('@', repr(tree))
         for t in tree.getSubNodes():
             key = str(t.name)+'='
             longkey = key+str(t.value).replace('"', "'")
@@ -355,8 +360,12 @@ class Kotonoha(TransCompiler):
 
     def acceptSource(self, tree):
         trees = tree.getSubNodes()
-        for t in trees:
+        self.pushBOC()
+        for i, t in enumerate(trees):
+            if i > 0:
+                self.pushEOS()
             self.visit(t)
+        self.pushEOC()
 
     def acceptBlock(self, tree):
         self.indent += 1
@@ -365,6 +374,22 @@ class Kotonoha(TransCompiler):
 
     def acceptDocument(self, tree):
         pass
+
+    def pushMASK(self):
+        if self.isBlockMode:
+            self.push(special_token('*'))
+
+    def pushBOC(self):
+        if self.isBlockMode:
+            self.push(special_token('{'))
+
+    def pushEOC(self):
+        if self.isBlockMode:
+            self.push(special_token('}'))
+
+    def pushSEP(self):
+        if self.isBlockMode:
+            self.push(special_token(';'))
 
     # Statement
 
@@ -527,7 +552,7 @@ class Kotonoha(TransCompiler):
         if 0 in defined:
             self.push(defined[0])
         else:
-            name = self.pycode.index_name(name)
+            name = self.vocmap.rename(name)
             self.push(name)
 
     def rename(self, name):
@@ -606,7 +631,12 @@ class Kotonoha(TransCompiler):
 
     def acceptInfix(self, tree):
         name = str(tree.name)
-        self.pushExpression(name, tree.left, tree.right)
+        left = self.stringfy(tree.left)
+        right = self.stringfy(tree.right)
+        if self.isAllowMath and self.hasenv(f'{name}M') and containsHira(left) and not containsHira(right):
+            self.pushExpression(f'{name}M', left, right)
+        else:
+            self.pushExpression(name, tree.left, tree.right)
 
     def acceptMul(self, tree):
         if tree[0] == 'List':
@@ -684,7 +714,9 @@ class Kotonoha(TransCompiler):
             key = "'" + key[1:-1] + "'"
         if self.hasenv(key):
             key = self.getenv(key)[0]
-        self.push(key)
+            self.push(key)
+        else:
+            self.push(self.pycode.index_name(key))
 
     def acceptMultiString(self, tree):
         self.push(self.pycode.index_name(str(tree)))

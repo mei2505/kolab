@@ -721,11 +721,12 @@ def make_corpus(filename):
             j = transpiler.compile(line)
             p = transpiler.pycode.compile(line)
             if j.startswith('#'):
-                print(j)
-                print(p)
+                for jj, pp in zip(j.split('\n'), p.split('\n')):
+                    print(jj)
+                    print(pp)
 
 
 if __name__ == '__main__':
     for filename in sys.argv[1:]:
         make_corpus(filename)
-    print(Counter(UNK).most_common(100), file=sys.stderr)
+    print('undefined api', Counter(UNK).most_common(100), file=sys.stderr)

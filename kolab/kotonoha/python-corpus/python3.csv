@@ -1,30 +1,4 @@
 #Python,PJ
-import@code,import {}
-assert@code,assert {}
-=@code,{0} = {1}
-=A@code,{0} = {1}
-=SWAP@code,"{0}, {1} = {1}, {0}"
-=D@code,{0} = {1}
-del@code,del {0}
-global@code,global {0}
-nonlocal@code,nonlocal {0}
-if@code,if {} :
-elif@code,elif {} :
-else@code,else :
-pass@code,pass
-while@code,while {} :
-continue@code,continue
-break@code,break
-for@code,for {} in {} :
-def@code,def {} {} :
-return@code,return {}
-+=@code,{} += {}
--=@code,{} -= {}
-*=@code,{} *= {}
-/=@code,{} /= {}
-//=@code,{} //= {}
-%=@code,{} %= {}
-@code,{}
 import,{}モジュールを用いる
 assert,{}なければならない
 =,{1}を{0}とする
@@ -34,6 +8,7 @@ assert,{}なければならない
 =D,{1}を展開し、それぞれ{0}とする
 =W,{0}を閉じ忘れなく{1}として、
 del,{0}を削除する
+class,{}は{}である
 global,{0}はグローバル変数とする,let {0} be global 
 nonlocal,{0}は非ローカル変数とする,let {0} be not local
 if,{}とき、,if {}
@@ -76,7 +51,7 @@ lambda,{0}を返す関数
 //M,{} / {}
 %M,{} % {}
 **,{}の{}乗
-^,{}と{}の論理積
+&,{}と{}の論理積
 |,{}と{}の論理和
 ^,{}と{}の排他論理和
 <<,{}を{}だけ左シフトした値
@@ -94,6 +69,8 @@ lambda,{0}を返す関数
 <<=,{0}を{1}だけ左シフトする
 >>=,{0}を{1}だけ右シフトする
 ==,{}が{}と等しいかどうか
+is,{}が{}と等しくないかどうか
+isnot,{}が{}と等しいかどうか
 !=,{}が{}と等しくないかどうか
 <,{}が{}より小さいかどうか
 <=,{}が{}以下かどうか

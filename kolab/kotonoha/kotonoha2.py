@@ -122,7 +122,7 @@ def check_pair(key, value, env):
     if localkey in entry and entry[localkey] == value:
         logger.warning(f'duplicated key: {key}#{localkey}')
     entry[localkey] = value
-    # print(value, and_then(value), and_noun(value)+'とき', not_nai(value))
+    return key
 
 
 def read_corpus(module, env={}, experimental=False):
@@ -132,16 +132,25 @@ def read_corpus(module, env={}, experimental=False):
             file = f'{base}/{module}.csv'
         else:
             file = f'{base}/python-corpus/{module}.csv'
+    module_names = {}
     with open(file) as f:
         reader = csv.reader(f)
         for row in reader:
             if len(row) >= 2 and row[1] != '':
-                if row[0].startswith('#'):
+                key = row[0]
+                if key.startswith('#'):
                     continue
                 if experimental and len(row) >= 3:
-                    check_pair(row[0], row[2], env)
+                    key = check_pair(key, row[2], env)
                 else:
-                    check_pair(row[0], row[1], env)
+                    key = check_pair(key, row[1], env)
+                if key.find('.', 1) > 0:
+                    if key not in module_names:
+                        module_names[key] = key
+        for key in module_names.keys():
+            shortkey = key.split('.')[-1]
+            if shortkey not in env:
+                env[shortkey] = env[key]
 
 
 PYTHON = {}
@@ -157,6 +166,58 @@ def guess_type(tree, default_type=''):
     if tag in TYPES:
         return TYPES[tag]
     return default_type
+
+
+def pj_join(s, option):
+    if not s.endswith(option):
+        if option[0].isascii():
+            return option + s
+        return s + option
+    return s
+
+
+def pj_option(prev, s, option):
+    if s[-1].isascii():
+        return pj_join(s, option)
+    if option == '関数':
+        if s.endswith('かどうか'):
+            return s + '判定する関数'
+        return pj_join(s, option)
+    return s
+
+
+def pj_embedding(prev, p, index, params):
+    option = '[MASK]'
+    if ':' in p:
+        p, option = p.split(':')
+    try:
+        if p == '':
+            s = params[index]
+            index += 1
+        else:
+            s = params[int(p)]
+    except:
+        s = option  # mask
+    if option != '[MASK]':
+        s = pj_option(prev, s, option)
+    if not s[0].isascii() and len(prev) > 0 and prev[-1] not in 'にをと':
+        s = '、つまり' + s
+    return s, index
+
+
+def pj_format(text, *params):
+    index = 0
+    ss = []
+    toks = text.split('{')
+    prev = ''
+    for tok in toks:
+        if '}' in tok:
+            p, tok = tok.split('}')
+            p, index = pj_embedding(prev, p, index, params)
+            ss.append(p)
+        ss.append(tok)
+        prev = tok
+    return (''.join(ss))
 
 
 py = 'py'
@@ -243,8 +304,9 @@ class Kotonoha(TransCompiler):
         self.pycode = PythonCode(grammar)
         self.env = {}
         self.vocmap = VocabMap(self.env)
+        self.pycode.set_vocmap(self.vocmap)
         self.isBlockMode = False
-        self.isAllowMath = True
+        self.isAllowMath = False
 
     def load(self, modules, experimental=False):
         for module in modules.split(':'):
@@ -257,7 +319,7 @@ class Kotonoha(TransCompiler):
         if len(self.env) == 0:
             self.load('python3:builtin:random')
         tree = self.parser(source)
-        self.pycode.init()
+        self.vocmap.init()
         self.buffers = []
         self.indent = 0
         self.level = 0
@@ -306,7 +368,8 @@ class Kotonoha(TransCompiler):
                                     if isinstance(x, int))
                     params = params + ['[MASK]'] * (param_max-len(params))
                     param_size = param_max
-            self.push(prefix + defined[param_size].format(*params))
+            # self.push(prefix + defined[param_size].format(*params))
+            self.push(prefix + pj_format(defined[param_size], *params))
         except ValueError:
             print(f'@FIXME ValueError key={key}',
                   defined, tree, file=sys.stderr)
@@ -390,6 +453,20 @@ class Kotonoha(TransCompiler):
     def pushSEP(self):
         if self.isBlockMode:
             self.push(special_token(';'))
+
+    def accepterr(self, tree):
+        pass
+        # print('E', str(tree), file=sys.stderr)
+
+    def acceptClassDecl(self, tree):
+        self.pushSentence('class', tree.name, Camma(tree.extends))
+        self.visit(tree.body)
+
+    def acceptVarTypeDecl(self, tree):
+        pass
+        # self.visit(tree.name)
+        # self.push(':')
+        # self.push(str(tree.type))
 
     # Statement
 
@@ -475,6 +552,16 @@ class Kotonoha(TransCompiler):
         name = str(tree.name)
         self.pushSentence('import', name)
 
+    def acceptFromDecl(self, tree):
+        name = str(tree.name)
+        self.pushSentence('import', name)
+
+    def acceptGlobal(self, tree):
+        self.pushSentence('global', Camma(tree[0]))
+
+    def acceptNonLocal(self, tree):
+        self.pushSentence('nonlocal', Camma(tree[0]))
+
     def acceptVarDecl(self, tree):
         self.pushSentence('=', tree.name, tree.expr)
 
@@ -555,18 +642,17 @@ class Kotonoha(TransCompiler):
             name = self.vocmap.rename(name)
             self.push(name)
 
-    def rename(self, name):
-        defined = self.getenv(name)
-        if 0 in defined:
-            return defined[0]
-        return name
+    # def rename(self, name):
+    #     defined = self.getenv(name)
+    #     if 0 in defined:
+    #         return defined[0]
+    #     return name
 
     # [#ApplyExpr 'a']
 
     def acceptApplyExpr(self, tree):
         name = str(tree.name)
         if self.hasenv(name):
-            defined = self.getenv(name)
             ps = [p for p in tree.params]
             self.pushExpression(name, *ps)
         else:
@@ -631,10 +717,12 @@ class Kotonoha(TransCompiler):
 
     def acceptInfix(self, tree):
         name = str(tree.name)
+        if ' ' in name:
+            name = name.replace(' ', '')
         left = self.stringfy(tree.left)
         right = self.stringfy(tree.right)
-        if self.isAllowMath and self.hasenv(f'{name}M') and containsHira(left) and not containsHira(right):
-            self.pushExpression(f'{name}M', left, right)
+        if self.isAllowMath and self.hasenv(f'{name}$') and containsHira(left) and not containsHira(right):
+            self.pushExpression(f'{name}$', left, right)
         else:
             self.pushExpression(name, tree.left, tree.right)
 
@@ -710,16 +798,10 @@ class Kotonoha(TransCompiler):
 
     def acceptQString(self, tree):
         key = str(tree)
-        if key.startswith('"'):
-            key = "'" + key[1:-1] + "'"
-        if self.hasenv(key):
-            key = self.getenv(key)[0]
-            self.push(key)
-        else:
-            self.push(self.pycode.index_name(key))
+        self.push(self.vocmap.rename(key))
 
     def acceptMultiString(self, tree):
-        self.push(self.pycode.index_name(str(tree)))
+        self.push(self.vocmap.rename(str(tree)))
 
     def acceptFormat(self, tree):
         ss = ['"']
@@ -744,7 +826,6 @@ def make_corpus(filename):
     transpiler = Kotonoha()
     transpiler.load('python3:builtin:random')
     with open(sys.argv[1]) as f:
-
         for line in f.readlines():
             line = line.strip()
             tree = transpiler.parse(line)
@@ -761,4 +842,6 @@ def make_corpus(filename):
 if __name__ == '__main__':
     for filename in sys.argv[1:]:
         make_corpus(filename)
-    print('undefined api', Counter(UNK).most_common(100), file=sys.stderr)
+    with open('unk.csv', 'w') as f:
+        for term, cnt in Counter(UNK).most_common(1000):
+            f.write(f'{term},{term},{cnt}\n')

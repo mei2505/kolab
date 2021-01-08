@@ -5,6 +5,8 @@ import pegtree as pg
 from collections import Counter
 from pegtree import ParseTree
 
+from tqdm import tqdm
+
 from kolab.kotonoha.visitor import TransCompiler
 from kolab.kotonoha.pycode import VocabMap, PythonCode
 
@@ -149,7 +151,7 @@ def read_corpus(module, env={}, experimental=False):
                         module_names[key] = key
         for key in module_names.keys():
             shortkey = key.split('.')[-1]
-            if shortkey not in env:
+            if len(shortkey) > 2 and shortkey not in env:
                 env[shortkey] = env[key]
 
 
@@ -621,6 +623,12 @@ class Kotonoha(TransCompiler):
         else:
             self.pushSentence('return')
 
+    def acceptYield(self, tree):
+        if tree.has('expr'):
+            self.pushSentence('yield', tree.expr)
+        else:
+            self.pushSentence('yield')
+
     def acceptRaise(self, tree):
         self.pushSentence('raise', tree.expr)
 
@@ -659,8 +667,8 @@ class Kotonoha(TransCompiler):
             UNK.append(name)
             self.push(self.codify(tree))
 
-    def rename(self, tree, suffix=''):
-        return str(tree) + suffix
+    # def rename(self, tree, suffix=''):
+    #     return str(tree) + suffix
 
     def acceptMethodExpr(self, tree):
         # print('@recv', recv)
@@ -754,7 +762,7 @@ class Kotonoha(TransCompiler):
             self.pushExpression('()', Camma(tree))
 
     def acceptSet(self, tree):
-        self.push(f'({Camma(tree)})の集合')
+        self.pushExpression('set{}', Camma(tree))
 
     def acceptList(self, tree):
         if len(tree) == 1 and tree[0] == 'ForExpr':
@@ -825,7 +833,7 @@ class Kotonoha(TransCompiler):
 def make_corpus(filename):
     transpiler = Kotonoha()
     transpiler.load('python3:builtin:random')
-    with open(sys.argv[1]) as f:
+    with open(filename) as f:
         for line in f.readlines():
             line = line.strip()
             tree = transpiler.parse(line)
@@ -840,7 +848,7 @@ def make_corpus(filename):
 
 
 if __name__ == '__main__':
-    for filename in sys.argv[1:]:
+    for filename in tqdm(sys.argv[1:]):
         make_corpus(filename)
     with open('unk.csv', 'w') as f:
         for term, cnt in Counter(UNK).most_common(1000):

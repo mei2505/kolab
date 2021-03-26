@@ -39,10 +39,10 @@ def make(code, doc, convert=convert_all):
     print('AFTER ', code, doc)
     return code, doc
 
-#make('open(a, "file.txt", "w")', '書き込みモードでファイル"file.txt"を開く')
-#make('a+b', 'aにbを足した値')
-#make('a[-1]', 'aの末尾')
-#make('while fib[-1] < 4000000:', 'fibの末尾要素が4000000未満の間繰り返し')
+# make('open(a, "file.txt", "w")', '書き込みモードでファイル"file.txt"を開く')
+# make('a+b', 'aにbを足した値')
+# make('a[-1]', 'aの末尾')
+# make('while fib[-1] < 4000000:', 'fibの末尾要素が4000000未満の間繰り返し')
 # make('while fib[-1] < sin(x)', 'fibの末尾要素が_sin(x)未満の間、繰り返し')
 # make("data['名前'].values", "dataの'名前'カラムの配列")
 # make('temp=a;a=b;b=temp', 'aとbを入れ替える')

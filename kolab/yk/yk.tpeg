@@ -13,23 +13,28 @@ Token =
     / CToken
 
 
-Name = { [A-Za-z_] [A-Za-z0-9_]* #Name } _
+Name = 
+    { [A-Za-z_] [A-Za-z0-9_]* #Name } _
 
-Int = { [0-9]+ #Value } _
+Int = 
+    / { '0x' [0-9A-Fa-f_]+ #Value } _  // １６進数
+    / { '-'? [0-9] [0-9_]* ('.' [0-9_]+)? #Value } _
 
-String = { '"' ('\\"' / !'"' .)* '"' #Value } _
+String = 
+    / { '"' ('\\"' / !'"' .)* '"' #Value } _
+    / { ['] ('\\\'' / !'\'' .)* ['] #Value }
+
+CToken = { CTOKEN #Token } _
+
+CTOKEN =
+    / '**' / '<<' / '>>'
+    / [+\-*/%=]
+    / [()[\],.:]
 
 Special = { SPECIAL #Token } _
 
 SPECIAL = 
     / '<blk>' / '</blk>' / '<sep>'
-
-CToken = { CTOKEN #Token } _
-
-CTOKEN =
-    / '**'
-    / [+\-*/%=]
-    / [()[\],]
 
 Other = { . (!Token .)* #Doc }
 

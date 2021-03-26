@@ -1,0 +1,4103 @@
+組み込み関数
+Python インタプリタには数多くの関数と型が組み込まれており、いつでも利用できます。それらをここにアルファベット順に挙げます。
+
+組み込み関数
+abs()
+delattr()
+hash()
+memoryview()
+set()
+all()
+dict()
+help()
+min()
+setattr()
+any()
+dir()
+hex()
+next()
+slice()
+ascii()
+divmod()
+id()
+object()
+sorted()
+bin()
+enumerate()
+input()
+oct()
+staticmethod()
+bool()
+eval()
+int()
+open()
+str()
+breakpoint()
+exec()
+isinstance()
+ord()
+sum()
+bytearray()
+filter()
+issubclass()
+pow()
+super()
+bytes()
+float()
+iter()
+print()
+tuple()
+callable()
+format()
+len()
+property()
+type()
+chr()
+frozenset()
+list()
+range()
+vars()
+classmethod()
+getattr()
+locals()
+repr()
+zip()
+compile()
+globals()
+map()
+reversed()
+__import__()
+complex()
+hasattr()
+max()
+round()
+abs(x)
+Return the absolute value of a number. The argument may be an integer, a floating point number, or an object implementing __abs__(). If the argument is a complex number, its magnitude is returned.
+
+all(iterable)
+iterable の全ての要素が真ならば (もしくは iterable が空ならば) True を返します。以下のコードと等価です:
+
+def all(iterable):
+    for element in iterable:
+        if not element:
+            return False
+    return True
+any(iterable)
+iterable のいずれかの要素が真ならば True を返します。iterable が空なら False を返します。以下のコードと等価です:
+
+def any(iterable):
+    for element in iterable:
+        if element:
+            return True
+    return False
+ascii(object)
+repr() と同様、オブジェクトの印字可能な表現を含む文字列を返しますが、repr() によって返された文字列中の非 ASCII 文字は \x 、 \u 、 \U エスケープを使ってエスケープされます。これは Python 2 の repr() によって返されるのと同じ文字列を作ります。
+
+bin(x)
+整数を先頭に "0b" が付いた 2 進文字列に変換します。 結果は Python の式としても使える形式になります。
+
+>>>
+>>> bin(3)
+'0b11'
+>>> bin(-10)
+'-0b1010'
+先頭に "0b" が付いて欲しい、もしくは付いて欲しくない場合には、次の方法のどちらでも使えます。
+
+>>>
+>>> format(14, '#b'), format(14, 'b')
+('0b1110', '1110')
+>>> f'{14:#b}', f'{14:b}'
+('0b1110', '1110')
+より詳しいことは format() も参照してください。
+
+class bool([x])
+ブール値、即ち True または False のどちらかを返します。x は標準の 真理値判定手続き を用いて変換されます。x が偽または省略されている場合、この関数は False を返します。それ以外の場合、True を返します。bool クラスは int クラスの派生クラスです(数値型 int, float, complex を参照してください)。このクラスからさらに派生することはできません。ブール値のインスタンスは False と True のみです(ブール値 を参照してください)。
+
+バージョン 3.7 で変更: x は位置専用引数になりました。
+
+breakpoint(*args, **kws)
+この関数により、呼び出された箇所からデバッガへ移行します。 特に、この関数は args および kws をそのまま sys.breakpointhook() に渡して呼び出します。 デフォルトでは、 sys.breakpointhook() は引数無しで pdb.set_trace() を呼び出します。 このケースでは、 pdb.set_trace() は単なる便利な関数なので、明示的に pdb をインポートしたり、デバッガに入るためにキーをたくさん打ち込む必要はありません。 ただし、 sys.breakpointhook() は他の関数を設定することもでき、 breakpoint() は自動的にその関数を呼び出します。これにより、最適なデバッガに移行できます。
+
+引数 breakpointhook 付きで 監査イベント builtins.breakpoint を送出します。
+
+バージョン 3.7 で追加.
+
+class bytearray([source[, encoding[, errors]]])
+新しいバイト配列を返します。bytearray クラスは0 <= x < 256の範囲の整数からなる変更可能な配列です。ミュータブルなシーケンス型 に記述されている変更可能な配列に対する普通のメソッドの大半を備えています。また、bytes 型が持つメソッドの大半も備えています（see bytes と bytearray の操作)。
+
+オプションの source 引数は、配列を異なる方法で初期化するのに使われます:
+
+文字列 の場合、 encoding (と、オプションの errors) 引数も与えなければなりません。このとき bytearray() は文字列を str.encode() でバイトに変換して返します。
+整数 の場合、配列はそのサイズになり、null バイトで初期化されます。
+If it is an object conforming to the buffer interface, a read-only buffer of the object will be used to initialize the bytes array.
+イテラブル の場合、範囲 0 <= x < 256 内の整数のイテラブルでなければならず、それらが配列の初期の内容として使われます。
+引数がなければ、長さ 0 の配列が生成されます。
+
+バイナリシーケンス型 --- bytes, bytearray, memoryview と bytearray オブジェクト も参照してください。
+
+class bytes([source[, encoding[, errors]]])
+範囲 0 <= x < 256 の整数のイミュータブルなシーケンスである "bytes" オブジェクトを返します。 bytes は bytearray のイミュータブル版です。オブジェクトを変化させないようなメソッドや、インデクシングやスライシングのふるまいは、これと同様のものです。
+
+従って、コンストラクタ引数は bytearray() のものと同様に解釈されます。
+
+バイト列オブジェクトはリテラルでも生成できます。 文字列およびバイト列リテラル を参照してください。
+
+バイナリシーケンス型 --- bytes, bytearray, memoryview, バイトオブジェクト, bytes と bytearray の操作 も参照してください。
+
+callable(object)
+object 引数が呼び出し可能オブジェクトであれば True を、そうでなければ False を返します。この関数が True を返しても、呼び出しは失敗する可能性がありますが、False であれば、 object の呼び出しは決して成功しません。なお、クラスは呼び出し可能 (クラスを呼び出すと新しいインスタンスを返します) です。また、インスタンスはクラスが __call__() メソッドを持つなら呼び出し可能です。
+
+バージョン 3.2 で追加: この関数は Python 3.0 で一度取り除かれましたが、Python 3.2 で復活しました。
+
+chr(i)
+Unicode コードポイントが整数 i である文字を表す文字列を返します。例えば chr(97) は文字列 'a' を、 chr(8364) は文字列 '€' を返します。 ord() の逆です。
+
+引数の有効な範囲は 0 から 1,114,111 (16 進数で 0x10FFFF) です。 i が範囲外の場合 ValueError が送出されます。
+
+@classmethod
+メソッドをクラスメソッドへ変換します。
+
+クラスメソッドは、インスタンスメソッドが暗黙の第一引数としてインスタンスをとるように、第一引数としてクラスをとります。クラスメソッドを宣言するには、以下のイディオムを使います:
+
+class C:
+    @classmethod
+    def f(cls, arg1, arg2, ...): ...
+@classmethod 形式は関数 デコレータ です。詳しくは 関数定義 を参照してください。
+
+クラスメソッドは、(C.f() のように) クラスから呼び出すことも、(C().f() のように) インスタンスから呼び出すこともできます。 インスタンスはそのクラスが何であるかを除いて無視されます。 クラスメソッドが派生クラスから呼び出される場合は、その派生クラスオブジェクトが暗黙の第一引数として渡されます。
+
+Class methods are different than C++ or Java static methods. If you want those, see staticmethod() in this section. For more information on class methods, see 標準型の階層.
+
+バージョン 3.9 で変更: Class methods can now wrap other descriptors such as property().
+
+compile(source, filename, mode, flags=0, dont_inherit=False, optimize=-1)
+source をコードオブジェクト、もしくは、 AST オブジェクトにコンパイルします。 コードオブジェクトは exec() 文で実行したり、 eval() 呼び出しで評価できます。 source は通常の文字列、 バイト列、 AST オブジェクトのいずれでもかまいません。 AST オブジェクトへの、また、 AST オブジェクトからのコンパイルの方法は、 ast モジュールのドキュメントを参照してください。
+
+filename 引数には、コードの読み出し元のファイルを与えなければなりません; ファイルから読み出されるのでなければ、認識可能な値を渡して下さい ('<string>' が一般的に使われます)。
+
+mode 引数は、コンパイルされるコードの種類を指定します; source が一連の文から成るなら 'exec' 、単一の式から成るなら 'eval' 、単一の対話的文の場合 'single' です。(後者の場合、評価が None 以外である式文が印字されます)。
+
+The optional arguments flags and dont_inherit control which compiler options should be activated and which future features should be allowed. If neither is present (or both are zero) the code is compiled with the same flags that affect the code that is calling compile(). If the flags argument is given and dont_inherit is not (or is zero) then the compiler options and the future statements specified by the flags argument are used in addition to those that would be used anyway. If dont_inherit is a non-zero integer then the flags argument is it -- the flags (future features and compiler options) in the surrounding code are ignored.
+
+Compiler options and future statements are specified by bits which can be bitwise ORed together to specify multiple options. The bitfield required to specify a given future feature can be found as the compiler_flag attribute on the _Feature instance in the __future__ module. Compiler flags can be found in ast module, with PyCF_ prefix.
+
+引数 optimize は、コンパイラの最適化レベルを指定します; デフォルトの値 -1 は、インタプリタの -O オプションで与えられるのと同じ最適化レベルを選びます。明示的なレベルは、 0 (最適化なし、 __debug__ は真)、 1 (assert は取り除かれ、 __debug__ は偽)、 2 (docstring も取り除かれる) です。
+
+この関数は、コンパイルされたソースが不正である場合 SyntaxError を、ソースがヌルバイトを含む場合 ValueError を送出します。
+
+Python コードをパースしてその AST 表現を得たいのであれば、 ast.parse() を参照してください。
+
+引数 source, filename を指定して 監査イベント compile を送出します。
+
+注釈 複数行に渡るコードの文字列を 'single' や 'eval' モードでコンパイルするとき、入力は一つ以上の改行文字で終端されなければなりません。これは、 code モジュールで不完全な文と完全な文を検知しやすくするためです。
+警告 AST オブジェクトにコンパイルしているときに、十分に大きい文字列や複雑な文字列によって Python の抽象構文木コンパイラのスタックが深さの限界を越えることで、 Python インタプリタをクラッシュさせられます。
+バージョン 3.2 で変更: Windows や Mac の改行も受け付けます。また 'exec' モードでの入力が改行で終わっている必要もありません。optimize 引数が追加されました。
+
+バージョン 3.5 で変更: 以前は source にヌルバイトがあったときに TypeError を送出していました。
+
+バージョン 3.8 で追加: ast.PyCF_ALLOW_TOP_LEVEL_AWAIT can now be passed in flags to enable support for top-level await, async for, and async with.
+
+class complex([real[, imag]])
+値 real + imag*1j の複素数を返すか、文字列や数を複素数に変換します。第一引数が文字列なら、それが複素数と解釈され、この関数は第二引数無しで呼び出されなければなりません。第二引数は文字列であってはなりません。それぞれの引数は (複素数を含む) 任意の数値型です。 imag が省略された場合、標準の値はゼロで、このコンストラクタは int や float のような数値変換としてはたらきます。両方の引数が省略された場合、 0j を返します。
+
+For a general Python object x, complex(x) delegates to x.__complex__(). If __complex__() is not defined then it falls back to __float__(). If __float__() is not defined then it falls back to __index__().
+
+注釈 文字列から変換するとき、その文字列は中央の + や - 演算子の周りに空白を含んではなりません。例えば、complex('1+2j') はいいですが、complex('1 + 2j') は ValueError を送出します。
+複素数型については 数値型 int, float, complex に説明があります。
+
+バージョン 3.6 で変更: コードリテラル中で桁をグループ化するのにアンダースコアを利用できます。
+
+バージョン 3.8 で変更: Falls back to __index__() if __complex__() and __float__() are not defined.
+
+delattr(object, name)
+setattr() の親戚です。引数はオブジェクトと文字列です。文字列はオブジェクトの属性のうち一つの名前でなければなりません。この関数は、オブジェクトが許すなら、指名された属性を削除します。例えば、 delattr(x, 'foobar') は del x.foobar と等価です。
+
+class dict(**kwarg)
+class dict(mapping, **kwarg)
+class dict(iterable, **kwarg)
+新しい辞書を作成します。 dict オブジェクトは辞書クラスです。このクラスに関するドキュメンテーションは dict と マッピング型 --- dict を参照してください。
+
+他のコンテナについては、 ビルトインの list, set, tuple クラスおよび collections モジュールを参照してください。
+
+dir([object])
+引数がない場合、現在のローカルスコープにある名前のリストを返します。引数がある場合、そのオブジェクトの有効な属性のリストを返そうと試みます。
+
+オブジェクトが __dir__() という名のメソッドを持つなら、そのメソッドが呼び出され、属性のリストを返さなければなりません。これにより、カスタムの __getattr__() や __getattribute__() 関数を実装するオブジェクトは、dir() が属性を報告するやり方をカスタマイズできます。
+
+オブジェクトが __dir__() を提供していない場合、定義されていればオブジェクトの __dict__ 属性から、そして型オブジェクトから、情報を収集しようと試みます。結果のリストは完全であるとは限らず、また、カスタムの __getattr__() を持つ場合、不正確になるかもしれません。
+
+デフォルトの dir() メカニズムは、完全というより最重要な情報を作成しようとするため、異なる型のオブジェクトでは異なって振る舞います:
+
+オブジェクトがモジュールオブジェクトの場合、リストにはモジュールの属性の名前が含まれます。
+オブジェクトが型オブジェクトやクラスオブジェクトの場合、リストにはその属性の名前と、再帰的にたどったその基底クラスの属性が含まれます。
+それ以外の場合には、リストにはオブジェクトの属性名、クラス属性名、再帰的にたどった基底クラスの属性名が含まれます。
+返されるリストはアルファベット順に並べられています。例えば:
+
+>>>
+>>> import struct
+>>> dir()   # show the names in the module namespace  
+['__builtins__', '__name__', 'struct']
+>>> dir(struct)   # show the names in the struct module 
+['Struct', '__all__', '__builtins__', '__cached__', '__doc__', '__file__',
+ '__initializing__', '__loader__', '__name__', '__package__',
+ '_clearcache', 'calcsize', 'error', 'pack', 'pack_into',
+ 'unpack', 'unpack_from']
+>>> class Shape:
+...     def __dir__(self):
+...         return ['area', 'perimeter', 'location']
+>>> s = Shape()
+>>> dir(s)
+['area', 'location', 'perimeter']
+注釈 dir() は主に対話プロンプトでの使用に便利なように提供されているので、厳密性や一貫性を重視して定義された名前のセットというよりも、むしろ興味を引くような名前のセットを返そうとします。また、この関数の細かい動作はリリース間で変わる可能性があります。例えば、引数がクラスであるとき、メタクラス属性は結果のリストに含まれません。
+divmod(a, b)
+2 つの (複素数でない) 数を引数として取り、整数の除法を行ったときの商と剰余からなる対を返します。混合した被演算子型では、二項算術演算子での規則が適用されます。整数では、結果は (a // b, a % b) と同じです。浮動小数点数では、結果は (q, a % b) で、ここで q は通常 math.floor(a / b) ですが、それより 1 小さくなることもあります。いずれにせよ、q * b + a % b は a に非常に近く、a % b がゼロでなければその符号は b と同じで、0 <= abs(a % b) < abs(b) です。
+
+enumerate(iterable, start=0)
+enumerate オブジェクトを返します。 iterable は、シーケンスか iterator か、あるいはイテレーションをサポートするその他のオブジェクトでなければなりません。 enumerate() によって返されたイテレータの __next__() メソッドは、 (デフォルトでは 0 となる start からの) カウントと、 iterable 上のイテレーションによって得られた値を含むタプルを返します。
+
+>>>
+>>> seasons = ['Spring', 'Summer', 'Fall', 'Winter']
+>>> list(enumerate(seasons))
+[(0, 'Spring'), (1, 'Summer'), (2, 'Fall'), (3, 'Winter')]
+>>> list(enumerate(seasons, start=1))
+[(1, 'Spring'), (2, 'Summer'), (3, 'Fall'), (4, 'Winter')]
+次と等価です:
+
+def enumerate(sequence, start=0):
+    n = start
+    for elem in sequence:
+        yield n, elem
+        n += 1
+eval(expression[, globals[, locals]])
+文字列とオプションの引数 globals、locals をとります。globals を与える場合は辞書でなくてはなりません。locals を与える場合は任意のマッピングオブジェクトにできます。
+
+expression 引数は Python 式 (技術的な言い方では、条件のリスト) として構文解析され評価されます。 このとき辞書 globals および locals はそれぞれグローバルおよびローカルな名前空間として使われます。 globals 辞書が与えられ、 __builtins__ をキーとする値が含まれていない場合、 expression が構文解析される前に、組み込みモジュール builtins の辞書への参照がキー __builtins__ の値として挿入されます。 よって、 expression は通常、標準の builtins モジュールへの完全なアクセスを有し、制限された環境は伝播します。 locals 辞書が省略された場合、デフォルトは globals 辞書です。 辞書が両方とも省略された場合、表現式は eval() が呼び出されている環境の globals 辞書と locals 辞書の下で実行されます。 eval() は、それが実行される環境の ネストされたスコープ (非ローカルのオブジェクト) を参照できないことに注意してください。
+
+返される値は、式が評価された結果になります。構文エラーは例外として報告されます。例:
+
+>>>
+>>> x = 1
+>>> eval('x+1')
+2
+この関数は (compile() で生成されるような) 任意のコードオブジェクトを実行するのにも利用できます。この場合、文字列の代わりにコードオブジェクトを渡します。このコードオブジェクトが、引数 mode を 'exec' としてコンパイルされている場合、 eval() が返す値は None になります。
+
+ヒント: exec() 関数により文の動的な実行がサポートされています。globals() および locals() 関数は、それぞれ現在のグローバルおよびローカルな辞書を返すので、それらを eval() や exec() に渡して使うことができます。
+
+リテラルだけを含む式の文字列を安全に評価できる関数、 ast.literal_eval() も参照してください。
+
+引数 code_object を指定して 監査イベント exec を送出します。
+
+exec(object[, globals[, locals]])
+This function supports dynamic execution of Python code. object must be either a string or a code object. If it is a string, the string is parsed as a suite of Python statements which is then executed (unless a syntax error occurs). 1 If it is a code object, it is simply executed. In all cases, the code that's executed is expected to be valid as file input (see the section "File input" in the Reference Manual). Be aware that the nonlocal, yield, and return statements may not be used outside of function definitions even within the context of code passed to the exec() function. The return value is None.
+
+In all cases, if the optional parts are omitted, the code is executed in the current scope. If only globals is provided, it must be a dictionary (and not a subclass of dictionary), which will be used for both the global and the local variables. If globals and locals are given, they are used for the global and local variables, respectively. If provided, locals can be any mapping object. Remember that at module level, globals and locals are the same dictionary. If exec gets two separate objects as globals and locals, the code will be executed as if it were embedded in a class definition.
+
+globals 辞書がキー __builtins__ に対する値を含まなければ、そのキーに対して、組み込みモジュール builtins の辞書への参照が挿入されます。ですから、実行されるコードを exec() に渡す前に、 globals に自作の __builtins__ 辞書を挿入することで、コードがどの組み込みを利用できるか制御できます。
+
+引数 code_object を指定して 監査イベント exec を送出します。
+
+注釈 組み込み関数 globals() および locals() は、それぞれ現在のグローバルおよびローカルの辞書を返すので、それらを exec() の第二、第三引数にそのまま渡して使うと便利なことがあります。
+注釈 標準では locals は後に述べる関数 locals() のように動作します: 標準の locals 辞書に対する変更を試みてはいけません。 exec() の呼び出しが返る時にコードが locals に与える影響を知りたいなら、明示的に locals 辞書を渡してください。
+filter(function, iterable)
+iterable の要素のうち function が真を返すものでイテレータを構築します。iterable はシーケンスか、反復をサポートするコンテナか、イテレータです。function が None なら、恒等関数を仮定します。すなわち、iterable の偽である要素がすべて除去されます。
+
+なお、filter(function, iterable) は、関数が None でなければジェネレータ式 (item for item in iterable if function(item)) と同等で、関数が None なら (item for item in iterable if item) と同等です。
+
+function が偽を返すような iterable の各要素を返す補完的関数は、 itertools.filterfalse() を参照してください。
+
+class float([x])
+数または文字列 x から生成された浮動小数点数を返します。
+
+引数が文字列の場合、10進数を含んだ文字列にしてください。先頭に符号が付いていたり、空白中に埋め込まれていてもかまいません。符号として '+' か '-' を追加できます。'+' は、作られる値に何の影響も与えません。引数は NaN (not-a-number) や正負の無限大を表す文字列でもかまいません。正確には、入力は、前後の空白を取り除いた後に以下の文法に従う必要があります:
+
+sign           ::=  "+" | "-"
+infinity       ::=  "Infinity" | "inf"
+nan            ::=  "nan"
+numeric_value  ::=  floatnumber | infinity | nan
+numeric_string ::=  [sign] numeric_value
+ここで floatnumber は 浮動小数点数リテラル で記述されている Python の浮動小数点数リテラルです。大文字か小文字かは関係なく、例えば "inf"、 "Inf"、 "INFINITY" 、 "iNfINity" は全て正の無限大として使える綴りです。
+
+一方で、引数が整数または浮動小数点数なら、(Python の浮動小数点数の精度で) 同じ値の浮動小数点数が返されます。引数が Python の浮動小数点数の範囲外なら、 OverflowError が送出されます。
+
+For a general Python object x, float(x) delegates to x.__float__(). If __float__() is not defined then it falls back to __index__().
+
+引数が与えられなければ、0.0 が返されます。
+
+例:
+
+>>>
+>>> float('+1.23')
+1.23
+>>> float('   -12345\n')
+-12345.0
+>>> float('1e-003')
+0.001
+>>> float('+1E6')
+1000000.0
+>>> float('-Infinity')
+-inf
+浮動小数点数型については、 数値型 int, float, complex も参照してください。
+
+バージョン 3.6 で変更: コードリテラル中で桁をグループ化するのにアンダースコアを利用できます。
+
+バージョン 3.7 で変更: x は位置専用引数になりました。
+
+バージョン 3.8 で変更: __float__() が定義されていない場合、__index__() へフォールバックします。
+
+format(value[, format_spec])
+value を format_spec で制御される "書式化された" 表現に変換します。 format_spec の解釈は value 引数の型に依存しますが、ほとんどの組み込み型で使われる標準的な構文が存在します: 書式指定ミニ言語仕様 。
+
+デフォルトの format_spec は空の文字列です。それは通常 str(value) の呼び出しと同じ結果になります。
+
+format(value, format_spec) の呼び出しは、 type(value).__format__(value, format_spec) に翻訳され、これは value の __format__() メソッドの検索をするとき、インスタンス辞書を回避します。このメソッドの探索が object に到達しても format_spec が空にならなかったり、 format_spec や返り値が文字列でなかったりした場合、 TypeError が送出されます。
+
+バージョン 3.4 で変更: format_spec が空の文字列でない場合 object().__format__(format_spec) は TypeError を送出します。
+
+class frozenset([iterable])
+新しい frozenset オブジェクトを返します。オプションで iterable から得られた要素を含みます。 frozenset はビルトインクラスです。このクラスに関するドキュメントは frozenset と set（集合）型 --- set, frozenset を参照してください。
+
+他のコンテナについては、ビルトインクラス set, list, tuple, dict や collections モジュールを見てください。
+
+getattr(object, name[, default])
+object の指名された属性の値を返します。 name は文字列でなくてはなりません。文字列がオブジェクトの属性の一つの名前であった場合、戻り値はその属性の値になります。例えば、 getattr(x, 'foobar') は x.foobar と等価です。指名された属性が存在しない場合、 default が与えられていればそれが返され、そうでない場合には AttributeError が送出されます。
+
+globals()
+現在のグローバルシンボルテーブルを表す辞書を返します。これは常に現在のモジュール (関数やメソッドの中では、それを呼び出したモジュールではなく、それを定義しているモジュール) の辞書です。
+
+hasattr(object, name)
+引数はオブジェクトと文字列です。文字列がオブジェクトの属性名の一つであった場合 True を、そうでない場合 False を返します。 (この関数は、 getattr(object, name) を呼び出して AttributeError を送出するかどうかを見ることで実装されています。)
+
+hash(object)
+オブジェクトのハッシュ値を (存在すれば) 返します。ハッシュ値は整数です。これらは辞書を検索する際に辞書のキーを高速に比較するために使われます。等しい値となる数値は等しいハッシュ値を持ちます (1 と 1.0 のように型が異なっていてもです)。
+
+注釈 独自の __hash__() メソッドを実装したオブジェクトを使う場合、hash() が実行するマシンのビット幅に合わせて戻り値を切り捨てることに注意してください。詳しくは __hash__() を参照してください。
+help([object])
+組み込みヘルプシステムを起動します。(この関数は対話的な使用のためのものです。) 引数が与えられていない場合、対話的ヘルプシステムはインタプリタコンソール上で起動します。引数が文字列の場合、文字列はモジュール、関数、クラス、メソッド、キーワード、またはドキュメントの項目名として検索され、ヘルプページがコンソール上に印字されます。引数がその他のオブジェクトの場合、そのオブジェクトに関するヘルプページが生成されます。
+
+help() を呼び出したときに関数の引数リストにスラッシュ (/) が現れた場合は、スラッシュより前の引数が位置専用引数だという意味であることに注意してください。 より詳しいことは、 位置専用引数についての FAQ の記事 を参照してください。
+
+この関数は、 site モジュールから、組み込みの名前空間に移されました。
+
+バージョン 3.4 で変更: pydoc と inspect への変更により、呼び出し可能オブジェクトの報告されたシグニチャがより包括的で一貫性のあるものになりました。
+
+hex(x)
+Convert an integer number to a lowercase hexadecimal string prefixed with "0x". If x is not a Python int object, it has to define an __index__() method that returns an integer. Some examples:
+
+>>>
+>>> hex(255)
+'0xff'
+>>> hex(-42)
+'-0x2a'
+整数を大文字の 16 進文字列や小文字の 16 進文字列、先頭の "0x" 付きや "0x" 無しに変換したい場合は、次に挙げる方法が使えます:
+
+>>>
+>>> '%#x' % 255, '%x' % 255, '%X' % 255
+('0xff', 'ff', 'FF')
+>>> format(255, '#x'), format(255, 'x'), format(255, 'X')
+('0xff', 'ff', 'FF')
+>>> f'{255:#x}', f'{255:x}', f'{255:X}'
+('0xff', 'ff', 'FF')
+より詳しいことは format() も参照してください。
+
+16を底として16進数文字列を整数に変換するには int() も参照してください。
+
+注釈 浮動小数点数の16進文字列表記を得たい場合には、 float.hex() メソッドを使って下さい。
+id(object)
+オブジェクトの "識別値" を返します。この値は整数で、このオブジェクトの有効期間中は一意かつ定数であることが保証されています。有効期間が重ならない 2 つのオブジェクトは同じ id() 値を持つかもしれません。
+
+CPython implementation detail: This is the address of the object in memory.
+Raises an auditing event builtins.id with argument id.
+
+input([prompt])
+引数 prompt が存在すれば、それが末尾の改行を除いて標準出力に書き出されます。次に、この関数は入力から 1 行を読み込み、文字列に変換して (末尾の改行を除いて) 返します。 EOF が読み込まれたとき、 EOFError が送出されます。例:
+
+>>>
+>>> s = input('--> ')  
+--> Monty Python's Flying Circus
+>>> s  
+"Monty Python's Flying Circus"
+readline モジュールが読み込まれていれば、 input() はそれを使って精緻な行編集やヒストリ機能を提供します。
+
+Raises an auditing event builtins.input with argument prompt before reading input
+
+Raises an auditing event builtins.input/result with the result after successfully reading input.
+
+class int([x])
+class int(x, base=10)
+Return an integer object constructed from a number or string x, or return 0 if no arguments are given. If x defines __int__(), int(x) returns x.__int__(). If x defines __index__(), it returns x.__index__(). If x defines __trunc__(), it returns x.__trunc__(). For floating point numbers, this truncates towards zero.
+
+x が数値でない、あるいは base が与えられた場合、 x は文字列、 bytes インスタンス、 bytearray インスタンスのいずれかで、基数 base の 整数リテラル で表されたものでなければなりません。 オプションで、リテラルの前に + あるいは - を (中間のスペースなしで) 付けることができます。 また、リテラルは余白で囲むことができます。 基数 n のリテラルは、 0 から n-1 の数字に値 10-35 を持つ a から z (または A から Z) を加えたもので構成されます。 デフォルトの base は 10 です。 許される値は 0 と 2--36 です。 基数 2, 8, 16 のリテラルは、別の記法としてコード中の整数リテラルのように 0b/0B, 0o/0O, 0x/0X を前に付けることができます。 基数 0 はコードリテラルとして厳密に解釈することを意味します。 その結果、実際の基数は 2, 8, 10, 16 のどれかになります。 したがって int('010', 0) は有効ではありませんが、 int('010') や int('010', 8) は有効です。
+
+整数型については、 数値型 int, float, complex も参照してください。
+
+バージョン 3.4 で変更: base が int のインスタンスでなく、base オブジェクトが base.__index__ メソッドを持っている場合、そのメソッドを呼んで底に対する整数を得ることができます。以前のバージョンでは base.__index__ ではなく base.__int__ を使用していました。
+
+バージョン 3.6 で変更: コードリテラル中で桁をグループ化するのにアンダースコアを利用できます。
+
+バージョン 3.7 で変更: x は位置専用引数になりました。
+
+バージョン 3.8 で変更: Falls back to __index__() if __int__() is not defined.
+
+isinstance(object, classinfo)
+object 引数が classinfo 引数のインスタンスであるか、 (直接、間接、または 仮想) サブクラスのインスタンスの場合に True を返します。 object が与えられた型のオブジェクトでない場合、この関数は常に False を返します。 classinfo が型オブジェクトのタプル (あるいは再帰的に複数のタプル) の場合、 object がそれらのいずれかのインスタンスであれば True を返します。 classinfo が型や型からなるタプル、あるいは複数のタプルのいずれでもない場合、 TypeError 例外が送出されます。
+
+issubclass(class, classinfo)
+class が classinfo の (直接または間接的な、あるいは virtual) サブクラスである場合に True を返します。クラスはそれ自身のサブクラスとみなされます。 classinfo はクラスオブジェクトからなるタプルでもよく、この場合には classinfo のすべてのエントリが調べられます。その他の場合では、例外 TypeError が送出されます。
+
+iter(object[, sentinel])
+イテレータ オブジェクトを返します。 第二引数があるかどうかで、第一引数の解釈は大きく異なります。 第二引数がない場合、 object は反復プロトコル (__iter__() メソッド) か、シーケンスプロトコル (引数が 0 から開始する __getitem__() メソッド) をサポートする集合オブジェクトでなければなりません。これらのプロトコルが両方ともサポートされていない場合、 TypeError が送出されます。 第二引数 sentinel が与えられているなら、 object は呼び出し可能オブジェクトでなければなりません。この場合に生成されるイテレータは、 __next__() を呼ぶ毎に object を引数無しで呼び出します。返された値が sentinel と等しければ、 StopIteration が送出され、そうでなければ、戻り値がそのまま返されます。
+
+イテレータ型 も見てください。
+
+2引数形式の iter() の便利な利用方法の1つは、ブロックリーダーの構築です。 例えば、バイナリのデータベースファイルから固定幅のブロックをファイルの終端に到達するまで読み出すには次のようにします:
+
+from functools import partial
+with open('mydata.db', 'rb') as f:
+    for block in iter(partial(f.read, 64), b''):
+        process_block(block)
+len(s)
+オブジェクトの長さ (要素の数) を返します。引数はシーケンス (文字列、バイト列、タプル、リスト、range 等) かコレクション (辞書、集合、凍結集合等) です。
+
+CPython implementation detail: len raises OverflowError on lengths larger than sys.maxsize, such as range(2 ** 100).
+class list([iterable])
+list は、実際には関数ではなくミュータブルなシーケンス型で、 リスト型 (list) と シーケンス型 --- list, tuple, range にドキュメント化されています。
+
+locals()
+現在のローカルシンボルテーブルを表す辞書を更新して返します。 関数ブロックで locals() を呼び出したときは自由変数が返されますが、クラスブロックでは返されません。 モジュールレベルでは、 locals() と globals() は同じ辞書であることに注意してください。
+
+注釈 この辞書の内容は変更してはいけません; 変更しても、インタプリタが使うローカル変数や自由変数の値には影響しません。
+map(function, iterable, ...)
+function を、結果を返しながら iterable の全ての要素に適用するイテレータを返します。追加の iterable 引数が渡されたなら、 function はその数だけの引数を取らなければならず、全てのイテラブルから並行して取られた要素に適用されます。複数のイテラブルが与えられたら、このイテレータはその中の最短のイテラブルが尽きた時点で止まります。関数の入力がすでに引数タプルに配置されている場合は、 itertools.starmap() を参照してください。
+
+max(iterable, *[, key, default])
+max(arg1, arg2, *args[, key])
+iterable の中で最大の要素、または2つ以上の引数の中で最大のものを返します。
+
+位置引数が1つだけ与えられた場合、それはは空でない iterable でなくてはいけません。その iterable の最大の要素が返されます。2 つ以上のキーワード無しの位置引数が与えられた場合、その位置引数の中で最大のものが返されます。
+
+任意のキーワード専用引数が 2 つあります。 key 引数は引数を 1 つ取る順序関数 (list.sort() のもののように) を指定します。 default 引数は与えられたイテラブルが空の場合に返すオブジェクトを指定します。 イテラブルが空で default が与えられていない場合 ValueError が送出されます。
+
+最大の要素が複数あるとき、この関数はそのうち最初に現れたものを返します。これは、sorted(iterable, key=keyfunc, reverse=True)[0] や heapq.nlargest(1, iterable, key=keyfunc) のような、他のソート安定性を維持するツールと両立します。
+
+バージョン 3.4 で追加: default キーワード専用引数。
+
+バージョン 3.8 で変更: key 引数が None であることを許容します。
+
+class memoryview(obj)
+与えられたオブジェクトから作られた "メモリビュー" オブジェクトを返します。詳しくは メモリビュー を参照してください。
+
+min(iterable, *[, key, default])
+min(arg1, arg2, *args[, key])
+iterable の中で最小の要素、または2つ以上の引数の中で最小のものを返します。
+
+位置引数が1つだけ与えられた場合、それはは空でない iterable でなくてはいけません。その iterable の最小の要素が返されます。2 つ以上のキーワード無しの位置引数が与えられた場合、その位置引数の中で最小のものが返されます。
+
+任意のキーワード専用引数が 2 つあります。 key 引数は引数を 1 つ取る順序関数 (list.sort() のもののように) を指定します。 default 引数は与えられたイテラブルが空の場合に返すオブジェクトを指定します。 イテラブルが空で default が与えられていない場合 ValueError が送出されます。
+
+最小の要素が複数あるとき、この関数はそのうち最初に現れたものを返します。これは、sorted(iterable, key=keyfunc)[0] や heapq.nsmallest(1, iterable, key=keyfunc) のような、他のソート安定性を維持するツールと両立します。
+
+バージョン 3.4 で追加: default キーワード専用引数。
+
+バージョン 3.8 で変更: key 引数が None であることを許容します。
+
+next(iterator[, default])
+iterator の __next__() メソッドを呼び出すことにより、次の要素を取得します。イテレータが尽きている場合、 default が与えられていればそれが返され、そうでなければ StopIteration が送出されます。
+
+class object
+特徴を持たない新しいオブジェクトを返します。 object は全てのクラスの基底クラスです。これは、 Python のクラスの全てのインスタンスに共通のメソッド群を持ちます。この関数はいかなる引数も受け付けません。
+
+注釈 object は __dict__ を 持たない ので、 object クラスのインスタンスに任意の属性を代入することはできません。
+oct(x)
+整数を先頭に "0o" が付いた 8 進文字列に変換します。 結果は Python の式としても使える形式になります。
+
+>>>
+>>> oct(8)
+'0o10'
+>>> oct(-56)
+'-0o70'
+整数を接頭辞の "0o" 付きや "0o" 無しの 8 進文字列に変換したい場合は、次に挙げる方法が使えます。
+
+>>>
+>>> '%#o' % 10, '%o' % 10
+('0o12', '12')
+>>> format(10, '#o'), format(10, 'o')
+('0o12', '12')
+>>> f'{10:#o}', f'{10:o}'
+('0o12', '12')
+より詳しいことは format() も参照してください。
+
+open(file, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None)
+file を開き、対応する ファイルオブジェクト を返します。ファイルを開くことができなければ、OSError が送出されます。 この関数の利用例について、 ファイルを読み書きする を参照してください。
+
+file は path-like object で、開くファイルの (絶対または現在のワーキングディレクトリに対する相対) パス名を与えるものか、または、ラップするファイルの整数のファイルディスクリプタです。(ファイルディスクリプタが与えられた場合は、それは closefd が False に設定されていない限り、返された I/O オブジェクトが閉じられるときに閉じられます。)
+
+mode はオプションの文字列で、ファイルが開かれるモードを指定します。デフォルトは 'r' で、読み込み用にテキストモードで開くという意味です。その他のよく使われる値は、書き込み (ファイルがすでに存在する場合はそのファイルを切り詰めます) 用の 'w'、排他的な生成用の 'x'、追記用の 'a' です (いくつかの Unix システムでは、全て の書き込みが現在のファイルシーク位置に関係なくファイルの末尾に追加されます)。テキストモードでは、encoding が指定されていない場合に使われるエンコーディングはプラットフォームに依存します:locale.getpreferredencoding(False) を使って現在のロケールエンコーディングを取得します。(rawバイト列の読み書きには、バイナリモードを使い、encoding は未指定のままとします) 指定可能なモードは次の表の通りです。
+
+文字
+意味
+'r'
+読み込み用に開く (デフォルト)
+'w'
+書き込み用に開き、まずファイルを切り詰める
+'x'
+排他的な生成に開き、ファイルが存在する場合は失敗する
+'a'
+書き込み用に開き、ファイルが存在する場合は末尾に追記する
+'b'
+バイナリモード
+'t'
+テキストモード (デフォルト)
+'+'
+open for updating (reading and writing)
+デフォルトのモードは 'r' (開いてテキストの読み込み、'rt' と同義) です。モード 'w+' と 'w+b' はファイルを開いて切り詰めます。モード 'r+' と 'r+b' はファイルを切り詰めずに開きます。
+
+概要 で触れられているように、Python はバイナリとテキストの I/O を区別します。(mode 引数に 'b' を含めて) バイナリモードで開かれたファイルは、内容をいかなるデコーディングもせずに bytes オブジェクトとして返します。(デフォルトや、 mode 引数に 't' が含まれたときの) テキストモードでは、ファイルの内容は str として返され、バイト列はまず、プラットフォーム依存のエンコーディングか、encoding が指定された場合は指定されたエンコーディングを使ってデコードされます。
+
+さらに 'U' という許可されているモード文字がありますが、これの効果は無くなっていて非推奨とされています。 以前はこのモード文字は、テキストモードでの universal newlines を有効にしていましたが、 Python 3.0 ではそれがデフォルトの挙動となりました。 より詳細なことは newline 引数のドキュメントを参照してください。
+
+注釈 Python は、下層のオペレーティングシステムがテキストファイルをどう認識するかには依存しません; すべての処理は Python 自身で行われ、よってプラットフォーム非依存です。
+buffering はオプションの整数で、バッファリングの方針を設定するのに使われます。バッファリングを無効にする (バイナリモードでのみ有効) には 0、行単位バッファリング (テキストモードでのみ有効) には 1、固定値のチャンクバッファの大きさをバイト単位で指定するには 1 以上の整数を渡してください。buffering 引数が与えられていないとき、デフォルトのバッファリング方針は以下のように動作します:
+
+バイナリファイルは固定サイズのチャンクでバッファリングされます。バッファサイズは、下層のデバイスの「ブロックサイズ」を決定するヒューリスティックを用いて選択され、それが不可能な場合は代わりに io.DEFAULT_BUFFER_SIZE が使われます。多くのシステムでは、典型的なバッファサイズは 4096 か 8192 バイト長になるでしょう。
+「対話的な」テキストファイル (isatty() が True を返すファイル) は行バッファリングを使用します。 その他のテキストファイルは、上で説明したバイナリファイル用の方針を使用します。
+encoding はファイルのエンコードやデコードに使われる text encoding の名前です。このオプションはテキストモードでのみ使用してください。デフォルトエンコーディングはプラットフォーム依存 (locale.getpreferredencoding() が返すもの) ですが、Pythonでサポートされているエンコーディングはどれでも使えます。詳しくは codecs モジュール内のサポートしているエンコーディングのリストを参照してください。
+
+errors はオプションの文字列で、エンコードやデコードでのエラーをどのように扱うかを指定するものです。バイナリモードでは使用できません。様々な標準のエラーハンドラが使用可能です (エラーハンドラ に列記されています) が、 codecs.register_error() に登録されているエラー処理の名前も使用可能です。標準のエラーハンドラの名前には、以下のようなものがあります:
+
+'strict' はエンコーディングエラーがあると例外 ValueError を発生させます。デフォルト値である None も同じ効果です。
+'ignore' はエラーを無視します。エンコーディングエラーを無視することで、データが失われる可能性があることに注意してください。
+'replace' は、不正な形式のデータが存在した場所に('?' のような) 置換マーカーを挿入します。
+'surrogateescape' は正しくないバイト列を、Unicode の Private Use Area (私用領域) にある U+DC80 から U+DCFF のコードポイントで示します。データを書き込む際に surrogateescape エラーハンドラが使われると、これらの私用コードポイントは元と同じバイト列に変換されます。これはエンコーディングが不明なファイルを処理するのに便利です。
+'xmlcharrefreplace' はファイルへの書き込み時のみサポートされます。そのエンコーディングでサポートされない文字は、&#nnn; 形式の適切な XML 文字参照で置換されます。
+'backslashreplace' は不正なデータを Python のバックスラッシュ付きのエスケープシーケンスで置換します。
+'namereplace' (書き込み時のみサポートされています) はサポートされていない文字を \N{...} エスケープシーケンスで置換します。
+newline は universal newlines モードの動作を制御します (テキストモードでのみ動作します)。None, '', '\n', '\r', '\r\n' のいずれかです。これは以下のように動作します:
+
+ストリームからの入力の読み込み時、newline が None の場合、ユニバーサル改行モードが有効になります。入力中の行は '\n', '\r', または '\r\n' で終わり、呼び出し元に返される前に '\n' に変換されます。 '' の場合、ユニバーサル改行モードは有効になりますが、行末は変換されずに呼び出し元に返されます。その他の正当な値の場合、入力行は与えられた文字列でのみ終わり、行末は変換されずに呼び出し元に返されます。
+ストリームへの出力の書き込み時、newline が None の場合、全ての '\n' 文字はシステムのデフォルトの行セパレータ os.linesep に変換されます。 newline が '' または '\n' の場合は変換されません。newline がその他の正当な値の場合、全ての '\n' 文字は与えられた文字列に変換されます。
+closefd が False で、ファイル名ではなくてファイル記述子が与えられた場合、下層のファイル記述子はファイルが閉じられた後も開いたままとなります。 ファイル名が与えられた場合、closefd は True (デフォルト値) でなければなりません。 そうでない場合エラーが送出されます。
+
+呼び出し可能オブジェクトを opener として与えることで、カスタムのオープナーが使えます。そしてファイルオブジェクトの下層のファイル記述子は、opener を (file, flags) で呼び出して得られます。opener は開いたファイル記述子を返さなければなりません。 (os.open を opener として渡すと、None を渡したのと同様の機能になります)。
+
+新たに作成されたファイルは 継承不可 です。
+
+次の例は os.open() 関数の dir_fd 引数を使い、与えられたディレクトリからの相対パスで指定されたファイルを開きます:
+
+>>>
+>>> import os
+>>> dir_fd = os.open('somedir', os.O_RDONLY)
+>>> def opener(path, flags):
+...     return os.open(path, flags, dir_fd=dir_fd)
+...
+>>> with open('spamspam.txt', 'w', opener=opener) as f:
+...     print('This will be written to somedir/spamspam.txt', file=f)
+...
+>>> os.close(dir_fd)  # don't leak a file descriptor
+open() 関数が返す file object の型はモードに依存します。 open() をファイルをテキストモード ('w', 'r', 'wt', 'rt', など) で開くのに使ったときは io.TextIOBase (特に io.TextIOWrapper) のサブクラスを返します。 ファイルをバッファリング付きのバイナリモードで開くのに使ったときは io.BufferedIOBase のサブクラスを返します。 実際のクラスは様々です。 読み込みバイナリモードでは io.BufferedReader を返します。 書き込みバイナリモードや追記バイナリモードでは io.BufferedWriter を返します。 読み書きモードでは io.BufferedRandom を返します。 バッファリングが無効なときはrawストリーム、すなわち io.RawIOBase のサブクラスである io.FileIO を返します。
+
+fileinput 、(open() が宣言された場所である) io 、 os 、 os.path 、 tempfile 、 shutil などの、ファイル操作モジュールも参照してください。
+
+Raises an auditing event open with arguments file, mode, flags.
+
+The mode and flags arguments may have been modified or inferred from the original call.
+
+バージョン 3.3 で変更:
+opener 引数を追加しました。
+'x' モードを追加しました。
+以前は IOError が送出されていました、それは現在 OSError のエイリアスになりました。
+既存のファイルを 排他的生成モード('x')で開いた場合、 FileExistsError を送出するようになりました。
+バージョン 3.4 で変更:
+ファイルが継承不可になりました。
+Deprecated since version 3.4, will be removed in version 3.10: 'U' モード。
+
+バージョン 3.5 で変更:
+システムコールが中断されシグナルハンドラが例外を送出しなかった場合、この関数は InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+'namereplace' エラーハンドラが追加されました。
+バージョン 3.6 で変更:
+os.PathLike を実装したオブジェクトを受け入れるようになりました。
+Windowsでは、コンソールバッファのオープンは、io.FileIO ではなく、io.RawIOBase のサブクラスを返すでしょう。
+ord(c)
+1 文字の Unicode 文字を表す文字列に対し、その文字の Unicode コードポイントを表す整数を返します。例えば、 ord('a') は整数 97 を返し、 ord('€') (ユーロ記号) は 8364 を返します。これは chr() の逆です。
+
+pow(base, exp[, mod])
+base の exp 乗を返します; mod があれば、base の exp 乗に対する mod の剰余を返します (pow(base, exp) % mod より効率よく計算されます)。二引数の形式 pow(base, exp) は、冪乗演算子を使った base**exp と等価です。
+
+引数は数値型でなくてはなりません。型混合の場合、二項算術演算における型強制規則が適用されます。 int 被演算子に対しては、第二引数が負でない限り、結果は (型強制後の) 被演算子と同じ型になります; 負の場合、全ての引数は浮動小数点に変換され、浮動小数点の結果が返されます。例えば、 10**2 は 100 を返しますが、 10**-2 は 0.01 を返します。
+
+For int operands base and exp, if mod is present, mod must also be of integer type and mod must be nonzero. If mod is present and exp is negative, base must be relatively prime to mod. In that case, pow(inv_base, -exp, mod) is returned, where inv_base is an inverse to base modulo mod.
+
+Here's an example of computing an inverse for 38 modulo 97:
+
+>>>
+>>> pow(38, -1, mod=97)
+23
+>>> 23 * 38 % 97 == 1
+True
+バージョン 3.8 で変更: For int operands, the three-argument form of pow now allows the second argument to be negative, permitting computation of modular inverses.
+
+バージョン 3.8 で変更: Allow keyword arguments. Formerly, only positional arguments were supported.
+
+print(*objects, sep=' ', end='\n', file=sys.stdout, flush=False)
+objects を sep で区切りながらテキストストリーム file に表示し、最後に end を表示します。sep 、 end 、 file 、 flush を与える場合、キーワード引数として与える必要があります。
+
+キーワードなしの引数はすべて、 str() がするように文字列に変換され、 sep で区切られながらストリームに書き出され、最後に end が続きます。 sep と end の両方とも、文字列でなければなりません。これらを None にすると、デフォルトの値が使われます。 objects が与えられなければ、 print() は end だけを書き出します。
+
+file 引数は、 write(string) メソッドを持つオブジェクトでなければなりません。指定されないか、 None である場合、 sys.stdout が使われます。表示される引数は全てテキスト文字列に変換されますから、 print() はバイナリモードファイルオブジェクトには使用できません。代わりに file.write(...) を使ってください。
+
+出力がバッファ化されるかどうかは通常 file で決まりますが、flush キーワード引数が真ならストリームは強制的にフラッシュされます。
+
+バージョン 3.3 で変更: キーワード引数 flush が追加されました。
+
+class property(fget=None, fset=None, fdel=None, doc=None)
+property 属性を返します。
+
+fget は属性値を取得するための関数です。fset は属性値を設定するための関数です。fdel は属性値を削除するための関数です。doc は属性の docstring を作成します。
+
+典型的な使用法は、属性 x の処理の定義です:
+
+class C:
+    def __init__(self):
+        self._x = None
+
+    def getx(self):
+        return self._x
+
+    def setx(self, value):
+        self._x = value
+
+    def delx(self):
+        del self._x
+
+    x = property(getx, setx, delx, "I'm the 'x' property.")
+c が C のインスタンスならば、c.x は getter を呼び出し、c.x = value は setter を、del c.x は deleter を呼び出します。
+
+doc は、与えられれば property 属性のドキュメント文字列になります。 与えられなければ、 property は fget のドキュメント文字列 (もしあれば) をコピーします。 そのため property() を デコレータ として使えば、読み出し専用 property を作るのは容易です:
+
+class Parrot:
+    def __init__(self):
+        self._voltage = 100000
+
+    @property
+    def voltage(self):
+        """Get the current voltage."""
+        return self._voltage
+@property デコレータは voltage() を同じ名前のまま 読み出し専用属性の "getter" にし、voltage のドキュメント文字列を "Get the current voltage." に設定します。
+
+property オブジェクトは getter, setter, deleter メソッドを持っています。これらのメソッドをデコレータとして使うと、対応するアクセサ関数がデコレートされた関数に設定された、 property のコピーを作成できます。これを一番分かりやすく説明する例があります:
+
+class C:
+    def __init__(self):
+        self._x = None
+
+    @property
+    def x(self):
+        """I'm the 'x' property."""
+        return self._x
+
+    @x.setter
+    def x(self, value):
+        self._x = value
+
+    @x.deleter
+    def x(self):
+        del self._x
+このコードは最初の例と等価です。追加の関数には、必ず元の property と同じ名前 (この例では x) を与えて下さい。
+
+返される property オブジェクトも、コンストラクタの引数に対応した fget, fset, および fdel 属性を持ちます。
+
+バージョン 3.5 で変更: 属性オブジェクトのドックストリングが書き込み可能になりました。
+
+class range(stop)
+class range(start, stop[, step])
+range は、実際には関数ではなくイミュータブルなシーケンス型で、 range と シーケンス型 --- list, tuple, range にドキュメント化されています。
+
+repr(object)
+オブジェクトの印字可能な表現を含む文字列を返します。この関数は多くの型について、 eval() に渡されたときと同じ値を持つようなオブジェクトを表す文字列を生成しようとします。そうでない場合は、山括弧に囲まれたオブジェクトの型の名前と追加の情報 (大抵の場合はオブジェクトの名前とアドレスを含みます) を返します。クラスは、 __repr__() メソッドを定義することで、この関数によりそのクラスのインスタンスが返すものを制御することができます。
+
+reversed(seq)
+要素を逆順に取り出すイテレータ (reverse iterator) を返します。 seq は __reversed__() メソッドを持つか、シーケンス型プロトコル (__len__() メソッド、および、 0 以上の整数を引数とする __getitem__() メソッド) をサポートするオブジェクトでなければなりません。
+
+round(number[, ndigits])
+number の小数部を ndigists 桁に丸めた値を返します。ndigits が省略されたり、None だった場合、入力値に最も近い整数を返します。
+
+round() をサポートする組み込み型では、値は 10 のマイナス ndigits 乗の倍数の中で最も近いものに丸められます; 二つの倍数が同じだけ近いなら、偶数を選ぶ方に (そのため、例えば round(0.5) と round(-0.5) は両方とも 0 に、 round(1.5) は 2 に) 丸められます。 ndigits には任意の整数値が有効となります (正の整数、ゼロ、負の整数)。 返り値は ndigits が指定されていないか None の場合は整数、そうでなければ返り値は number と同じ型です。
+
+一般的な Python オブジェクト number に対して、round は処理を number.__round__ に移譲します。
+
+注釈 浮動小数点数に対する round() の振る舞いは意外なものかもしれません: 例えば、 round(2.675, 2) は予想通りの 2.68 ではなく 2.67 を与えます。これはバグではありません: これはほとんどの小数が浮動小数点数で正確に表せないことの結果です。詳しくは 浮動小数点演算、その問題と制限 を参照してください。
+class set([iterable])
+オプションで iterable の要素を持つ、新しい set オブジェクトを返します。 set は組み込みクラスです。このクラスについて詳しい情報は set や set（集合）型 --- set, frozenset を参照してください。
+
+他のコンテナについては collections モジュールや組み込みの frozenset 、 list 、 tuple 、 dict クラスを参照してください。
+
+setattr(object, name, value)
+getattr() の相方です。引数はオブジェクト、文字列、それから任意の値です。文字列は既存の属性または新たな属性の名前にできます。この関数は指定したオブジェクトが許せば、値を属性に関連付けます。例えば、 setattr(x, 'foobar', 123) は x.foobar = 123 と等価です。
+
+class slice(stop)
+class slice(start, stop[, step])
+range(start, stop, step) で指定されるインデクスの集合を表す、 スライス オブジェクトを返します。引数 start および step はデフォルトでは None です。スライスオブジェクトは読み出し専用の属性 start、stop および step を持ち、これらは単に引数で使われた 値 (またはデフォルト値) を返します。これらの値には、その他のはっきりと した機能はありません。しかしながら、これらの値は Numerical Python および、その他のサードパーティによる拡張で利用されています。スライスオブジェクトは拡張されたインデクス指定構文が使われる際にも生成されます。例えば a[start:stop:step] や a[start:stop, i] です。この関数の代替となるイテレータを返す関数、itertools.islice() も参照してください。
+
+sorted(iterable, *, key=None, reverse=False)
+iterable の要素を並べ替えた新たなリストを返します。
+
+2 つのオプション引数があり、これらはキーワード引数として指定されなければなりません。
+
+key には 1 引数関数を指定します。これは iterable の各要素から比較キーを展開するのに使われます (例えば、 key=str.lower のように指定します)。 デフォルト値は None です (要素を直接比較します)。
+
+reverse は真偽値です。 True がセットされた場合、リストの要素は個々の比較が反転したものとして並び替えられます。
+
+旧式の cmp 関数を key 関数に変換するには functools.cmp_to_key() を使用してください。
+
+組み込みの sort() 関数は安定なことが保証されています。同等な要素の相対順序を変更しないことが保証されていれば、ソートは安定です。これは複数のパスでソートを行なうのに役立ちます（例えば部署でソートしてから給与の等級でソートする場合）。
+
+ソートの例と簡単なチュートリアルは ソート HOW TO を参照して下さい。
+
+@staticmethod
+メソッドを静的メソッドへ変換します。
+
+静的メソッドは暗黙の第一引数を受け取りません。静的メソッドを宣言するには、このイディオムを使ってください:
+
+class C:
+    @staticmethod
+    def f(arg1, arg2, ...): ...
+@staticmethod 形式は関数 デコレータ です。詳しくは 関数定義 を参照してください。
+
+静的メソッドは (C.f() のよう) クラスから呼び出したり、 (C().f() のように) インスタンスから呼び出したりできます。
+
+Python における静的メソッドは Java や C++ における静的メソッドと類似しています。クラスコンストラクタの代替を生成するのに役立つ変種、 classmethod() も参照してください。
+
+あらゆるデコレータと同じく、 staticmethod は普通の関数のように呼べ、その返り値で処理が行えます。 この機能は、クラス本体から関数を参照する必要があり、かつ、インスタンスメソッドに自動変換されるのを避けたいケースで必要になります。 そのようなケースでは、このイディオムが使えます:
+
+class C:
+    builtin_open = staticmethod(open)
+静的メソッドについて詳しい情報は 標準型の階層 を参照してください。
+
+class str(object='')
+class str(object=b'', encoding='utf-8', errors='strict')
+object の str 版を返します。詳細は str() を参照してください。
+
+str は組み込みの文字列 クラス です。文字列に関する一般的な情報は、テキストシーケンス型 --- str を参照してください。
+
+sum(iterable, /, start=0)
+start と iterable の要素を左から右へ合計し、総和を返します。 iterable の要素は通常は数値で、start の値は文字列であってはなりません。
+
+使う場面によっては、 sum() よりもいい選択肢があります。文字列からなるシーケンスを結合する高速かつ望ましい方法は ''.join(sequence) を呼ぶことです。浮動小数点数値を拡張された精度で加算するには、 math.fsum() を参照してください。一連のイテラブルを連結するには、 itertools.chain() の使用を考えてください。
+
+バージョン 3.8 で変更: start パラメータをキーワード引数として指定することができるようになりました。
+
+super([type[, object-or-type]])
+Return a proxy object that delegates method calls to a parent or sibling class of type. This is useful for accessing inherited methods that have been overridden in a class.
+
+The object-or-type determines the method resolution order to be searched. The search starts from the class right after the type.
+
+For example, if __mro__ of object-or-type is D -> B -> C -> A -> object and the value of type is B, then super() searches C -> A -> object.
+
+The __mro__ attribute of the object-or-type lists the method resolution search order used by both getattr() and super(). The attribute is dynamic and can change whenever the inheritance hierarchy is updated.
+
+第 2 引数が省かれたなら、返されるスーパーオブジェクトは束縛されません。第 2 引数がオブジェクトであれば、 isinstance(obj, type) は真でなければなりません。第 2 引数が型であれば、 issubclass(type2, type) は真でなければなりません (これはクラスメソッドに役に立つでしょう)。
+
+super の典型的な用途は 2 つあります。第一に、単継承のクラス階層構造で super は名前を明示することなく親クラスを参照するのに使え、それゆえコードをメンテナンスしやすくなります。この用途は他のプログラミング言語で見られる super の用途によく似ています。
+
+2 つ目の用途は、動的な実行環境下で協調的な多重継承をサポートすることです。この用途は Python に特有で、静的にコンパイルされる言語や、単継承のみをサポートする言語では見られないものです。この機能により、複数の基底クラスが同じメソッドを実装する "diamond diagram" を実装できます。このメソッドをあらゆる場合に同じ形式で呼び出せるようにするのが、良い設計です (理由は、呼び出しの順序が実行時に決定されること、呼び出しの順序がクラス階層の変更に対応すること、呼び出しの順序に実行時まで未知の兄弟クラスが含まれる場合があることです)。
+
+両方の用途において、典型的なスーパークラスの呼び出しは次のようになります:
+
+class C(B):
+    def method(self, arg):
+        super().method(arg)    # This does the same thing as:
+                               # super(C, self).method(arg)
+In addition to method lookups, super() also works for attribute lookups. One possible use case for this is calling descriptors in a parent or sibling class.
+
+なお、super() は super().__getitem__(name) のような明示的なドット表記属性探索の束縛処理の一部として実装されています。これは、 __getattribute__() メソッドを予測可能な順序でクラスを検索するように実装し、協調的な多重継承をサポートすることで実現されています。従って、 super() は文や super()[name] のような演算子を使った暗黙の探索向けには定義されていません。
+
+また、 super() の使用は引数無しの形式を除きメソッド内部に限定されないことにも注目して下さい。2引数の形式は、必要な要素を正確に指定するので、適当な参照を作ることができます。クラス定義中における引数無しの形式は、定義されているクラスを取り出すのに必要な詳細を、通常の方法で現在のインスタンスにアクセスするようにコンパイラが埋めるのではたらきます。
+
+super() を用いて協調的なクラスを設計する方法の実践的な提案は、 guide to using super() を参照してください。
+
+class tuple([iterable])
+tuple は、実際は関数ではなくイミュータブルなシーケンス型で、タプル型 (tuple) と シーケンス型 --- list, tuple, range にドキュメント化されています。
+
+class type(object)
+class type(name, bases, dict)
+引数が1つだけの場合、object の型を返します。返り値は型オブジェクトで、一般に object.__class__ によって返されるのと同じオブジェクトです。
+
+オブジェクトの型の判定には、 isinstance() 組み込み関数を使うことが推奨されます。これはサブクラスを考慮するからです。
+
+With three arguments, return a new type object. This is essentially a dynamic form of the class statement. The name string is the class name and becomes the __name__ attribute. The bases tuple contains the base classes and becomes the __bases__ attribute; if empty, object, the ultimate base of all classes, is added. The dict dictionary contains attribute and method definitions for the class body; it may be copied or wrapped before becoming the __dict__ attribute. The following two statements create identical type objects:
+
+>>>
+>>> class X:
+...     a = 1
+...
+>>> X = type('X', (), dict(a=1))
+型オブジェクト も参照してください。
+
+バージョン 3.6 で変更: type.__new__ をオーバーライドしていない type のサブクラスは、オブジェクトの型を得るのに１引数形式を利用することができません。
+
+vars([object])
+モジュール、クラス、インスタンス、あるいはそれ以外の __dict__ 属性を持つオブジェクトの、 __dict__ 属性を返します。
+
+モジュールやインスタンスのようなオブジェクトは、更新可能な __dict__ 属性を持っています。ただし、それ以外のオブジェクトでは __dict__ 属性への書き込みが制限されている場合があります。書き込みに制限がある例としては、辞書を直接更新されることを防ぐために types.MappingProxyType を使っているクラスがあります。
+
+引数がなければ、vars() は locals() のように振る舞います。ただし、辞書 locals への更新は無視されるため、辞書 locals は読み出し時のみ有用であることに注意してください。
+
+A TypeError exception is raised if an object is specified but it doesn't have a __dict__ attribute (for example, if its class defines the __slots__ attribute).
+
+zip(*iterables)
+それぞれのイテラブルから要素を集めたイテレータを作ります。
+
+この関数はタプルのイテレータを返し、その i 番目のタプルは引数シーケンスまたはイテラブルそれぞれの i 番目の要素を含みます。このイテレータは、入力イテラブルの中で最短のものが尽きたときに止まります。単一のイテラブル引数が与えられたときは、1 要素のタプルからなるイテレータを返します。引数がなければ、空のイテレータを返します。次と等価です:
+
+def zip(*iterables):
+    # zip('ABCD', 'xy') --> Ax By
+    sentinel = object()
+    iterators = [iter(it) for it in iterables]
+    while iterators:
+        result = []
+        for it in iterators:
+            elem = next(it, sentinel)
+            if elem is sentinel:
+                return
+            result.append(elem)
+        yield tuple(result)
+イテラブルの左から右への評価順序は保証されています。そのため zip(*[iter(s)]*n) を使ってデータ系列を長さ n のグループにクラスタリングするイディオムが使えます。これは、各出力タプルがイテレータを n 回呼び出した結果となるよう、 同じ イテレータを n 回繰り返します。これは入力を長さ n のチャンクに分割する効果があります。
+
+zip() は、長い方のイテラブルの終端にある対にならない値を考慮したい場合は、等しくない長さの入力に対して使うべきではありません。そのような値が重要な場合、代わりに itertools.zip_longest() を使ってください。
+
+zip() に続けて * 演算子を使うと、zip したリストを元に戻せます:
+
+>>>
+>>> x = [1, 2, 3]
+>>> y = [4, 5, 6]
+>>> zipped = zip(x, y)
+>>> list(zipped)
+[(1, 4), (2, 5), (3, 6)]
+>>> x2, y2 = zip(*zip(x, y))
+>>> x == list(x2) and y == list(y2)
+True
+__import__(name, globals=None, locals=None, fromlist=(), level=0)
+注釈 これは importlib.import_module() とは違い、日常の Python プログラミングでは必要ない高等な関数です。
+この関数は import 文により呼び出されます。 (builtins モジュールをインポートして builtins.__import__ に代入することで) この関数を置き換えて import 文のセマンティクスを変更することができますが、同様のことをするのに通常はインポートフック (PEP 302 参照) を利用する方が簡単で、かつデフォルトのインポート実装が使用されていることを仮定するコードとの間で問題が起きないので、このやり方は 強く 推奨されません。 __import__() を直接使用することも推奨されず、 importlib.import_module() の方が好まれます。
+
+この関数は、モジュール name をインポートし、 globals と locals が与えられれば、パッケージのコンテキストで名前をどう解釈するか決定するのに使います。 fromlist は name で与えられるモジュールからインポートされるべきオブジェクトまたはサブモジュールの名前を与ます。標準の実装では locals 引数はまったく使われず、 globals は import 文のパッケージコンテキストを決定するためにのみ使われます。
+
+level は絶対と相対どちらのインポートを使うかを指定します。 0 (デフォルト) は絶対インポートのみ実行します。正の level の値は、 __import__() を呼び出したディレクトリから検索対象となる親ディレクトリの数を示します (詳細は PEP 328 を参照してください)。
+
+name 変数が package.module 形式であるとき、通常は、name で指名されたモジュール ではなく、最上位のパッケージ (最初のドットまでの名前) が返されます。しかしながら、空でない fromlist 引数が与えられると、 name で指名されたモジュールが返されます。
+
+例えば、文 import spam は、以下のコードのようなバイトコードに帰結します:
+
+spam = __import__('spam', globals(), locals(), [], 0)
+文 import spam.ham は、この呼び出しになります:
+
+spam = __import__('spam.ham', globals(), locals(), [], 0)
+ここで __import__() がどのように最上位モジュールを返しているかに注意して下さい。 import 文により名前が束縛されたオブジェクトになっています。
+
+一方で、文 from spam.ham import eggs, sausage as saus は、以下となります
+
+_temp = __import__('spam.ham', globals(), locals(), ['eggs', 'sausage'], 0)
+eggs = _temp.eggs
+saus = _temp.sausage
+ここで、__import__() から spam.ham モジュールが返されます。このオブジェクトから、インポートされる名前が取り出され、それぞれの名前として代入されます。
+
+単純に名前からモジュール (パッケージの範囲内であるかも知れません) をインポートしたいなら、 importlib.import_module() を使ってください。
+
+バージョン 3.3 で変更: 負の level の値はサポートされなくなりました (デフォルト値の 0 に変更されます)。
+
+バージョン 3.9 で変更: コマンドラインオプション -E or -I が指定された場合、環境変数 PYTHONCASEOK は無視されるようになりました。
+
+組み込み定数
+組み込み名前空間にはいくつかの定数があります。定数の一覧:
+
+False
+bool 型の偽値です。False への代入は不正で、SyntaxError を送出します。
+
+True
+bool 型の真値です。True への代入は不正で、SyntaxError を送出します。
+
+None
+型 NoneType の唯一の値です。 None は、関数にデフォルト引数が渡されなかったときなどに、値の非存在を表すのに頻繁に用いられます。 None への代入は不正で、SyntaxError を送出します。
+
+NotImplemented
+Special value which should be returned by the binary special methods (e.g. __eq__(), __lt__(), __add__(), __rsub__(), etc.) to indicate that the operation is not implemented with respect to the other type; may be returned by the in-place binary special methods (e.g. __imul__(), __iand__(), etc.) for the same purpose. It should not be evaluated in a boolean context.
+
+注釈 二項演算の (あるいはインプレースの) メソッドが NotImplemented を返した場合、インタープリタはもう一方の型で定義された対の演算で代用を試みます (あるいは演算によっては他の代替手段も試みます)。試行された演算全てが NotImplemented を返した場合、インタープリタは適切な例外を送出します。 NotImplemented を正しく返さないと、誤解を招きかねないエラーメッセージになったり、 NotImplemented が Python コードに返されるようなことになります。
+例として 算術演算の実装 を参照してください。
+注釈 NotImplementedError と NotImplemented は、似たような名前と目的を持っていますが、相互に変換できません。 利用する際には、 NotImplementedError を参照してください。
+バージョン 3.9 で変更: Evaluating NotImplemented in a boolean context is deprecated. While it currently evaluates as true, it will emit a DeprecationWarning. It will raise a TypeError in a future version of Python.
+
+Ellipsis
+Ellipsis リテラル "..." と同じです。 主に拡張スライス構文やユーザ定義のコンテナデータ型において使われる特殊な値です。
+
+__debug__
+この定数は、Python が -O オプションを有効にして開始されたのでなければ真です。 assert 文も参照して下さい。
+
+注釈 名前 None 、 False 、 True 、 __debug__ は再代入できない (これらに対する代入は、たとえ属性名としてであっても SyntaxError が送出されます) ので、これらは「真の」定数であると考えられます。
+site モジュールで追加される定数
+site モジュール (-S コマンドラインオプションが指定されない限り、スタートアップ時に自動的にインポートされます) は組み込み名前空間にいくつかの定数を追加します。それらは対話的インタープリタシェルで有用ですが、プログラム中では使うべきではありません。
+
+quit(code=None)
+exit(code=None)
+表示されたときに "Use quit() or Ctrl-D (i.e. EOF) to exit" のようなメッセージを表示し、呼び出されたときには指定された終了コードを伴って SystemExit を送出するオブジェクトです。
+
+copyright
+credits
+表示あるいは呼び出されたときに、それぞれ著作権あるいはクレジットのテキストが表示されるオブジェクトです。
+
+license
+表示されたときに "Type license() to see the full license text" というメッセージを表示し、呼び出されたときには完全なライセンスのテキストをページャのような形式で (1画面分づつ) 表示するオブジェクトです。
+
+組み込み型
+以下のセクションでは、インタプリタに組み込まれている標準型について記述します。
+
+主要な組み込み型は、数値、シーケンス、マッピング、クラス、インスタンス、および例外です。
+
+コレクションクラスには、ミュータブルなものがあります。コレクションのメンバをインプレースに足し、引き、または並べ替えて、特定の要素を返さないメソッドは、コレクション自身ではなく None を返します。
+
+演算には、複数の型でサポートされているものがあります; 特に、ほぼ全てのオブジェクトは、等価比較でき、真理値を判定でき、 (repr() 関数や、わずかに異なる str() 関数によって) 文字列に変換できます。オブジェクトが print() 関数で印字されるとき、文字列に変換する関数が暗黙に使われます。
+
+真理値判定
+どのようなオブジェクトでも真理値として判定でき、 if や while の条件あるいは以下のブール演算の被演算子として使えます。
+
+オブジェクトは、デフォルトでは真と判定されます。ただしそのクラスが __bool__() メソッドを定義していて、それが False を返す場合、または __len__() メソッドを定義していて、それが 0 を返す場合は偽と判定されます。 1 主な組み込みオブジェクトで偽と判定されるものを次に示します:
+
+偽であると定義されている定数: None と False
+数値型におけるゼロ: 0, 0.0, 0j, Decimal(0), Fraction(0, 1)
+空のシーケンスまたはコレクション: '', (), [], {}, set(), range(0)
+ブール値の結果を返す演算および組み込み関数は、特に注釈のない限り常に偽値として 0 または False を返し、真値として 1 または True を返します。 (重要な例外: ブール演算 or および and は常に被演算子のうちの一つを返します。)
+
+ブール演算 --- and, or, not
+以下にブール演算を、優先順位が低い順に示します:
+
+演算
+結果
+注釈
+x or y
+x が偽なら y, そうでなければ x
+(1)
+x and y
+x が偽なら x, そうでなければ y
+(2)
+not x
+x が偽なら True, そうでなければ False
+(3)
+注釈:
+
+この演算子は短絡評価されます。つまり第一引数が偽のときにのみ、第二引数が評価されます。
+この演算子は短絡評価されます。つまり第一引数が真のときにのみ、第二引数が評価されます。
+not は非ブール演算子よりも優先度が低いので、 not a == b は not (a == b) と解釈され、 a == not b は構文エラーです。
+比較
+Python には 8 種の比較演算があります。比較演算の優先順位は全て同じです (ブール演算より高い優先順位です)。比較は任意に連鎖できます; 例えば、 x < y <= z は x < y and y <= z とほぼ等価ですが、この y は一度だけしか評価されません (どちらにしても、 x < y が偽となれば z は評価されません)。
+
+以下の表に比較演算をまとめます:
+
+演算
+意味
+<
+より小さい
+<=
+以下
+>
+より大きい
+>=
+以上
+==
+等しい
+!=
+等しくない
+is
+同一のオブジェクトである
+is not
+同一のオブジェクトでない
+Objects of different types, except different numeric types, never compare equal. The == operator is always defined but for some object types (for example, class objects) is equivalent to is. The <, <=, > and >= operators are only defined where they make sense; for example, they raise a TypeError exception when one of the arguments is a complex number.
+
+あるクラスの同一でないインスタンスは、通常等価でないとされますが、そのクラスが __eq__() メソッドを定義している場合は除きます。
+
+クラスのインスタンスは、そのクラスがメソッド __lt__() 、 __le__() 、 __gt__() 、 __ge__() のうち十分なものを定義していない限り、同じクラスの別のインスタンスや他の型のオブジェクトとは順序付けできません (一般に、比較演算子の通常の意味を求めるなら、 __lt__() と __eq__() だけで十分です)。
+
+is および is not 演算子の振る舞いはカスタマイズできません。また、これらはいかなる 2 つのオブジェクトにも適用でき、決して例外を送出しません。
+
+in と not in という構文上で同じ優先度を持つ演算子がさらに 2 つあり、 iterable または __contains__() を実装した型でサポートされています。
+
+数値型 int, float, complex
+数値型には 3 種類あります: 整数 、 浮動小数点数 、 複素数 です。さらに、ブール型は整数のサブタイプです。整数には精度の制限がありません。浮動小数点型はたいていは C の double を使って実装されています; あなたのプログラムが動作するマシンでの浮動小数点型の精度と内部表現は、 sys.float_info から利用できます。複素数は実部と虚部を持ち、それぞれ浮動小数点数です。複素数 z から実部および虚部を取り出すには、 z.real および z.imag を使ってください。 (標準ライブラリには、さらに分数のための数値型 fractions.Fraction や、ユーザによる精度の定義が可能な浮動小数点数のための decimal.Decimal があります。)
+
+数値は、数値リテラルによって、あるいは組み込み関数や演算子の戻り値として生成されます。 (十六進、八進、二進数を含む) 修飾のない整数リテラルは、整数を与えます。小数点または指数表記を含む数値リテラルは浮動小数点数を与えます。数値リテラルに 'j' または 'J' をつけると虚数 (実部がゼロの複素数) を与え、それに整数や浮動小数点数を加えて実部と虚部を持つ複素数を得られます。
+
+Python は型混合の算術演算に完全に対応しています: ある二項算術演算子の被演算子の数値型が互いに異なるとき、"より狭い方" の型の被演算子はもう片方の型に合わせて広げられます。ここで整数は浮動小数点数より狭く、浮動小数点数は複素数より狭いです。 たくさんの異なる型の数値間での比較は、それらの厳密な数で比較したかのように振る舞います。 2
+
+コンストラクタ int() 、 float() 、 complex() で、特定の型の数を生成できます。
+
+全ての (複素数を除く) 組み込み数値型は以下の演算に対応しています (演算の優先順位については、 演算子の優先順位 を参照してください):
+
+演算
+結果
+注釈
+完全なドキュメント
+x + y
+x と y の和
+x - y
+x と y の差
+x * y
+x と y の積
+x / y
+x と y の商
+x // y
+x と y の商を切り下げたもの
+(1)
+x % y
+x / y の剰余
+(2)
+-x
+x の符号反転
++x
+x そのまま
+abs(x)
+x の絶対値または大きさ
+abs()
+int(x)
+x の整数への変換
+(3)(6)
+int()
+float(x)
+x の浮動小数点数への変換
+(4)(6)
+float()
+complex(re, im)
+実部 re, 虚部 im の複素数。 im の既定値はゼロ。
+(6)
+complex()
+c.conjugate()
+複素数 c の共役複素数
+divmod(x, y)
+(x // y, x % y) からなるペア
+(2)
+divmod()
+pow(x, y)
+x の y 乗
+(5)
+pow()
+x ** y
+x の y 乗
+(5)
+注釈:
+
+整数の除算とも呼ばれます。結果の型は整数型とは限りませんが、結果の値は整数です。結果は常に負の無限大の方向に丸められます: 1//2 は 0 、 (-1)//2 は -1 、 1//(-2) は -1 、そして (-1)//(-2) は 0 です。
+複素数型には使えません。適用可能な場合には代わりに abs() で浮動小数点型に変換してください。
+浮動小数点数から整数への変換はC言語と同様の方法で丸め、または切り捨てられます; より明確に定義された変換を行う場合は、 math.floor() と math.ceil() を参照してください。
+浮動小数点数は、文字列 "nan" と "inf" を、オプションの接頭辞 "+" または "-" と共に、非数 (Not a Number (NaN)) や正、負の無限大として受け付けます。
+Python は、プログラム言語一般でそうであるように、 pow(0, 0) および 0 ** 0 を 1 と定義します。
+受け付けられる数値リテラルは数字 0 から 9 または等価な Unicode (Nd プロパティを持つコードポイント) を含みます。
+
+Nd プロパティを持つコードポイントの完全なリストは https://www.unicode.org/Public/13.0.0/ucd/extracted/DerivedNumericType.txt をご覧ください。
+全ての numbers.Real 型 (int 、 float) は以下の演算も含みます:
+
+演算
+結果
+math.trunc(x)
+x を Integral (整数) に切り捨てます
+round(x[, n])
+x を n 桁に丸めます。丸め方は偶数丸めです。 n が省略されれば 0 がデフォルトとなります。
+math.floor(x)
+x 以下の最大の Integral (整数) を返します
+math.ceil(x)
+x 以上の最小の Integral (整数) を返します
+その他の数値演算は、 math や cmath モジュールをご覧ください。
+
+整数型におけるビット単位演算
+ビット単位演算は整数についてのみ意味を持ちます。 ビット単位演算の結果は、あたかも両方の値の先頭を無限個の符号ビットで埋めたものに対して計算したかのような値になります。
+
+二項ビット単位演算の優先順位は全て、数値演算よりも低く、比較よりも高くなっています; 単項演算 ~ の優先順位は他の単項数値演算 (+ および -) と同じです。
+
+以下の表では、ビット単位演算を優先順位が低い順に並べています:
+
+演算
+結果
+注釈
+x | y
+x と y のビット単位 論理和
+(4)
+x ^ y
+x と y のビット単位 排他的論理和
+(4)
+x & y
+x と y のビット単位 論理積
+(4)
+x << n
+x の n ビット左シフト
+(1)(2)
+x >> n
+x の n ビット右シフト
+(1)(3)
+~x
+x のビット反転
+注釈:
+
+負値のシフト数は不正であり、 ValueError が送出されます。
+n ビットの左シフトは、 pow(2, n) による乗算と等価です。
+n ビットの右シフトは、 pow(2, n) による切り捨て除算と等価です。
+桁の長い方の値に少なくとも 1 つ余計に符号ビットを付け加えた幅 (計算するビット幅は 1 + max(x.bit_length(), y.bit_length()) かそれ以上) でこれらの計算を行えば、無限個の符号ビットがあるかのように計算したのと同じ結果を得るのに十分です。
+整数型における追加のメソッド
+整数型は numbers.Integral 抽象基底クラス を実装します。さらに、追加のメソッドをいくつか提供します:
+
+int.bit_length()
+整数を、符号と先頭の 0 は除いて二進法で表すために必要なビットの数を返します:
+
+>>>
+>>> n = -37
+>>> bin(n)
+'-0b100101'
+>>> n.bit_length()
+6
+正確には、 x が非 0 なら、 x.bit_length() は 2**(k-1) <= abs(x) < 2**k を満たす唯一の正の整数 k です。同様に、 abs(x) が十分小さくて対数を適切に丸められるとき、 k = 1 + int(log(abs(x), 2)) です。 x が 0 なら、 x.bit_length() は 0 を返します。
+
+次と等価です:
+
+def bit_length(self):
+    s = bin(self)       # binary representation:  bin(-37) --> '-0b100101'
+    s = s.lstrip('-0b') # remove leading zeros and minus sign
+    return len(s)       # len('100101') --> 6
+バージョン 3.1 で追加.
+
+int.to_bytes(length, byteorder, *, signed=False)
+整数を表すバイト列を返します。
+
+>>>
+>>> (1024).to_bytes(2, byteorder='big')
+b'\x04\x00'
+>>> (1024).to_bytes(10, byteorder='big')
+b'\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00'
+>>> (-1024).to_bytes(10, byteorder='big', signed=True)
+b'\xff\xff\xff\xff\xff\xff\xff\xff\xfc\x00'
+>>> x = 1000
+>>> x.to_bytes((x.bit_length() + 7) // 8, byteorder='little')
+b'\xe8\x03'
+整数は length バイトで表されます。整数が与えられた数のバイトで表せなければ、 OverflowError が送出されます。
+
+byteorder 引数は、整数を表すのに使われるバイトオーダーを決定します。 byteorder が "big" なら、最上位のバイトがバイト配列の最初に来ます。 byteorder が "little" なら、最上位のバイトがバイト配列の最後に来ます。ホストシステムにネイティブのバイトオーダーを要求するには、 sys.byteorder をバイトオーダーの値として使ってください。
+
+signed 引数は、整数を表すのに 2 の補数を使うかどうかを決定します。 signed が False で、負の整数が与えられたなら、 OverflowError が送出されます。 signed のデフォルト値は False です。
+
+バージョン 3.2 で追加.
+
+classmethod int.from_bytes(bytes, byteorder, *, signed=False)
+与えられたバイト列の整数表現を返します。
+
+>>>
+>>> int.from_bytes(b'\x00\x10', byteorder='big')
+16
+>>> int.from_bytes(b'\x00\x10', byteorder='little')
+4096
+>>> int.from_bytes(b'\xfc\x00', byteorder='big', signed=True)
+-1024
+>>> int.from_bytes(b'\xfc\x00', byteorder='big', signed=False)
+64512
+>>> int.from_bytes([255, 0, 0], byteorder='big')
+16711680
+引数 bytes は bytes-like object か、または bytes を生成する iterable でなければなりません。
+
+byteorder 引数は、整数を表すのに使われるバイトオーダーを決定します。 byteorder が "big" なら、最上位のバイトがバイト配列の最初に来ます。 byteorder が "little" なら、最上位のバイトがバイト配列の最後に来ます。ホストシステムにネイティブのバイトオーダーを要求するには、 sys.byteorder をバイトオーダーの値として使ってください。
+
+signed 引数は、整数を表すのに 2 の補数を使うかどうかを決定します。
+
+バージョン 3.2 で追加.
+
+int.as_integer_ratio()
+Return a pair of integers whose ratio is exactly equal to the original integer and with a positive denominator. The integer ratio of integers (whole numbers) is always the integer as the numerator and 1 as the denominator.
+
+バージョン 3.8 で追加.
+
+浮動小数点数に対する追加のメソッド
+浮動小数点数型は、 numbers.Real 抽象基底クラス を実装しています。浮動小数点型はまた、以下の追加のメソッドを持ちます。
+
+float.as_integer_ratio()
+比が元の浮動小数点数とちょうど同じで分母が正である、一対の整数を返します。無限大に対しては OverflowError を、非数 (NaN) に対しては ValueError を送出します。
+
+float.is_integer()
+浮動小数点数インスタンスが有限の整数値なら True を、そうでなければ False を返します:
+
+>>>
+>>> (-2.0).is_integer()
+True
+>>> (3.2).is_integer()
+False
+16 進表記の文字列へ、または、 16 進表記からの変換をサポートする二つのメソッドがあります。 Python の浮動小数点数は内部的には2進数で保持されるので、浮動小数点数の 10進数 へまたは 10進数 からの変換には若干の丸め誤差があります。それに対し、16 進表記では、浮動小数点数を正確に表現できます。これはデバッグのときや、数学的な用途 (numerical work) に便利でしょう。
+
+float.hex()
+浮動小数点数の 16 進文字列表現を返します。有限の浮動小数点数に対し、この表現は常に 0x で始まり p と指数が続きます。
+
+classmethod float.fromhex(s)
+16 進文字列表現 s で表される、浮動小数点数を返すクラスメソッドです。文字列 s は、前や後にホワイトスペースを含んでいても構いません。
+
+float.fromhex() はクラスメソッドですが、 float.hex() はインスタンスメソッドであることに注意して下さい。
+
+16 進文字列表現は以下の書式となります:
+
+[sign] ['0x'] integer ['.' fraction] ['p' exponent]
+sign は必須ではなく、 + と - のどちらかです。 integer と fraction は 16 進数の文字列で、 exponent は 10 進数で符号もつけられます。大文字・小文字は区別されず、最低でも 1 つの 16 進数文字を整数部もしくは小数部に含む必要があります。この制限は C99 規格のセクション 6.4.4.2 で規定されていて、 Java 1.5 以降でも使われています。特に、 float.hex() の出力は C や Java コード中で、浮動小数点数の 16 進表記として役に立つでしょう。また、 C の %a 書式や、 Java の Double.toHexString で書きだされた文字列は float.fromhex() で受け付けられます。
+
+なお、指数部は 16 進数ではなく 10 進数で書かれ、係数に掛けられる 2 の累乗を与えます。例えば、16 進文字列 0x3.a7p10 は浮動小数点数 (3 + 10./16 + 7./16**2) * 2.0**10 すなわち 3740.0 を表します:
+
+>>>
+>>> float.fromhex('0x3.a7p10')
+3740.0
+逆変換を 3740.0 に適用すると、同じ数を表す異なる 16 進文字列表現を返します:
+
+>>>
+>>> float.hex(3740.0)
+'0x1.d380000000000p+11'
+数値型のハッシュ化
+数 x と y に対して、型が異なっていたとしても、 x == y であれば必ず hash(x) == hash(y) であることが要請されます (詳細は __hash__() メソッドドキュメントを参照してください)。実装の簡単さと 複数の数値型 (int 、 float 、 decimal.Decimal 、 fractions.Fraction を含みます) 間の効率のため、Python の 数値型に対するハッシュ値はある単一の数学的関数に基づいていて、 その関数はすべての有理数に対し定義されているため、 int と fractions.Fraction のすべてのインスタンスと、 float と decimal.Decimal のすべての有限なインスタンスに 対して適用されます。本質的には、この関数は定数の素数 P に対して P を法とする還元で与えられます。 値 P は、 sys.hash_info の modulus 属性として Python で利用できます。
+
+CPython implementation detail: 現在使われている素数は、32 bit C long のマシンでは P = 2**31 - 1 、 64-bit C long のマシンでは P = 2**61 - 1 です。
+詳細な規則はこうです:
+
+x = m / n が非負の有理数で、 n が P で割り切れないなら、 invmod(n, P) を n を P で割った剰余の (剰余演算の意味での) 逆数を与えるものとして、 hash(x) を m * invmod(n, P) % P と定義します。
+x = m / n が非負の有理数で、 n が P で割り切れる (が m は割り切れない) なら、 n は P で割った余りの逆数を持たず、上の規則は適用できません。この場合、 hash(x) を定数 sys.hash_info.inf と定義します。
+x = m / n が負の有理数なら、 hash(x) を -hash(-x) と定義します。その結果のハッシュが -1 なら、 -2 に置き換えます。
+特定の値 sys.hash_info.inf 、 -sys.hash_info.inf 、 sys.hash_info.nan は、正の無限大、負の無限大、nan を (それぞれ) 表すのに使われます。(すべてのハッシュ可能な nan は同じハッシュ値を持ちます。)
+複素 (complex) 数 z に対して、実部と虚部のハッシュ値は、 hash(z.real) + sys.hash_info.imag * hash(z.imag) の 2**sys.hash_info.width を法とする還元を計算することにより組み合わせられ、よってこれは range(-2**(sys.hash_info.width - 1), 2**(sys.hash_info.width - 1)) に収まります。再び、結果が -1 なら、 -2 で置き換えられます。
+上述の規則をわかりやすくするため、有理数 float や、 complex のハッシュを計算する組み込みのハッシュと等価な Python コードの例を挙げます:
+
+import sys, math
+
+def hash_fraction(m, n):
+    """Compute the hash of a rational number m / n.
+
+    Assumes m and n are integers, with n positive.
+    Equivalent to hash(fractions.Fraction(m, n)).
+
+    """
+    P = sys.hash_info.modulus
+    # Remove common factors of P.  (Unnecessary if m and n already coprime.)
+    while m % P == n % P == 0:
+        m, n = m // P, n // P
+
+    if n % P == 0:
+        hash_value = sys.hash_info.inf
+    else:
+        # Fermat's Little Theorem: pow(n, P-1, P) is 1, so
+        # pow(n, P-2, P) gives the inverse of n modulo P.
+        hash_value = (abs(m) % P) * pow(n, P - 2, P) % P
+    if m < 0:
+        hash_value = -hash_value
+    if hash_value == -1:
+        hash_value = -2
+    return hash_value
+
+def hash_float(x):
+    """Compute the hash of a float x."""
+
+    if math.isnan(x):
+        return sys.hash_info.nan
+    elif math.isinf(x):
+        return sys.hash_info.inf if x > 0 else -sys.hash_info.inf
+    else:
+        return hash_fraction(*x.as_integer_ratio())
+
+def hash_complex(z):
+    """Compute the hash of a complex number z."""
+
+    hash_value = hash_float(z.real) + sys.hash_info.imag * hash_float(z.imag)
+    # do a signed reduction modulo 2**sys.hash_info.width
+    M = 2**(sys.hash_info.width - 1)
+    hash_value = (hash_value & (M - 1)) - (hash_value & M)
+    if hash_value == -1:
+        hash_value = -2
+    return hash_value
+イテレータ型
+Python はコンテナでの反復処理の概念をサポートしています。この概念は 2 つの別々のメソッドを使って実装されています; これらのメソッドを使ってユーザ定義のクラスで反復を行えるようにできます。後に詳しく述べるシーケンスは、必ず反復処理メソッドをサポートしています。
+
+コンテナオブジェクトに反復処理をサポートさせるためには、以下のメソッドを定義しなければなりません:
+
+container.__iter__()
+イテレータオブジェクトを返します。オブジェクトは後述するイテレータプロトコルをサポートする必要があります。もしコンテナが異なる型の反復処理をサポートするなら、それらの反復処理毎に追加のメソッドを提供しても構いません (複数の形式の反復処理を提供するオブジェクトの例として、幅優先探索と深さ優先探索をサポートする木構造が挙げられます)。このメソッドは Python/C API での Python オブジェクトの型構造体の tp_iter スロットに対応します。
+
+イテレータオブジェクト自体は以下の 2 つのメソッドをサポートする必要があります。これらのメソッドは 2 つ合わせて iterator protocol: (イテレータプロトコル) を成します:
+
+iterator.__iter__()
+イテレータオブジェクト自体を返します。このメソッドはコンテナとイテレータの両方を for および in 文で使えるようにするために必要です。このメソッドは Python/C API において Python オブジェクトを表す型構造体の tp_iter スロットに対応します。
+
+iterator.__next__()
+コンテナの次のアイテムを返します。もしそれ以上アイテムが無ければ StopIteration 例外を送出します。 このメソッドは Python/C APIでのPythonオブジェクトの型構造体の tp_iternext スロットに対応します。
+
+Python では、いくつかのイテレータオブジェクトを定義して、一般のシーケンス型、特殊なシーケンス型、辞書型、その他の特殊な形式に渡って反復をサポートしています。特殊型は、イテレータプロトコルの実装以外では重要ではありません。
+
+イテレータの __next__() メソッドが一旦 StopIteration を送出したなら、以降の呼び出しでも例外を送出し続けなければなりません。この特性に従わない実装は壊れているとみなされます。
+
+ジェネレータ型
+Python における generator (ジェネレータ) は、イテレータプロトコルを実装する便利な方法を提供します。コンテナオブジェクトの __iter__() メソッドがジェネレータとして実装されていれば、そのメソッドは __iter__() および __next__() メソッドを提供するイテレータオブジェクト (厳密にはジェネレータオブジェクト) を自動的に返します。ジェネレータに関する詳細な情報は、 yield 式のドキュメント にあります。
+
+シーケンス型 --- list, tuple, range
+基本的なシーケンス型は 3 つあります: リスト、タプル、range オブジェクトです。バイナリデータ や テキスト文字列 を処理するように仕立てられたシーケンス型は、セクションを割いて解説します。
+
+共通のシーケンス演算
+以下の表にある演算は、ほとんどのミュータブル、イミュータブル両方のシーケンスでサポートされています。カスタムのシーケンス型にこれらの演算を完全に実装するのが簡単になるように、 collections.abc.Sequence ABC が提供されています。
+
+以下のテーブルで、シーケンス演算を優先順位が低い順に挙げます。表内で、 s と t は同じ型のシーケンス、 n、 i、 j 、 k は整数、x は s に課された型と値の条件を満たす任意のオブジェクトです。
+
+in および not in 演算の優先順位は比較演算と同じです。+ (結合) および * (繰り返し)の優先順位は対応する数値演算と同じです。 3
+
+演算
+結果
+注釈
+x in s
+s のある要素が x と等しければ True , そうでなければ False
+(1)
+x not in s
+s のある要素が x と等しければ False, そうでなければ True
+(1)
+s + t
+s と t の結合
+(6)(7)
+s * n または n * s
+s 自身を n 回足すのと同じ
+(2)(7)
+s[i]
+s の 0 から数えて i 番目の要素
+(3)
+s[i:j]
+s の i から j までのスライス
+(3)(4)
+s[i:j:k]
+s の i から j まで、 k 毎のスライス
+(3)(5)
+len(s)
+s の長さ
+min(s)
+s の最小の要素
+max(s)
+s の最大の要素
+s.index(x[, i[, j]])
+s 中で x が最初に出現するインデックス (インデックス i 以降からインデックス j までの範囲)
+(8)
+s.count(x)
+s 中に x が出現する回数
+同じ型のシーケンスは比較もサポートしています。特に、タプルとリストは対応する要素を比較することで辞書式順序で比較されます。つまり、等しいとされるためには、すべての要素が等しく、両シーケンスの型も長さも等しくなければなりません。(完全な詳細は言語リファレンスの 比較 を参照してください。)
+
+注釈:
+
+in および not in 演算は、一般に単純な包含判定にのみ使われますが、(str, bytes, bytearray のような) 特殊なシーケンスでは部分シーケンス判定にも使われます:
+
+>>>
+>>> "gg" in "eggs"
+True
+0 未満の値 n は 0 として扱われます (これは s と同じ型の空のシーケンスを表します)。シーケンス s の要素はコピーされないので注意してください; コピーではなく要素に対する参照カウントが増えます。これは Python に慣れていないプログラマをよく悩ませます。例えば以下のコードを考えます:
+
+>>>
+>>> lists = [[]] * 3
+>>> lists
+[[], [], []]
+>>> lists[0].append(3)
+>>> lists
+[[3], [3], [3]]
+ここで、[[]] が空リストを含む 1 要素のリストなので、[[]] * 3 の 3 要素はこの一つの空リスト (への参照) です。lists のいずれかの要素を変更すると、その一つのリストが変更されます。別々のリストのリストを作るにはこうします:
+
+>>>
+>>> lists = [[] for i in range(3)]
+>>> lists[0].append(3)
+>>> lists[1].append(5)
+>>> lists[2].append(7)
+>>> lists
+[[3], [5], [7]]
+別の説明が FAQ エントリ 多次元のリストを作るにはどうしますか？ にあります。
+i または j が負の数の場合、インデックスはシーケンスの末端からの相対インデックスになります: len(s) + i または len(s) + j が代わりに使われます。 ただし -0 はやはり 0 であることに注意してください。
+s の i から j へのスライスは i <= k < j となるようなインデックス k を持つ要素からなるシーケンスとして定義されます。 i または j が len(s) よりも大きい場合、 len(s) を使います。 i が省略されるか None だった場合、 0 を使います。 j が省略されるか None だった場合、 len(s) を使います。 i が j 以上の場合、スライスは空のシーケンスになります。
+s の「 i から j まででステップが k のスライス」は、インデックス x = i + n*k （ただし n は 0 <= n < (j-i)/k を満たす任意の整数）を持つ要素からなるシーケンスとして定義されます。言い換えるとインデックスは i, i+k, i+2*k, i+3*k と続き、 j に達したところでストップします (ただし j は含みません)。 k が正の数である場合、 i または j が len(s) より大きければ len(s) を代わりに使用します。 k が負の数である場合、 i または j が len(s) - 1 より大きければ len(s) - 1 を代わりに使用します。 i または j を省略または None を指定すると、 "端" (どちらの端かは k の符号に依存) の値を代わりに使用します。なお k はゼロにできないので注意してください。また k に None を指定すると、 1 が指定されたものとして扱われます。
+イミュータブルなシーケンスの結合は、常に新しいオブジェクトを返します。これは、結合の繰り返しでシーケンスを構築する実行時間コストがシーケンスの長さの合計の二次式になることを意味します。実行時間コストを線形にするには、代わりに以下のいずれかにしてください:
+
+str オブジェクトを結合するには、リストを構築して最後に str.join() を使うか、 io.StringIO インスタンスに書き込んで完成してから値を取得してください
+bytes オブジェクトを結合するなら、同様に bytes.join() や io.BytesIO を使うか、 bytearray オブジェクトでインプレースに結合できます。 bytearray オブジェクトはミュータブルで、効率のいい割り当て超過機構を備えています
+tuple オブジェクトを結合するなら、代わりに list を拡張してください
+その他の型については、関連するクラスのドキュメントを調べてください
+シーケンス型には、 (range のように) 特殊なパターンに従う項目のシーケンスのみをサポートするものがあり、それらはシーケンスの結合や繰り返しをサポートしません。
+index は x が s 中に見つからないとき ValueError を送出します。追加の引数 i と j は、すべての実装がサポートしているわけではありません。追加の引数を渡すのは、おおよそ s[i:j].index(x) を使うのと等価ですが、データをコピーしなくて済むし、返されるのはスライスの最初ではなくシーケンスの最初からの相対インデクスです。
+イミュータブルなシーケンス型
+イミュータブルなシーケンス型が一般に実装している演算のうち、ミュータブルなシーケンス型がサポートしていないのは、組み込みの hash() だけです。
+
+このサポートにより、tuple インスタンスのようなイミュータブルなシーケンスは、 dict のキーとして使え、 set や frozenset インスタンスに保存できます。
+
+ハッシュ不可能な値を含むイミュータブルなシーケンスをハッシュ化しようとすると、 TypeError となります。
+
+ミュータブルなシーケンス型
+以下のテーブルにある演算は、ほとんどのミュータブルなシーケンスでサポートされています。カスタムのシーケンス型にこれらの演算を完全に実装するのが簡単になるように、 collections.abc.MutableSequence ABC が提供されています。
+
+このテーブルで、 s はミュータブルなシーケンス型のインスタンス、 t は任意のイテラブルオブジェクト、 x は s に課された型と値の条件を満たす任意のオブジェクト (例えば、 bytearray は値の制限 0 <= x <= 255 に合う整数のみを受け付けます) です。
+
+演算
+結果
+注釈
+s[i] = x
+s の要素 i を x と入れ替えます
+s[i:j] = t
+s の i から j 番目までのスライスをイテラブル t の内容に入れ替えます
+del s[i:j]
+s[i:j] = [] と同じです
+s[i:j:k] = t
+s[i:j:k] の要素を t の要素と入れ替えます
+(1)
+del s[i:j:k]
+リストから s[i:j:k] の要素を削除します
+s.append(x)
+x をシーケンスの最後に加えます (s[len(s):len(s)] = [x] と同じ)
+s.clear()
+s から全ての要素を取り除きます (del s[:] と同じ)
+(5)
+s.copy()
+s の浅いコピーを作成します (s[:] と同じ)
+(5)
+s.extend(t) または s += t
+s を t の内容で拡張します (ほとんど s[len(s):len(s)] = t と同じ)
+s *= n
+s をその内容を n 回繰り返したもので更新
+(6)
+s.insert(i, x)
+s の i で与えられたインデックスに x を挿入します。 (s[i:i] = [x] と同じ)
+s.pop([i])
+s から i 番目の要素を取り出し、また取り除きます
+(2)
+s.remove(x)
+s から s[i] が x が等価となる最初の要素を取り除きます
+(3)
+s.reverse()
+s をインプレースに逆転させます
+(4)
+注釈:
+
+t は置き換えるスライスと同じ長さでなければいけません。
+オプションの引数 i は標準で -1 なので、標準では最後の要素をリストから除去して返します。
+remove() は s に x が見つからなければ ValueError を送出します。
+reverse() メソッドは、大きなシーケンスを反転するときの容量の節約のため、シーケンスをインプレースに変化させます。副作用としてこの演算が行われることをユーザに気づかせるために、これは反転したシーケンスを返しません。
+clear() および copy() は、スライシング操作をサポートしないミュータブルなコンテナ (dict や set など) のインタフェースとの一貫性のために含まれています。 copy() は collections.abc.MutableSequence ABC の一部ではありませんが、ほとんどのミュータブルなシーケンスクラスが提供しています。
+
+バージョン 3.3 で追加: clear() および copy() メソッド。
+
+値 n は整数であるか、__index__() を実装したオブジェクトです。 n の値がゼロまたは負数の場合、シーケンスをクリアします。共通のシーケンス演算 で s * n について説明したとおり、シーケンスの要素はコピーされないので注意してください; コピーではなく要素に対する参照カウントが増えます。
+リスト型 (list)
+リストはミュータブルなシーケンスで、一般的に同種の項目の集まりを格納するために使われます (厳密な類似の度合いはアプリケーションによって異なる場合があります)。
+
+class list([iterable])
+リストの構成にはいくつかの方法があります:
+
+角括弧の対を使い、空のリストを表す: []
+角括弧を使い、項目をカンマで区切る: [a]、[a, b, c]
+リスト内包表記を使う: [x for x in iterable]
+型コンストラクタを使う: list() または list(iterable)
+コンストラクタは、 iterable の項目と同じ項目で同じ順のリストを構築します。 iterable は、シーケンス、イテレートをサポートするコンテナ、またはイテレータオブジェクトです。 iterable が既にリストなら、 iterable[:] と同様にコピーが作られて返されます。例えば、 list('abc') は ['a', 'b', 'c'] を、 list( (1, 2, 3) ) は [1, 2, 3] を返します。引数が与えられなければ、このコンストラクタは新しい空のリスト [] を作成します。
+
+リストを作る方法は、他にも組み込み関数 sorted() などいろいろあります。
+
+リストは 共通の および ミュータブルの シーケンス演算をすべて実装します。リストは、更に以下のメソッドも提供します:
+
+sort(*, key=None, reverse=False)
+このメソッドは、項目間の < 比較のみを用いてリストをインプレースにソートします。例外は抑制されません。比較演算がどこかで失敗したら、ソート演算自体が失敗します (そしてリストは部分的に変更された状態で残されるでしょう)。
+
+sort() は、キーワードでしか渡せない 2 つの引数 (キーワード専用引数) を受け付けます:
+
+key は一引数をとる関数を指定し、リストのそれぞれの要素から比較キーを取り出すのに使います (例えば、 key=str.lower)。それぞれの項目に対応するキーは一度計算され、ソート処理全体に使われます。デフォルトの値 None は、別のキー値を計算せず、リストの値が直接ソートされることを意味します。
+
+2.x 形式の cmp 関数を key 関数に変換するために、functools.cmp_to_key() ユーティリティが利用できます。
+
+reverse は真偽値です。 True がセットされた場合、リストの要素は個々の比較が反転したものとして並び替えられます。
+
+このメソッドは、大きなシーケンスをソートするときの容量の節約のため、シーケンスをインプレースに変化させます。副作用としてこの演算が行われることをユーザに気づかせるために、これはソートしたシーケンスを返しません (新しいリストインスタンスを明示的に要求するには sorted() を使ってください)。
+
+sort() メソッドは安定していることが保証されています。ソートは、等しい要素の相対順序が変更されないことが保証されていれば、安定しています。これは複数パスのソートを行なう (例えば部署でソートして、それから給与の等級でソートする) のに役立ちます。
+
+ソートの例と簡単なチュートリアルは ソート HOW TO を参照して下さい。
+
+CPython implementation detail: リストがソートされている間、または変更しようとする試みの影響中、あるいは検査中でさえ、リストは未定義です。Python の C 実装では、それらが続いている間、リストは空として出力され、リストがソート中に変更されていることを検知できたら ValueError を送出します。
+タプル型 (tuple)
+タプルはイミュータブルなシーケンスで、一般的に異種のデータの集まり (組み込みの enumerate() で作られた 2-タプルなど) を格納するために使われます。タプルはまた、同種のデータのイミュータブルなシーケンスが必要な場合 (set インスタンスや dict インスタンスに保存できるようにするためなど) にも使われます。
+
+class tuple([iterable])
+タプルの構成にはいくつかの方法があります:
+
+丸括弧の対を使い、空のタプルを表す: ()
+カンマを使い、単要素のタプルを表す: a, または (a,)
+項目をカンマで区切る: a, b, c または (a, b, c)
+組み込みの tuple() を使う: tuple() または tuple(iterable)
+コンストラクタは、 iterable の項目と同じ項目で同じ順のタプルを構築します。 iterable は、シーケンス、イテレートをサポートするコンテナ、またはイテレータオブジェクトです。 iterable が既にタプルなら、そのまま返されます。例えば、 tuple('abc') は ('a', 'b', 'c') を、 tuple( [1, 2, 3] ) は (1, 2, 3) を返します。引数が与えられなければ、このコンストラクタは新しい空のタプル () を作成します。
+
+なお、タプルを作るのはカンマであり、丸括弧ではありません。丸括弧は省略可能ですが、空のタプルの場合や構文上の曖昧さを避けるのに必要な時は例外です。例えば、 f(a, b, c) は三引数の関数呼び出しですが、f((a, b, c)) は 3-タプルを唯一の引数とする関数の呼び出しです。
+
+タプルは 共通の シーケンス演算をすべて実装します。
+
+異種のデータの集まりで、インデックスによってアクセスするよりも名前によってアクセスしたほうが明確になるものには、単純なタプルオブジェクトよりも collections.namedtuple() が向いているかもしれません。
+
+range
+range 型は、数のイミュータブルなシーケンスを表し、一般に for ループにおいて特定の回数のループに使われます。
+
+class range(stop)
+class range(start, stop[, step])
+range コンストラクタの引数は整数 (組み込みの int または __index__ 特殊メソッドを実装するオブジェクト) でなければなりません。step 引数が省略された場合のデフォルト値は 1 です。start 引数が省略された場合のデフォルト値は 0 です。 step が 0 の場合、ValueError が送出されます。
+
+step が正の場合、range r の内容は式 r[i] = start + step*i で決定されます。ここで、 i >= 0 かつ r[i] < stop です。
+
+step が負の場合も、range r の内容は式 r[i] = start + step*i で決定されます。ただし、制約条件は i >= 0 かつ r[i] > stop です。
+
+r[0] が値の制約を満たさない場合、range オブジェクトは空になります。range は負のインデックスをサポートしますが、これらは正のインデックスにより決定されるシーケンスの末尾からのインデックス指定として解釈されます。
+
+range は sys.maxsize より大きい絶対値を含むことができますが、いくつかの機能 (len() など) は OverflowError を送出することがあります。
+
+range の例:
+
+>>>
+>>> list(range(10))
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+>>> list(range(1, 11))
+[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+>>> list(range(0, 30, 5))
+[0, 5, 10, 15, 20, 25]
+>>> list(range(0, 10, 3))
+[0, 3, 6, 9]
+>>> list(range(0, -10, -1))
+[0, -1, -2, -3, -4, -5, -6, -7, -8, -9]
+>>> list(range(0))
+[]
+>>> list(range(1, 0))
+[]
+range は 共通の シーケンス演算を、結合と繰り返し以外すべて実装します (range オブジェクトは厳格なパターンに従うシーケンスのみを表せ、繰り返しと結合はたいていそのパターンを破るという事実によります)。
+
+start
+引数 start の値 (この引数が与えられていない場合は 0)
+
+stop
+引数 stop の値
+
+step
+引数 step の値 (この引数が与えられていない場合は 1)
+
+range 型が通常の list や tuple にまさる点は、range オブジェクトがサイズや表す範囲にかかわらず常に一定の (小さな) 量のメモリを使うことです (start、stop、step の値のみを保存し、後は必要に応じて個々の項目や部分 range を計算するためです)。
+
+range オブジェクトは collections.abc.Sequence ABC を実装し、包含判定、要素インデックス検索、スライシングのような機能を提供し、負のインデックスをサポートします (シーケンス型 --- list, tuple, range を参照):
+
+>>>
+>>> r = range(0, 20, 2)
+>>> r
+range(0, 20, 2)
+>>> 11 in r
+False
+>>> 10 in r
+True
+>>> r.index(10)
+5
+>>> r[5]
+10
+>>> r[:5]
+range(0, 10, 2)
+>>> r[-1]
+18
+== および != による range オブジェクトの等価性の判定は、これらをシーケンスとして比較します。つまり、二つの range オブジェクトは同じ値のシーケンスを表すなら等しいとみなされます。(なお、二つの等しいとされる range オブジェクトが異なる start, stop および step 属性を持つことがあります。例えば range(0) == range(2, 1, 3) や range(0, 3, 2) == range(0, 4, 2)。)
+
+バージョン 3.2 で変更: シーケンス ABC を実装。スライスと負のインデックスのサポート。int オブジェクトの帰属判定を、すべてのアイテムをイテレートする代わりに、定数時間で行います。
+
+バージョン 3.3 で変更: (オブジェクトの同一性に基づいて比較する代わりに) range オブジェクトをそれらが定義する値のシーケンスに基づいて比較するように '==' と '!=' を定義しました。
+
+バージョン 3.3 で追加: 属性 start, stop および step。
+
+参考
+linspace レシピ には、遅延評価される浮動小数点版の range の実装方法が載っています。
+テキストシーケンス型 --- str
+Python のテキストデータは str オブジェクト、すなわち 文字列 として扱われます。文字列は Unicode コードポイントのイミュータブルな シーケンス です。文字列リテラルには様々な記述方法があります:
+
+シングルクォート: '"ダブル" クォートを埋め込むことができます'
+ダブルクォート: "'シングル' クォートを埋め込むことができます"。
+三重引用符: '''三つのシングルクォート''', """三つのダブルクォート"""
+三重引用符文字列は、複数行に分けることができます。関連付けられる空白はすべて文字列リテラルに含まれます。
+
+単式の一部であり間に空白のみを含む文字列リテラルは、一つの文字列リテラルに暗黙に変換されます。つまり、("spam " "eggs") == "spam eggs" です。
+
+エスケープシーケンスを含む文字列や、ほとんどのエスケープシーケンス処理を無効にする r ("raw") 接頭辞などの、文字列リテラルの様々な形式は、文字列およびバイト列リテラル を参照してください。
+
+文字列は他のオブジェクトに str コンストラクタを使うことでも生成できます。
+
+"character" 型が特別に用意されているわけではないので、文字列のインデックス指定を行うと長さ 1 の文字列を作成します。つまり、空でない文字列 s に対し、s[0] == s[0:1] です。
+
+ミュータブルな文字列型もありませんが、ミュータブルな断片から効率よく文字列を構成するのに str.join() や io.StringIO が使えます。
+
+バージョン 3.3 で変更: Python 2 シリーズとの後方互換性のため、文字列リテラルの u 接頭辞が改めて許可されました。それは文字列リテラルとしての意味には影響がなく、 r 接頭辞と結合することはできません。
+
+class str(object='')
+class str(object=b'', encoding='utf-8', errors='strict')
+object の 文字列 版を返します。 object が与えられなかった場合、空文字列が返されます。それ以外の場合 str() の動作は、 encoding や errors が与えられたかどうかによって次のように変わります。
+
+encoding も errors も与えられない場合、 str(object) は object.__str__() の結果を返します。これは "略式の" つまり読み易い object の文字列表現です。文字列オブジェクトに対してはその文字列自体を返します。 object が __str__() メソッドを持たない場合、str() は代わりに repr(object) の結果を返します。
+
+encoding か errors の少なくとも一方が与えられた場合、 object は bytes-like object (たとえば bytes や bytearray) でなくてはなりません。object が bytes (もしくは bytearray) オブジェクトである場合は、 str(bytes, encoding, errors) は bytes.decode(encoding, errors) と等価です。そうでない場合は、 bytes.decode() が呼ばれる前に buffer オブジェクトの下層にある bytes オブジェクトが取得されます。 buffer オブジェクトについて詳しい情報は、 バイナリシーケンス型 --- bytes, bytearray, memoryview や バッファプロトコル (buffer Protocol) を参照してください。
+
+encoding 引数や errors 引数無しに bytes オブジェクトを str() に渡すと、略式の文字列表現を返す 1 つ目の場合に該当します。(Python のコマンドラインオプション -b も参照してください) 例えば:
+
+>>>
+>>> str(b'Zoot!')
+"b'Zoot!'"
+str クラスとそのメソッドについて詳しくは、 テキストシーケンス型 --- str や 文字列メソッド の節を参照してください。フォーマットされた文字列を出力するには、 フォーマット済み文字列リテラル と カスタムの文字列書式化 の節を参照してください。加えて、 テキスト処理サービス の節も参照してください。
+
+文字列メソッド
+文字列は 共通の シーケンス演算全てに加え、以下に述べるメソッドを実装します。
+
+文字列は、二形式の文字列書式化をサポートします。一方は柔軟さが高くカスタマイズできます (str.format()、 書式指定文字列の文法 、および カスタムの文字列書式化 を参照してください)。他方は C 言語の printf 形式の書式化に基づいてより狭い範囲と型を扱うもので、正しく扱うのは少し難しいですが、扱える場合ではたいていこちらのほうが高速です (printf 形式の文字列書式化)。
+
+標準ライブラリの テキスト処理サービス 節は、その他テキストに関する様々なユーティリティ (re モジュールによる正規表現サポートなど) を提供するいくつかのモジュールをカバーしています。
+
+str.capitalize()
+最初の文字を大文字にし、残りを小文字にした文字列のコピーを返します。
+
+バージョン 3.8 で変更: 最初の文字が大文字ではなくタイトルケースに置き換えられるようになりました。つまり二重音字のような文字はすべての文字が大文字にされるのではなく、最初の文字だけ大文字にされるようになります。
+
+str.casefold()
+文字列の casefold されたコピーを返します。casefold された文字列は、大文字小文字に関係ないマッチに使えます。
+
+casefold は、小文字化と似ていますが、より積極的です。これは文字列の大文字小文字の区別をすべて取り去ることを意図しているためです。例えば、ドイツ語の小文字 'ß' は "ss" と同じです。これは既に小文字なので、lower() は 'ß' に何もしませんが、casefold() はこれを "ss" に変換します。
+
+casefold のアルゴリズムは Unicode Standard のセクション 3.13 に記述されています。
+
+バージョン 3.3 で追加.
+
+str.center(width[, fillchar])
+width の長さをもつ中央寄せされた文字列を返します。パディングには fillchar で指定された値 (デフォルトでは ASCII スペース) が使われます。 width が len(s) 以下なら元の文字列が返されます。
+
+str.count(sub[, start[, end]])
+[start, end] の範囲に、部分文字列 sub が重複せず出現する回数を返します。オプション引数 start および end はスライス表記と同じように解釈されます。
+
+str.encode(encoding="utf-8", errors="strict")
+文字列のエンコードされたバージョンをバイト列オブジェクトとして返します。標準のエンコーディングは 'utf-8' です。標準とは異なるエラー処理を行うために errors を与えることができます。標準のエラー処理は 'strict' で、エンコードに関するエラーは UnicodeError を送出します。他に利用できる値は 'ignore', 'replace', 'xmlcharrefreplace', 'backslashreplace' および関数 codecs.register_error() によって登録された名前です。これについてはセクション エラーハンドラ を参照してください。利用可能なエンコーディングの一覧は、セクション 標準エンコーディング を参照してください。
+
+By default, the errors argument is not checked for best performances, but only used at the first encoding error. Enable the Python Development Mode, or use a debug build to check errors.
+
+バージョン 3.1 で変更: キーワード引数のサポートが追加されました。
+
+バージョン 3.9 で変更: The errors is now checked in development mode and in debug mode.
+
+str.endswith(suffix[, start[, end]])
+文字列が指定された suffix で終わるなら True を、そうでなければ False を返します。 suffix は見つけたい複数の接尾語のタプルでも構いません。オプションの start があれば、その位置から判定を始めます。オプションの end があれば、その位置で比較を止めます。
+
+str.expandtabs(tabsize=8)
+文字列内の全てのタブ文字が 1 つ以上のスペースで置換された、文字列のコピーを返します。スペースの数は現在の桁 (column) 位置と tabsize に依存します。タブ位置は tabsize 文字毎に存在します (デフォルト値である 8 の場合、タブ位置は 0, 8, 16 などになります)。文字列を展開するため、まず現桁位置がゼロにセットされ、文字列が 1 文字ずつ調べられます。文字がタブ文字 (\t) であれば、現桁位置が次のタブ位置と一致するまで、1 つ以上のスペースが結果の文字列に挿入されます。(タブ文字自体はコピーされません。) 文字が改行文字 (\n もしくは \r) の場合、文字がコピーされ、現桁位置は 0 にリセットされます。その他の文字は変更されずにコピーされ、現桁位置は、その文字の表示のされ方 (訳注: 全角、半角など) に関係なく、1 ずつ増加します。
+
+>>>
+>>> '01\t012\t0123\t01234'.expandtabs()
+'01      012     0123    01234'
+>>> '01\t012\t0123\t01234'.expandtabs(4)
+'01  012 0123    01234'
+str.find(sub[, start[, end]])
+文字列のスライス s[start:end] に部分文字列 sub が含まれる場合、その最小のインデックスを返します。オプション引数 start および end はスライス表記と同様に解釈されます。 sub が見つからなかった場合 -1 を返します。
+
+注釈 find() メソッドは、 sub の位置を知りたいときにのみ使うべきです。 sub が部分文字列であるかどうかのみを調べるには、 in 演算子を使ってください:
+>>>
+>>> 'Py' in 'Python'
+True
+str.format(*args, **kwargs)
+文字列の書式化操作を行います。このメソッドを呼び出す文字列は通常の文字、または、 {} で区切られた置換フィールドを含みます。それぞれの置換フィールドは位置引数のインデックスナンバー、または、キーワード引数の名前を含みます。返り値は、それぞれの置換フィールドが対応する引数の文字列値で置換された文字列のコピーです。
+
+>>>
+>>> "The sum of 1 + 2 is {0}".format(1+2)
+'The sum of 1 + 2 is 3'
+書式指定のオプションについては、書式指定文字列を規定する 書式指定文字列の文法 を参照してください。
+
+注釈 数値 (int, float, complex, decimal.Decimal とサブクラス) を n の整数表現型 (例: '{:n}'.format(1234)) でフォーマットするとき、LC_CTYPE ロケールと LC_NUMERIC ロケールの一方または両方が 1 バイトより長い非 ASCII 文字であると同時に異なる値である場合、この関数は localeconv() の decimal_point と thousands_sep フィールドを読み取るため一時的に LC_CTYPE ロケールに LC_NUMERIC のロケール値を設定します。この一時的な変更は他のスレッドの動作に影響します。
+バージョン 3.7 で変更: 数値を n の整数表現型でフォーマットするとき、この関数は一時的に LC_CTYPE ロケールに LC_NUMERIC のロケール値を設定する場合があります。
+
+str.format_map(mapping)
+str.format(**mapping) と似ていますが、 mapping は dict にコピーされず、直接使われます。これは例えば mapping が dict のサブクラスであるときに便利です:
+
+>>>
+>>> class Default(dict):
+...     def __missing__(self, key):
+...         return key
+...
+>>> '{name} was born in {country}'.format_map(Default(name='Guido'))
+'Guido was born in country'
+バージョン 3.2 で追加.
+
+str.index(sub[, start[, end]])
+find() と同様ですが、部分文字列が見つからなかったとき ValueError を送出します。
+
+str.isalnum()
+文字列中の全ての文字が英数字で、かつ 1 文字以上あるなら True を、そうでなければ False を返します。文字 c は以下のいずれかが True を返せば英数字です: c.isalpha() 、 c.isdecimal() 、 c.isdigit() 、 c.isnumeric() 。
+
+str.isalpha()
+文字列中の全ての文字が英字で、かつ 1 文字以上あるなら True を、そうでなければ False を返します。英字は、Unicode 文字データベースで "Letter" として定義されているもので、すなわち、一般カテゴリプロパティ "Lm"、 "Lt"、 "Lu"、 "Ll"、 "Lo" のいずれかをもつものです。なお、これは Unicode 標準で定義されている "Alphabetic" プロパティとは異なるものです。
+
+str.isascii()
+文字列が空であるか、文字列の全ての文字が ASCII である場合に True を、それ以外の場合に False を返します。 ASCII 文字のコードポイントは U+0000-U+007F の範囲にあります。
+
+バージョン 3.7 で追加.
+
+str.isdecimal()
+文字列中の全ての文字が十進数字で、かつ 1 文字以上あるなら True を、そうでなければ False を返します。十進数字とは十進数を書くのに使われる文字のことで、たとえば U+0660 (ARABIC-INDIC DIGIT ZERO) なども含みます。正式には、Unicode の一般カテゴリ "Nd" に含まれる文字を指します。
+
+str.isdigit()
+文字列中の全ての文字が数字で、かつ 1 文字以上あるなら True を、そうでなければ False を返します。ここでの数字とは、十進数字に加えて、互換上付き数字のような特殊操作を必要とする数字を含みます。また 10 を基数とした表現ができないカローシュティー数字のような体系の文字も含みます。正式には、数字とは、プロパティ値 Numeric_Type=Digit または Numeric_Type=Decimal を持つ文字です。
+
+str.isidentifier()
+文字列が、 識別子 (identifier) およびキーワード (keyword) 節の言語定義における有効な識別子であれば True を返します。
+
+文字列 s が def や class のような予約済みの識別子か判定するには keyword.iskeyword() を呼び出してください。
+
+例:
+
+>>>
+>>> from keyword import iskeyword
+
+>>> 'hello'.isidentifier(), iskeyword('hello')
+True, False
+>>> 'def'.isidentifier(), iskeyword('def')
+True, True
+str.islower()
+文字列中の大小文字の区別のある文字 4 全てが小文字で、かつ大小文字の区別のある文字が 1 文字以上あるなら True を、そうでなければ False を返します。
+
+str.isnumeric()
+文字列中の全ての文字が数を表す文字で、かつ 1 文字以上あるなら True を、そうでなければ False を返します。数を表す文字は、数字と、Unicode の数値プロパティを持つ全ての文字を含みます。たとえば U+2155 (VULGAR FRACTION ONE FIFTH)。正式には、数を表す文字は、プロパティ値 Numeric_Type=Digit、 Numeric_Type=Decimal または Numeric_Type=Numeric を持つものです。
+
+str.isprintable()
+文字列中のすべての文字が印字可能であるか、文字列が空であれば True を、そうでなければ False を返します。非印字可能文字は、 Unicode 文字データベースで "Other" または "Separator" と定義されている文字の、印字可能と見なされる ASCII space (0x20) 以外のものです。(なお、この文脈での印字可能文字は、文字列に repr() が呼び出されるときにエスケープすべきでない文字のことです。これは sys.stdout や sys.stderr に書き込まれる文字列の操作とは関係ありません。)
+
+str.isspace()
+文字列が空白文字だけからなり、かつ 1 文字以上ある場合には True を返し、そうでない場合は False を返します。
+
+Unicode 文字データベース (unicodedata を参照) で一般カテゴリが Zs ("Seperator, space") であるか、 双方向クラスが　WS、B、 S のいずれかである場合、その文字は 空白文字(whitespace) です。
+
+str.istitle()
+文字列がタイトルケース文字列であり、かつ 1 文字以上ある場合、例えば大文字は大小文字の区別のない文字の後にのみ続き、小文字は大小文字の区別のある文字の後ろにのみ続く場合には True を返します。そうでない場合は False を返します。
+
+str.isupper()
+文字列中の大小文字の区別のある文字 4 全てが大文字で、かつ大小文字の区別のある文字が 1 文字以上あるなら True を、そうでなければ False を返します。
+
+>>>
+>>> 'BANANA'.isupper()
+True
+>>> 'banana'.isupper()
+False
+>>> 'baNana'.isupper()
+False
+>>> ' '.isupper()
+False
+str.join(iterable)
+iterable 中の文字列を結合した文字列を返します。 iterable に bytes オブジェクトのような非文字列の値が存在するなら、 TypeError が送出されます。要素間のセパレータは、このメソッドを提供する文字列です。
+
+str.ljust(width[, fillchar])
+長さ width の左揃えした文字列を返します。パディングは指定された fillchar (デフォルトでは ASCII スペース) を使って行われます。 width が len(s) 以下ならば、元の文字列が返されます。
+
+str.lower()
+全ての大小文字の区別のある文字 4 が小文字に変換された、文字列のコピーを返します。
+
+使われる小文字化のアルゴリズムは Unicode Standard のセクション 3.13 に記述されています。
+
+str.lstrip([chars])
+文字列の先頭の文字を除去したコピーを返します。引数 chars は除去される文字の集合を指定する文字列です。 chars が省略されるか None の場合、空白文字が除去されます。 chars 文字列は接頭辞ではなく、その値に含まれる文字の組み合わせ全てがはぎ取られます:
+
+>>>
+>>> '   spacious   '.lstrip()
+'spacious   '
+>>> 'www.example.com'.lstrip('cmowz.')
+'example.com'
+See str.removeprefix() for a method that will remove a single prefix string rather than all of a set of characters. For example:
+
+>>>
+>>> 'Arthur: three!'.lstrip('Arthur: ')
+'ee!'
+>>> 'Arthur: three!'.removeprefix('Arthur: ')
+'three!'
+static str.maketrans(x[, y[, z]])
+この静的メソッドは str.translate() に使える変換テーブルを返します。
+
+引数を 1 つだけ与える場合、それは Unicode 序数 (整数) または文字 (長さ 1 の文字列) を、Unicode 序数、(任意長の) 文字列、または None に対応づける辞書でなければなりません。このとき、文字で指定したキーは序数に変換されます。
+
+引数を 2 つ指定する場合、それらは同じ長さの文字列である必要があり、結果の辞書では、x のそれぞれの文字が y の同じ位置の文字に対応付けられます。第 3 引数を指定する場合、文字列を指定する必要があり、それに含まれる文字が None に対応付けられます。
+
+str.partition(sep)
+文字列を sep の最初の出現位置で区切り、 3 要素のタプルを返します。タプルの内容は、区切りの前の部分、区切り文字列そのもの、そして区切りの後ろの部分です。もし区切れなければ、タプルには元の文字列そのものとその後ろに二つの空文字列が入ります。
+
+str.removeprefix(prefix, /)
+文字列が prefix で始まる場合、 string[len(prefix):] を返します。それ以外の場合、元の文字列のコピーを返します:
+
+>>>
+>>> 'TestHook'.removeprefix('Test')
+'Hook'
+>>> 'BaseTestCase'.removeprefix('Test')
+'BaseTestCase'
+バージョン 3.9 で追加.
+
+str.removesuffix(suffix, /)
+文字列が suffix で終わる場合、 string[:-len(suffix)] を返します。それ以外の場合、元の文字列のコピーを返します:
+
+>>>
+>>> 'MiscTests'.removesuffix('Tests')
+'Misc'
+>>> 'TmpDirMixin'.removesuffix('Tests')
+'TmpDirMixin'
+バージョン 3.9 で追加.
+
+str.replace(old, new[, count])
+文字列をコピーし、現れる部分文字列 old 全てを new に置換して返します。オプション引数 count が与えられている場合、先頭から count 個の old だけを置換します。
+
+str.rfind(sub[, start[, end]])
+文字列中の領域 s[start:end] に sub が含まれる場合、その最大のインデックスを返します。オプション引数 start および end はスライス表記と同様に解釈されます。 sub が見つからなかった場合 -1 を返します。
+
+str.rindex(sub[, start[, end]])
+rfind() と同様ですが、 sub が見つからなかった場合 ValueError を送出します。
+
+str.rjust(width[, fillchar])
+width の長さをもつ右寄せした文字列を返します。パディングには fillchar で指定された文字(デフォルトでは ASCII スペース)が使われます。 width が len(s) 以下の場合、元の文字列が返されます。
+
+str.rpartition(sep)
+文字列を sep の最後の出現位置で区切り、 3 要素のタプルを返します。タプルの内容は、区切りの前の部分、区切り文字列そのもの、そして区切りの後ろの部分です。もし区切れなければ、タプルには二つの空文字列とその後ろに元の文字列そのものが入ります。
+
+str.rsplit(sep=None, maxsplit=-1)
+sep を区切り文字とした、文字列中の単語のリストを返します。 maxsplit が与えられた場合、文字列の 右端 から最大 maxsplit 回分割を行います。sep が指定されていない、あるいは None のとき、全ての空白文字が区切り文字となります。右から分割していくことを除けば、 rsplit() は後ほど詳しく述べる split() と同様に振る舞います。
+
+str.rstrip([chars])
+文字列の末尾部分を除去したコピーを返します。引数 chars は除去される文字集合を指定する文字列です。 chars が省略されるか None の場合、空白文字が除去されます。 chars 文字列は接尾語ではなく、そこに含まれる文字の組み合わせ全てがはぎ取られます:
+
+>>>
+>>> '   spacious   '.rstrip()
+'   spacious'
+>>> 'mississippi'.rstrip('ipz')
+'mississ'
+See str.removesuffix() for a method that will remove a single suffix string rather than all of a set of characters. For example:
+
+>>>
+>>> 'Monty Python'.rstrip(' Python')
+'M'
+>>> 'Monty Python'.removesuffix(' Python')
+'Monty'
+str.split(sep=None, maxsplit=-1)
+文字列を sep をデリミタ文字列として区切った単語のリストを返します。maxsplit が与えられていれば、最大で maxsplit 回分割されます (つまり、リストは最大 maxsplit+1 要素になります)。 maxsplit が与えられないか -1 なら、分割の回数に制限はありません (可能なだけ分割されます)。
+
+sep が与えられた場合、連続した区切り文字はまとめられず、空の文字列を区切っていると判断されます(例えば '1,,2'.split(',') は ['1', '', '2'] を返します)。引数 sep は複数の文字にもできます (例えば '1<>2<>3'.split('<>') は ['1', '2', '3'] を返します)。区切り文字を指定して空の文字列を分割すると、 [''] を返します。
+
+例えば:
+
+>>>
+>>> '1,2,3'.split(',')
+['1', '2', '3']
+>>> '1,2,3'.split(',', maxsplit=1)
+['1', '2,3']
+>>> '1,2,,3,'.split(',')
+['1', '2', '', '3', '']
+sep が指定されていないか None の場合、異なる分割アルゴリズムが適用されます。連続する空白文字はひとつのデリミタとみなされます。また、文字列の先頭や末尾に空白があっても、結果の最初や最後に空文字列は含まれません。よって、空文字列や空白だけの文字列を None デリミタで分割すると [] が返されます。
+
+例えば:
+
+>>>
+>>> '1 2 3'.split()
+['1', '2', '3']
+>>> '1 2 3'.split(maxsplit=1)
+['1', '2 3']
+>>> '   1   2   3   '.split()
+['1', '2', '3']
+str.splitlines([keepends])
+文字列を改行部分で分解し、各行からなるリストを返します。 keepends に真が与えらない限り、返されるリストに改行は含まれません。
+
+このメソッドは以下の行境界で分解します。特に、以下の境界は universal newlines のスーパーセットです。
+
+表現
+説明
+\n
+改行
+\r
+復帰
+\r\n
+改行 + 復帰
+\v or \x0b
+垂直タブ
+\f or \x0c
+改ページ
+\x1c
+ファイル区切り
+\x1d
+グループ区切り
+\x1e
+レコード区切り
+\x85
+改行 (C1 制御コード)
+\u2028
+行区切り
+\u2029
+段落区切り
+バージョン 3.2 で変更: \v と \f が行境界のリストに追加されました。
+
+例えば:
+
+>>>
+>>> 'ab c\n\nde fg\rkl\r\n'.splitlines()
+['ab c', '', 'de fg', 'kl']
+>>> 'ab c\n\nde fg\rkl\r\n'.splitlines(keepends=True)
+['ab c\n', '\n', 'de fg\r', 'kl\r\n']
+split() とは違って、デリミタ文字列 sep が与えられたとき、このメソッドは空文字列に空リストを返し、終末の改行は結果に行を追加しません:
+
+>>>
+>>> "".splitlines()
+[]
+>>> "One line\n".splitlines()
+['One line']
+比較のために split('\n') は以下のようになります:
+
+>>>
+>>> ''.split('\n')
+['']
+>>> 'Two lines\n'.split('\n')
+['Two lines', '']
+str.startswith(prefix[, start[, end]])
+文字列が指定された prefix で始まるなら True を、そうでなければ False を返します。 prefix は見つけたい複数の接頭語のタプルでも構いません。オプションの start があれば、その位置から判定を始めます。オプションの end があれば、その位置で比較を止めます。
+
+str.strip([chars])
+文字列の先頭および末尾部分を除去したコピーを返します。引数 chars は除去される文字集合を指定する文字列です。 chars が省略されるか None の場合、空白文字が除去されます。 chars 文字列は接頭語でも接尾語でもなく、そこに含まれる文字の組み合わせ全てがはぎ取られます:
+
+>>>
+>>> '   spacious   '.strip()
+'spacious'
+>>> 'www.example.com'.strip('cmowz.')
+'example'
+文字列の最も外側の先頭および末尾から、引数 chars 値がはぎ取られます。文字列の先頭から chars の文字集合に含まれない文字に達するまで、文字が削除されます。文字列の末尾に対しても同様の操作が行われます。例えば、次のようになります:
+
+>>>
+>>> comment_string = '#....... Section 3.2.1 Issue #32 .......'
+>>> comment_string.strip('.#! ')
+'Section 3.2.1 Issue #32'
+str.swapcase()
+大文字が小文字に、小文字が大文字に変換された、文字列のコピーを返します。なお、 s.swapcase().swapcase() == s が真であるとは限りません。
+
+str.title()
+文字列を、単語ごとに大文字から始まり、残りの文字のうち大小文字の区別があるものは全て小文字にする、タイトルケースにして返します。
+
+例えば:
+
+>>>
+>>> 'Hello world'.title()
+'Hello World'
+このアルゴリズムは、連続した文字の集まりという、言語から独立した単純な単語の定義を使います。この定義は多くの状況ではうまく機能しますが、短縮形や所有格のアポストロフィが単語の境界になってしまい、望みの結果を得られない場合があります:
+
+>>>
+>>> "they're bill's friends from the UK".title()
+"They'Re Bill'S Friends From The Uk"
+正規表現を使うことでアポストロフィに対応できます:
+
+>>>
+>>> import re
+>>> def titlecase(s):
+...     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
+...                   lambda mo: mo.group(0).capitalize(),
+...                   s)
+...
+>>> titlecase("they're bill's friends.")
+"They're Bill's Friends."
+str.translate(table)
+与えられた変換テーブルに基づいて文字列を構成する各文字をマッピングし、マッピング後の文字列のコピーを返します。変換テーブルは、__getitem__() によるインデックス指定を実装するオブジェクトである必要があります。一般的には、 mapping または sequence です。Unicode 序数 (整数) でインデックス指定する場合、変換テーブルのオブジェクトは次のいずれも行うことができます。Unicode 序数または文字列を返して文字を 1 文字以上の別の文字にマッピングすること、None を返して返り値の文字列から指定した文字を削除すること、例外 LookupError を送出して文字をその文字自身にマッピングすること。
+
+文字から文字への異なる形式のマッピングから変換マップを作成するために、 str.maketrans() が使えます。
+
+文字のマッピングを好みに合わせてより柔軟に変更する方法については、codecs モジュールも参照してください。
+
+str.upper()
+全ての大小文字の区別のある文字 4 が大文字に変換された、文字列のコピーを返します。なお s.upper().isupper() は、 s が大小文字の区別のある文字を含まなかったり、結果の文字の Unicode カテゴリが "Lu" ではなく例えば "Lt" (Letter, titlecase) などであったら、 False になりえます。
+
+使われる大文字化のアルゴリズムは Unicode Standard のセクション 3.13 に記述されています。
+
+str.zfill(width)
+長さが width になるよう ASCII '0' で左詰めした文字列のコピーを返します。先頭が符号接頭辞 ('+'/'-') だった場合、 '0' は符号の前ではなく 後 に挿入されます。width が len(s) 以下の場合元の文字列を返します。
+
+例えば:
+
+>>>
+>>> "42".zfill(5)
+'00042'
+>>> "-42".zfill(5)
+'-0042'
+printf 形式の文字列書式化
+注釈 ここで解説されているフォーマット操作には、(タプルや辞書を正しく表示するのに失敗するなどの) よくある多くの問題を引き起こす、様々な欠陥が出現します。 新しい フォーマット済み文字列リテラル や str.format() インターフェースや テンプレート文字列 が、これらの問題を回避する助けになるでしょう。 これらの代替手段には、それ自身に、トレードオフや、簡潔さ、柔軟さ、拡張性といった利点があります。
+文字列オブジェクトには固有の操作: % 演算子 (モジュロ) があります。この演算子は文字列 書式化 または 補間 演算子とも呼ばれます。format % values (format は文字列) とすると、format 中の % 変換指定は values 中のゼロ個またはそれ以上の要素で置換されます。この動作は C 言語における sprintf() に似ています。
+
+format が単一の引数しか要求しない場合、 values はタプルでない単一のオブジェクトでもかまいません。 5 それ以外の場合、 values はフォーマット文字列中で指定された項目と正確に同じ数の要素からなるタプルか、単一のマップオブジェクトでなければなりません。
+
+一つの変換指定子は 2 またはそれ以上の文字を含み、その構成要素は以下からなりますが、示した順に出現しなければなりません:
+
+指定子の開始を示す文字 '%' 。
+マップキー (オプション)。丸括弧で囲った文字列からなります (例えば (somename)) 。
+変換フラグ (オプション)。一部の変換型の結果に影響します。
+最小のフィールド幅 (オプション)。 '*' (アスタリスク) を指定した場合、実際の文字列幅が values タプルの次の要素から読み出されます。タプルには最小フィールド幅やオプションの精度指定の後に変換したいオブジェクトがくるようにします。
+精度 (オプション)。 '.' (ドット) とその後に続く精度で与えられます。 '*' (アスタリスク) を指定した場合、精度の桁数は values タプルの次の要素から読み出されます。タプルには精度指定の後に変換したい値がくるようにします。
+精度長変換子 (オプション)。
+変換型。
+% 演算子の右側の引数が辞書の場合 (またはその他のマップ型の場合), 文字列中のフォーマットには、辞書に挿入されているキーを丸括弧で囲い、文字 '%' の直後にくるようにしたものが含まれていなければ なりません 。マップキーはフォーマット化したい値をマップから選び出します。例えば:
+
+>>>
+>>> print('%(language)s has %(number)03d quote types.' %
+...       {'language': "Python", "number": 2})
+Python has 002 quote types.
+この場合、 * 指定子をフォーマットに含めてはいけません (* 指定子は順番付けされたパラメタのリストが必要だからです)。
+
+変換フラグ文字を以下に示します:
+
+Flag
+意味
+'#'
+値の変換に (下で定義されている) "別の形式" を使います。
+'0'
+数値型に対してゼロによるパディングを行います。
+'-'
+変換された値を左寄せにします ('0' と同時に与えた場合、 '0' を上書きします) 。
+' '
+(スペース) 符号付きの変換で正の数の場合、前に一つスペースを空けます (そうでない場合は空文字になります) 。
+'+'
+変換の先頭に符号文字 ('+' または '-') を付けます("スペース" フラグを上書きします) 。
+精度長変換子(h, l,または L) を使うことができますが、 Python では必要ないため無視されます。 -- つまり、例えば %ld は %d と等価です。
+
+変換型を以下に示します:
+
+変換
+意味
+注釈
+'d'
+符号付き 10 進整数。
+'i'
+符号付き 10 進整数。
+'o'
+符号付き 8 進数。
+(1)
+'u'
+旧式の型 -- 'd' と同じです。
+(6)
+'x'
+符号付き 16 進数 (小文字)。
+(2)
+'X'
+符号付き 16 進数 (大文字)。
+(2)
+'e'
+指数表記の浮動小数点数 (小文字)。
+(3)
+'E'
+指数表記の浮動小数点数 (大文字)。
+(3)
+'f'
+10 進浮動小数点数。
+(3)
+'F'
+10 進浮動小数点数。
+(3)
+'g'
+浮動小数点数。指数部が -4 以上または精度以下の場合には小文字指数表記、それ以外の場合には10進表記。
+(4)
+'G'
+浮動小数点数。指数部が -4 以上または精度以下の場合には大文字指数表記、それ以外の場合には10進表記。
+(4)
+'c'
+文字一文字 (整数または一文字からなる文字列を受理します)。
+'r'
+文字列 (Python オブジェクトを repr() で変換します)。
+(5)
+'s'
+文字列 (Python オブジェクトを str() で変換します)。
+(5)
+'a'
+文字列 (Python オブジェクトを ascii() で変換します)。
+(5)
+'%'
+引数を変換せず、返される文字列中では文字 '%' になります。
+注釈:
+
+別の形式を指定（訳注: 変換フラグ # を使用）すると 8 進数を表す接頭辞 ('0o') が最初の数字の前に挿入されます。
+別の形式を指定（訳注: 変換フラグ # を使用）すると 16 進数を表す接頭辞 '0x' または '0X' (使用するフォーマット文字が 'x' か 'X' に依存します) が最初の数字の前に挿入されます。
+この形式にした場合、変換結果には常に小数点が含まれ、それはその後ろに数字が続かない場合にも適用されます。
+
+指定精度は小数点の後の桁数を決定し、そのデフォルトは 6 です。
+この形式にした場合、変換結果には常に小数点が含まれ他の形式とは違って末尾の 0 は取り除かれません。
+
+指定精度は小数点の前後の有効桁数を決定し、そのデフォルトは 6 です。
+精度が N なら、出力は N 文字に切り詰められます。
+PEP 237 を参照してください。
+Python 文字列には明示的な長さ情報があるので、 %s 変換において '\0' を文字列の末端と仮定したりはしません。
+
+バージョン 3.1 で変更: 絶対値が 1e50 を超える数値の %f 変換が %g 変換に置き換えられなくなりました。
+
+バイナリシーケンス型 --- bytes, bytearray, memoryview
+バイナリデータを操作するためのコア組み込み型は bytes および bytearray です。これらは、別のバイナリオブジェクトのメモリにコピーを作成すること無くアクセスするための バッファプロトコル を利用する memoryview でサポートされています。
+
+array モジュールは、32 ビット整数や IEEE754 倍精度浮動小数点値のような基本データ型の、効率的な保存をサポートしています。
+
+バイトオブジェクト
+bytes はバイトの不変なシーケンスです。多くのメジャーなプロトコルがASCIIテキストエンコーディングをベースにしているので、 bytes オブジェクトは ASCII 互換のデータに対してのみ動作する幾つかのメソッドを提供していて、文字列オブジェクトと他の多くの点で近いです。
+
+class bytes([source[, encoding[, errors]]])
+まず、 bytes リテラルの構文は文字列リテラルとほぼ同じで、 b というプリフィックスを付けます:
+
+シングルクォート: b'still allows embedded "double" quotes'
+ダブルクォート: b"still allows embedded 'single' quotes".
+3重クォート: b'''3 single quotes''', b"""3 double quotes"""
+bytes リテラルでは (ソースコードのエンコーディングに関係なく) ASCII文字のみが許可されています。 127より大きい値を bytes リテラルに記述する場合は適切なエスケープシーケンスを書く必要があります。
+
+文字列リテラルと同じく、 bytes リテラルでも r プリフィックスを用いてエスケープシーケンスの処理を無効にすることができます。 bytes リテラルの様々な形式やサポートされているエスケープシーケンスについては 文字列およびバイト列リテラル を参照してください。
+
+bytesリテラルと repr 出力は ASCII テキストをベースにしたものですが、 bytes オブジェクトは、各値が 0 <= x < 256 の範囲に収まるような整数 (この制限に違反しようとすると ValueError が発生します) の不変なシーケンスとして振る舞います。多くのバイナリフォーマットがASCIIテキストを元にした要素を持っていたり何らかのテキスト操作アルゴリズムによって操作されるものの、任意のバイナリデータが一般にテキストになっているわけではないことを強調するためにこのように設計されました (何も考えずにテキスト操作アルゴリズムをASCII非互換なバイナリデータフォーマットに対して行うとデータを破壊することがあります)。
+
+リテラル以外に、幾つかの方法で bytes オブジェクトを作ることができます:
+
+指定された長さの、0で埋められた bytes オブジェクト: bytes(10)
+整数の iterable から: bytes(range(20))
+既存のバイナリデータからバッファプロトコルでコピーする: bytes(obj)
+bytes ビルトイン関数も参照してください。
+
+16 進数で 2 桁の数は正確に 1 バイトに相当するため、16 進整はバイナリデータを表現する形式として広く使われています。 従って、 bytes 型にはその形式でデータを読み取るための追加のクラスメソッドがあります。
+
+classmethod fromhex(string)
+この bytes のクラスメソッドは、与えられた文字列オブジェクトをデコードして bytes オブジェクトを返します。それぞれのバイトを 16 進数 2 桁で表現した文字列を指定しなければなりません。ASCII 空白文字は無視されます。
+
+>>>
+>>> bytes.fromhex('2Ef0 F1f2  ')
+b'.\xf0\xf1\xf2'
+バージョン 3.7 で変更: bytes.fromhex() は文字列にある空白だけでなく、 ASCII の空白文字全てをスキップするようになりました。
+
+bytes オブジェクトをその 16 進表記に変換するための、反対向きの変換関数があります。
+
+hex([sep[, bytes_per_sep]])
+インスタンス内の 1 バイトにつき 2 つの 16 進数を含む、文字列オブジェクトを返します。
+
+>>>
+>>> b'\xf0\xf1\xf2'.hex()
+'f0f1f2'
+If you want to make the hex string easier to read, you can specify a single character separator sep parameter to include in the output. By default between each byte. A second optional bytes_per_sep parameter controls the spacing. Positive values calculate the separator position from the right, negative values from the left.
+
+>>>
+>>> value = b'\xf0\xf1\xf2'
+>>> value.hex('-')
+'f0-f1-f2'
+>>> value.hex('_', 2)
+'f0_f1f2'
+>>> b'UUDDLRLRAB'.hex(' ', -4)
+'55554444 4c524c52 4142'
+バージョン 3.5 で追加.
+
+バージョン 3.8 で変更: bytes.hex() now supports optional sep and bytes_per_sep parameters to insert separators between bytes in the hex output.
+
+bytes オブジェクトは (タプルに似た) 整数のシーケンスなので、 bytes オブジェクト b について、 b[0] は整数になり、 b[0:1] は長さ 1 の bytes オブジェクトになります。 (この動作は、文字列に対するインデックス指定もスライスも長さ 1 の文字列を返すのと対照的です。)
+
+bytes オブジェクトの repr 出力はリテラル形式 (b'...') になります。 bytes([46, 46, 46]) などの形式よりも便利な事が多いからです。 bytes オブジェクトはいつでも list(b) で整数のリストに変換できます。
+
+注釈 Python 2.x ユーザーへ: Python 2.x では多くの場面で 8bit 文字列 (2.x が提供しているビルトインのバイナリデータ型) と Unicode 文字列の間の暗黙の変換が許可されていました。これは Python がもともと 8bit 文字列しか持っていなくて、あとから Unicode テキストが追加されたので、後方互換性を維持するためのワークアラウンドでした。 Python 3.x ではこれらの暗黙の変換はなくなりました。 8-bit バイナリデータと Unicode テキストは明確に違うもので、 bytes オブジェクトと文字列オブジェクトを比較すると常に等しくなりません。
+bytearray オブジェクト
+bytearray オブジェクトは bytes オブジェクトの可変なバージョンです。
+
+class bytearray([source[, encoding[, errors]]])
+bytearray に専用のリテラル構文はないので、コンストラクタを使って作成します:
+
+空のインスタンスを作る: bytearray()
+指定された長さの0で埋められたインスタンスを作る: bytearray(10)
+整数の iterable から: bytearray(range(20))
+既存のバイナリデータからバッファプロトコルを通してコピーする: bytearray(b'Hi!')
+bytearray オブジェクトは可変なので、 bytes と bytearray の操作 で解説されている bytes オブジェクトと共通の操作に加えて、 mutable シーケンス操作もサポートしています。
+
+bytearray ビルトイン関数も参照してください。
+
+16 進数で 2 桁の数は正確に 1 バイトに相当するため、16 進整はバイナリデータを表現する形式として広く使われています。 従って、 bytearray 型にはその形式でデータを読み取るための追加のクラスメソッドがあります。
+
+classmethod fromhex(string)
+この bytearray のクラスメソッドは、与えられた文字列オブジェクトをデコードして bytearray オブジェクトを返します。それぞれのバイトを 16 進数 2 桁で表現した文字列を指定しなければなりません。ASCII 空白文字は無視されます。
+
+>>>
+>>> bytearray.fromhex('2Ef0 F1f2  ')
+bytearray(b'.\xf0\xf1\xf2')
+バージョン 3.7 で変更: bytearray.fromhex() は文字列にある空白だけでなく、 ASCII の空白文字全てをスキップするようになりました。
+
+bytearray オブジェクトをその 16 進表記に変換するための、反対向きの変換関数があります。
+
+hex([sep[, bytes_per_sep]])
+インスタンス内の 1 バイトにつき 2 つの 16 進数を含む、文字列オブジェクトを返します。
+
+>>>
+>>> bytearray(b'\xf0\xf1\xf2').hex()
+'f0f1f2'
+バージョン 3.5 で追加.
+
+バージョン 3.8 で変更: Similar to bytes.hex(), bytearray.hex() now supports optional sep and bytes_per_sep parameters to insert separators between bytes in the hex output.
+
+bytearray オブジェクトは整数のシーケンス (リストのようなもの) なので、 bytearray オブジェクト b について、 b[0] は整数になり、 b[0:1] は長さ 1 の bytearray オブジェクトになります。(これは、文字列においてインデックス指定もスライスも長さ 1 の文字列を返すのと対照的です。)
+
+bytearray オブジェクトの表記はバイトのリテラル形式 (bytearray(b'...')) を使用します。これは bytearray([46, 46, 46]) などの形式よりも便利な事が多いためです。 bytearray オブジェクトはいつでも list(b) で整数のリストに変換できます。
+
+bytes と bytearray の操作
+bytes と bytearray は両方共 一般のシーケンス操作 をサポートしています。また、両方とも bytes-like object をサポートしている任意のオブジェクトを対象に操作することもできます。この柔軟性により bytes と bytearray を自由に混ぜてもエラーを起こすことなく扱うことができます。ただし、操作の結果のオブジェクトはその操作の順序に依存することになります。
+
+注釈 文字列のメソッドが引数として bytes を受け付けないのと同様、bytes オブジェクトと bytearray オブジェクトのメソッドは引数として文字列を受け付けません。例えば、以下のように書かなければなりません:
+a = "abc"
+b = a.replace("a", "f")
+および:
+a = b"abc"
+b = a.replace(b"a", b"f")
+いくつかの bytes と bytearray の操作は ASCII と互換性のあるバイナリフォーマットが使われていると仮定していますので、フォーマットの不明なバイナリデータに対して使うことは避けるべきです。こうした制約については以下で説明します。
+
+注釈 これらの ASCII ベースの演算を使って ASCII ベースではないバイナリデータを操作すると、データを破壊する恐れがあります。
+以下の bytes および bytearray オブジェクトのメソッドは、任意のバイナリデータに対して使用できます。
+
+bytes.count(sub[, start[, end]])
+bytearray.count(sub[, start[, end]])
+[start, end] の範囲に、部分シーケンス sub が重複せず出現する回数を返します。オプション引数 start および end はスライス表記と同じように解釈されます。
+
+検索対象の部分シーケンスは、任意の bytes-like object または 0 から 255 の範囲の整数にできます。
+
+バージョン 3.3 で変更: 部分シーケンスとして 0 から 255 の範囲の整数も受け取れるようになりました。
+
+bytes.removeprefix(prefix, /)
+bytearray.removeprefix(prefix, /)
+If the binary data starts with the prefix string, return bytes[len(prefix):]. Otherwise, return a copy of the original binary data:
+
+>>>
+>>> b'TestHook'.removeprefix(b'Test')
+b'Hook'
+>>> b'BaseTestCase'.removeprefix(b'Test')
+b'BaseTestCase'
+The prefix may be any bytes-like object.
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+バージョン 3.9 で追加.
+
+bytes.removesuffix(suffix, /)
+bytearray.removesuffix(suffix, /)
+If the binary data ends with the suffix string and that suffix is not empty, return bytes[:-len(suffix)]. Otherwise, return a copy of the original binary data:
+
+>>>
+>>> b'MiscTests'.removesuffix(b'Tests')
+b'Misc'
+>>> b'TmpDirMixin'.removesuffix(b'Tests')
+b'TmpDirMixin'
+The suffix may be any bytes-like object.
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+バージョン 3.9 で追加.
+
+bytes.decode(encoding="utf-8", errors="strict")
+bytearray.decode(encoding="utf-8", errors="strict")
+与えられたバイト列からデコードされた文字列を返します。デフォルトのエンコーディングは 'utf-8' です。 errors を与えて異なるエラー処理法を設定できます。 errors のデフォルトは 'strict' で、エンコーディングエラーが UnicodeError を送出します。設定できる他の値は、 'ignore' 、 'replace' 、その他の codecs.register_error() を通して登録された名前で、節 エラーハンドラ を参照してください。可能なエンコーディングのリストは、 標準エンコーディング を参照してください。
+
+By default, the errors argument is not checked for best performances, but only used at the first decoding error. Enable the Python Development Mode, or use a debug build to check errors.
+
+注釈 引数 encoding を str に渡すと bytes-like object を直接デコードすることができます。つまり、一時的な bytes や bytearray オブジェクトを作成する必要はありません。
+バージョン 3.1 で変更: キーワード引数のサポートが追加されました。
+
+バージョン 3.9 で変更: The errors is now checked in development mode and in debug mode.
+
+bytes.endswith(suffix[, start[, end]])
+bytearray.endswith(suffix[, start[, end]])
+バイナリデータが指定された suffix で終わる場合は True を、そうでなければ False を返します。 suffix は見つけたい複数の接尾語のタプルでも構いません。オプションの start が指定されている場合、その位置から判定を開始します。オプションの end が指定されている場合、その位置で比較を終了します。
+
+検索対象の接尾語 (複数も可) は、任意の bytes-like object にできます。
+
+bytes.find(sub[, start[, end]])
+bytearray.find(sub[, start[, end]])
+スライス s[start:end] に部分シーケンス sub が含まれる場合、データ中のその sub の最小のインデックスを返します。オプション引数 start および end はスライス表記と同様に解釈されます。 sub が見つからなかった場合、 -1 を返します。
+
+検索対象の部分シーケンスは、任意の bytes-like object または 0 から 255 の範囲の整数にできます。
+
+注釈 find() メソッドは、 sub の位置を知りたいときにのみ使うべきです。 sub が部分文字列 (訳注: おそらく原文の誤り、正しくは部分シーケンス) であるかどうかのみを調べるには、 in 演算子を使ってください:
+>>>
+>>> b'Py' in b'Python'
+True
+バージョン 3.3 で変更: 部分シーケンスとして 0 から 255 の範囲の整数も受け取れるようになりました。
+
+bytes.index(sub[, start[, end]])
+bytearray.index(sub[, start[, end]])
+find() と同様ですが、部分シーケンスが見つからなかった場合 ValueError を送出します。
+
+検索対象の部分シーケンスは、任意の bytes-like object または 0 から 255 の範囲の整数にできます。
+
+バージョン 3.3 で変更: 部分シーケンスとして 0 から 255 の範囲の整数も受け取れるようになりました。
+
+bytes.join(iterable)
+bytearray.join(iterable)
+iterable 中のバイナリデータを結合した bytes または bytearray オブジェクトを返します。 iterable に str オブジェクトなど bytes-like objects ではない値が含まれている場合、 TypeError が送出されます。なお要素間のセパレータは、このメソッドを提供する bytes または bytearray オブジェクトとなります。
+
+static bytes.maketrans(from, to)
+static bytearray.maketrans(from, to)
+この静的メソッドは、 bytes.translate() に渡すのに適した変換テーブルを返します。このテーブルは、 from 中の各バイトを to の同じ位置にあるバイトにマッピングします。 from と to は両方とも同じ長さの bytes-like objects でなければなりません。
+
+バージョン 3.1 で追加.
+
+bytes.partition(sep)
+bytearray.partition(sep)
+区切り sep が最初に出現する位置でシーケンスを分割し、 3 要素のタプルを返します。タプルの内容は、区切りの前の部分、その区切りオブジェクトまたはその bytearray 型のコピー、そして区切りの後ろの部分です。もし区切れなければ、タプルには元のシーケンスのコピーと、その後ろに二つの空の bytes または bytearray オブジェクトが入ります。
+
+検索する区切りとしては、任意の bytes-like object を指定できます。
+
+bytes.replace(old, new[, count])
+bytearray.replace(old, new[, count])
+部分シーケンス old を全て new に置換したシーケンスを返します。オプション引数 count が与えられている場合、先頭から count 個の old だけを置換します。
+
+検索する部分シーケンスおよび置換後の部分シーケンスとしては、任意の bytes-like object を指定できます。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.rfind(sub[, start[, end]])
+bytearray.rfind(sub[, start[, end]])
+シーケンス中の領域 s[start:end] に sub が含まれる場合、その最大のインデックスを返します。オプション引数 start および end はスライス表記と同様に解釈されます。 sub が見つからなかった場合 -1 を返します。
+
+検索対象の部分シーケンスは、任意の bytes-like object または 0 から 255 の範囲の整数にできます。
+
+バージョン 3.3 で変更: 部分シーケンスとして 0 から 255 の範囲の整数も受け取れるようになりました。
+
+bytes.rindex(sub[, start[, end]])
+bytearray.rindex(sub[, start[, end]])
+rfind() と同様ですが、部分シーケンス sub が見つからなかった場合 ValueError を送出します。
+
+検索対象の部分シーケンスは、任意の bytes-like object または 0 から 255 の範囲の整数にできます。
+
+バージョン 3.3 で変更: 部分シーケンスとして 0 から 255 の範囲の整数も受け取れるようになりました。
+
+bytes.rpartition(sep)
+bytearray.rpartition(sep)
+Split the sequence at the last occurrence of sep, and return a 3-tuple containing the part before the separator, the separator itself or its bytearray copy, and the part after the separator. If the separator is not found, return a 3-tuple containing two empty bytes or bytearray objects, followed by a copy of the original sequence.
+
+検索する区切りとしては、任意の bytes-like object を指定できます。
+
+bytes.startswith(prefix[, start[, end]])
+bytearray.startswith(prefix[, start[, end]])
+バイナリデータが指定された prefix で始まる場合は True を、そうでなければ False を返します。 prefix は見つけたい複数の接頭語のタプルでも構いません。オプションの start が指定されている場合、その位置から判定を開始します。オプションの end が指定されている場合、その位置で比較を終了します。
+
+検索対象の接頭語 (複数も可) は、任意の bytes-like object にできます。
+
+bytes.translate(table, /, delete=b'')
+bytearray.translate(table, /, delete=b'')
+オプション引数 delete に現れるすべてのバイトを除去し、残ったバイトを与えられた変換テーブルに従ってマップした、バイト列やバイト配列オブジェクトのコピーを返します。変換テーブルは長さ 256 のバイト列オブジェクトでなければなりません。
+
+変換テーブルの作成に、 bytes.maketrans() メソッドを使うこともできます。
+
+文字を削除するだけの変換には、 table 引数を None に設定してください:
+
+>>>
+>>> b'read this short text'.translate(None, b'aeiou')
+b'rd ths shrt txt'
+バージョン 3.6 で変更: delete はキーワード引数として指定可能になりました。
+
+以下の bytes および bytearray オブジェクトのメソッドは、 ASCII と互換性のあるバイナリフォーマットが使われていると仮定していますが、適切な引数を指定すれば任意のバイナリデータに使用できます。なお、このセクションで紹介する bytearray のメソッドはすべてインプレースで動作 せず 、新しいオブジェクトを生成します。
+
+bytes.center(width[, fillbyte])
+bytearray.center(width[, fillbyte])
+長さ width の中央寄せされたシーケンスのコピーを返します。パディングには fillbyte で指定された値 (デフォルトでは ASCII スペース) が使われます。 bytes オブジェクトの場合、 width が len(s) 以下なら元のシーケンスが返されます。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.ljust(width[, fillbyte])
+bytearray.ljust(width[, fillbyte])
+長さ width の左寄せされたシーケンスのコピーを返します。パディングには fillbyte で指定された値 (デフォルトでは ASCII スペース) が使われます。 bytes オブジェクトの場合、 width が len(s) 以下なら元のシーケンスが返されます。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.lstrip([chars])
+bytearray.lstrip([chars])
+先頭から特定のバイト値を除去したコピーを返します。引数 chars は除去されるバイト値の集合を指定するバイナリシーケンスです － この名前は、このメソッドが通常は ASCII 文字列に対して使われることに由来しています。 chars が省略されるか None の場合、 ASCII の空白文字（訳注: 半角スペース）が除去されます。なお chars 引数と一致する接頭辞が除去されるのではなく、それに含まれるバイトの組み合わせ全てが除去されます:
+
+>>>
+>>> b'   spacious   '.lstrip()
+b'spacious   '
+>>> b'www.example.com'.lstrip(b'cmowz.')
+b'example.com'
+The binary sequence of byte values to remove may be any bytes-like object. See removeprefix() for a method that will remove a single prefix string rather than all of a set of characters. For example:
+
+>>>
+>>> b'Arthur: three!'.lstrip(b'Arthur: ')
+b'ee!'
+>>> b'Arthur: three!'.removeprefix(b'Arthur: ')
+b'three!'
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.rjust(width[, fillbyte])
+bytearray.rjust(width[, fillbyte])
+長さ width の右寄せされたシーケンスのコピーを返します。パディングには fillbyte で指定された値 (デフォルトでは ASCII スペース) が使われます。 bytes オブジェクトの場合、 width が len(s) 以下なら元のシーケンスが返されます。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.rsplit(sep=None, maxsplit=-1)
+bytearray.rsplit(sep=None, maxsplit=-1)
+sep を区切りとして、同じ型の部分シーケンスに分割します。 maxsplit が与えられた場合、シーケンスの 右端 から最大 maxsplit 回だけ分割を行います。 sep が指定されていないか None のとき、 ASCII 空白文字の組み合わせで作られる部分シーケンスすべてが区切りとなります。右から分割していくことを除けば、 rsplit() は後ほど詳しく述べる split() と同様に振る舞います。
+
+bytes.rstrip([chars])
+bytearray.rstrip([chars])
+末尾から特定のバイト値を除去したコピーを返します。引数 chars は除去されるバイト値の集合を指定するバイナリシーケンスです － この名前は、このメソッドが通常は ASCII 文字列に対して使われることに由来しています。 chars が省略されるか None の場合、 ASCII の空白文字（訳注: 半角スペース）が除去されます。なお chars 引数と一致する接尾辞が除去されるのではなく、それに含まれるバイトの組み合わせ全てが除去されます:
+
+>>>
+>>> b'   spacious   '.rstrip()
+b'   spacious'
+>>> b'mississippi'.rstrip(b'ipz')
+b'mississ'
+The binary sequence of byte values to remove may be any bytes-like object. See removesuffix() for a method that will remove a single suffix string rather than all of a set of characters. For example:
+
+>>>
+>>> b'Monty Python'.rstrip(b' Python')
+b'M'
+>>> b'Monty Python'.removesuffix(b' Python')
+b'Monty'
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.split(sep=None, maxsplit=-1)
+bytearray.split(sep=None, maxsplit=-1)
+sep を区切りとして、同じ型の部分シーケンスに分割します。 maxsplit が与えられ、かつ負の数でない場合、シーケンスの 左端 から最大 maxsplit 回だけ分割を行います (したがって結果のリストの要素数は最大で maxsplit+1 になります)。 maxsplit が指定されていないか -1 のとき、分割の回数に制限はありません (可能なだけ分割されます)。
+
+sep が与えられた場合、連続した区切り用バイト値はまとめられず、空の部分シーケンスを区切っていると判断されます(例えば b'1,,2'.split(b',') は [b'1', b'', b'2'] を返します)。引数 sep は複数バイトのシーケンスにもできます (例えば b'1<>2<>3'.split(b'<>') は [b'1', b'2', b'3'] を返します)。空のシーケンスを分割すると、分割するオブジェクトの型によって [b''] または [bytearray(b'')] が返ります。引数 sep には、あらゆる bytes-like object を指定できます。
+
+例えば:
+
+>>>
+>>> b'1,2,3'.split(b',')
+[b'1', b'2', b'3']
+>>> b'1,2,3'.split(b',', maxsplit=1)
+[b'1', b'2,3']
+>>> b'1,2,,3,'.split(b',')
+[b'1', b'2', b'', b'3', b'']
+sep が指定されていないか None の場合、異なる分割アルゴリズムが適用されます。連続する ASCII 空白文字はひとつの区切りとみなされ、またシーケンスの先頭や末尾に空白があっても、結果の最初や最後に空のシーケンスは含まれません。したがって区切りを指定せずに空のシーケンスや ASCII 空白文字だけのシーケンスを分割すると、 [] が返されます。
+
+例えば:
+
+>>>
+>>> b'1 2 3'.split()
+[b'1', b'2', b'3']
+>>> b'1 2 3'.split(maxsplit=1)
+[b'1', b'2 3']
+>>> b'   1   2   3   '.split()
+[b'1', b'2', b'3']
+bytes.strip([chars])
+bytearray.strip([chars])
+先頭および末尾から特定のバイト値を除去したコピーを返します。引数 chars は除去されるバイト値の集合を指定するバイナリシーケンスです － この名前は、このメソッドが通常は ASCII 文字列に対して使われることに由来しています。 chars が省略されるか None の場合、 ASCII の空白文字（訳注: 半角スペース）が除去されます。なお chars 引数と一致する接頭辞および接尾辞が除去されるのではなく、それに含まれるバイトの組み合わせ全てが除去されます:
+
+>>>
+>>> b'   spacious   '.strip()
+b'spacious'
+>>> b'www.example.com'.strip(b'cmowz.')
+b'example'
+除去対象のバイト値を含むバイナリシーケンスには、任意の bytes-like object を指定できます。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+以下の bytes および bytearray オブジェクトのメソッドは、 ASCII と互換性のあるバイナリフォーマットが使われていると仮定しており、任意のバイナリデータに対して使用すべきではありません。なお、このセクションで紹介する bytearray のメソッドはすべてインプレースで動作 せず 、新しいオブジェクトを生成します。
+
+bytes.capitalize()
+bytearray.capitalize()
+各バイトを ASCII 文字と解釈して、最初のバイトを大文字にし、残りを小文字にしたシーケンスのコピーを返します。 ASCII 文字と解釈できないバイト値は、変更されません。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.expandtabs(tabsize=8)
+bytearray.expandtabs(tabsize=8)
+桁 (column) 位置と指定されたタブ幅 (tab size) に応じて、全ての ASCII タブ文字を 1 つ以上の ASCII スペース文字に置換したシーケンスのコピーを返します。ここで tabsize バイトごとの桁位置をタブ位置とします (デフォルト値である 8 の場合、タブ位置は 0 桁目、 8 桁目、 16 桁目、と続いていきます)。シーケンスを展開するにあたって、まず現桁位置をゼロに設定し、シーケンスを 1 バイトずつ調べていきます。もしバイト値が ASCII タブ文字 (b'\t') であれば、現桁位置が次のタブ位置と一致するまで 1 つ以上の ASCII スペース文字を結果のシーケンスに挿入していきます（ASCII タブ文字自体はコピーしません）。もしバイト値が ASCII 改行文字 (b'\n' もしくは b'\r') であれば、そのままコピーした上で現桁位置を 0 にリセットします。その他のバイト値については変更せずにコピーし、そのバイト値の表示のされ方（訳注: 全角、半角など）に関わらず現桁位置を 1 つ増加させます:
+
+>>>
+>>> b'01\t012\t0123\t01234'.expandtabs()
+b'01      012     0123    01234'
+>>> b'01\t012\t0123\t01234'.expandtabs(4)
+b'01  012 0123    01234'
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.isalnum()
+bytearray.isalnum()
+シーケンスが空でなく、かつ全てのバイト値が ASCII 文字のアルファベットまたは数字である場合は True を、そうでなければ False を返します。ここでの ASCII 文字のアルファベットとはシーケンス b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。 ASCII 文字の数字とは b'0123456789' に含まれるバイト値です。
+
+例えば:
+
+>>>
+>>> b'ABCabc1'.isalnum()
+True
+>>> b'ABC abc1'.isalnum()
+False
+bytes.isalpha()
+bytearray.isalpha()
+シーケンスが空でなく、かつ全てのバイト値が ASCII 文字のアルファベットである場合は True を、そうでなければ False を返します。ここでの ASCII 文字のアルファベットとはシーケンス b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。
+
+例えば:
+
+>>>
+>>> b'ABCabc'.isalpha()
+True
+>>> b'ABCabc1'.isalpha()
+False
+bytes.isascii()
+bytearray.isascii()
+シーケンスが空であるか、シーケンスの全てのバイトが ASCII である場合に True を、それ以外の場合に False を返します。 ASCII バイトは 0-0x7F の範囲にあります。
+
+バージョン 3.7 で追加.
+
+bytes.isdigit()
+bytearray.isdigit()
+シーケンスが空でなく、かつ全てのバイト値が ASCII 文字の数字である場合は True を、そうでなければ False を返します。ここでの ASCII 文字の数字とは b'0123456789' に含まれるバイト値です。
+
+例えば:
+
+>>>
+>>> b'1234'.isdigit()
+True
+>>> b'1.23'.isdigit()
+False
+bytes.islower()
+bytearray.islower()
+シーケンス中に小文字アルファベットの ASCII 文字が一つ以上あり、かつ大文字アルファベットの ASCII 文字が一つも無い場合に True を返します。そうでなければ False を返します。
+
+例えば:
+
+>>>
+>>> b'hello world'.islower()
+True
+>>> b'Hello world'.islower()
+False
+ここでの小文字の ASCII 文字とは b'abcdefghijklmnopqrstuvwxyz' に含まれるバイト値です。また大文字の ASCII 文字とは b'ABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。
+
+bytes.isspace()
+bytearray.isspace()
+シーケンスが空でなく、かつ全てのバイト値が ASCII 空白文字である場合は True を、そうでなければ False を返します。ここでの ASCII 空白文字とはシーケンス b' \t\n\r\x0b\f' に含まれるバイト値です (半角スペース、タブ、ラインフィード、キャリッジリターン、垂直タブ、フォームフィード) 。
+
+bytes.istitle()
+bytearray.istitle()
+シーケンスが空でなく、かつ ASCII のタイトルケース文字列になっている場合は True を、そうでなければ False を返します。「タイトルケース文字列」の定義については bytes.title() を参照してください。
+
+例えば:
+
+>>>
+>>> b'Hello World'.istitle()
+True
+>>> b'Hello world'.istitle()
+False
+bytes.isupper()
+bytearray.isupper()
+シーケンス中に大文字アルファベットの ASCII 文字が一つ以上あり、かつ小文字アルファベットの ASCII 文字が一つも無い場合に True を返します。そうでなければ False を返します。
+
+例えば:
+
+>>>
+>>> b'HELLO WORLD'.isupper()
+True
+>>> b'Hello world'.isupper()
+False
+ここでの小文字の ASCII 文字とは b'abcdefghijklmnopqrstuvwxyz' に含まれるバイト値です。また大文字の ASCII 文字とは b'ABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。
+
+bytes.lower()
+bytearray.lower()
+シーケンスに含まれる大文字アルファベットの ASCII 文字を全て小文字アルファベットに変換したシーケンスのコピーを返します。
+
+例えば:
+
+>>>
+>>> b'Hello World'.lower()
+b'hello world'
+ここでの小文字の ASCII 文字とは b'abcdefghijklmnopqrstuvwxyz' に含まれるバイト値です。また大文字の ASCII 文字とは b'ABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.splitlines(keepends=False)
+bytearray.splitlines(keepends=False)
+バイナリシーケンスを ASCII の改行コードで分割し、各行をリストにして返します。このメソッドは universal newlines アプローチで行を分割します。 keepends 引数に真を与えた場合を除き、改行コードは結果のリストに含まれません。
+
+例えば:
+
+>>>
+>>> b'ab c\n\nde fg\rkl\r\n'.splitlines()
+[b'ab c', b'', b'de fg', b'kl']
+>>> b'ab c\n\nde fg\rkl\r\n'.splitlines(keepends=True)
+[b'ab c\n', b'\n', b'de fg\r', b'kl\r\n']
+split() とは違って、空シーケンスに対して区切り sep を与えて呼び出すと空のリストを返します。またシーケンス末尾に改行コードがある場合、（訳註: その後ろに空行があるとは判断せず）余分な行を生成することはありません:
+
+>>>
+>>> b"".split(b'\n'), b"Two lines\n".split(b'\n')
+([b''], [b'Two lines', b''])
+>>> b"".splitlines(), b"One line\n".splitlines()
+([], [b'One line'])
+bytes.swapcase()
+bytearray.swapcase()
+シーケンスに含まれる小文字アルファベットの ASCII 文字を全て大文字アルファベットに変換し、さらに大文字アルファベットを同様に小文字アルファベットに変換したシーケンスのコピーを返します。
+
+例えば:
+
+>>>
+>>> b'Hello World'.swapcase()
+b'hELLO wORLD'
+ここでの小文字の ASCII 文字とは b'abcdefghijklmnopqrstuvwxyz' に含まれるバイト値です。また大文字の ASCII 文字とは b'ABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。
+
+str.swapcase() とは違い、バイナリバージョンのこちらでは bin.swapcase().swapcase() == bin が常に成り立ちます。一般的に Unicode 文字の大文字小文字変換は対称的ではありませんが、 ASCII 文字の場合は対称的です。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.title()
+bytearray.title()
+タイトルケース化したバイナリシーケンスを返します。具体的には、各単語が大文字アルファベットの ASCII 文字で始まり、かつ残りの文字が小文字アルファベットになっているシーケンスが返ります。大文字小文字の区別が無いバイト値については変更されずそのままになります。
+
+例えば:
+
+>>>
+>>> b'Hello world'.title()
+b'Hello World'
+ここでの小文字の ASCII 文字とは b'abcdefghijklmnopqrstuvwxyz' に含まれるバイト値です。また大文字の ASCII 文字とは b'ABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。その他のバイト値については、大文字小文字の区別はありません。
+
+このアルゴリズムは、連続した文字の集まりという、言語から独立した単純な単語の定義を使います。この定義は多くの状況ではうまく機能しますが、短縮形や所有格のアポストロフィが単語の境界になってしまい、望みの結果を得られない場合があります:
+
+>>>
+>>> b"they're bill's friends from the UK".title()
+b"They'Re Bill'S Friends From The Uk"
+正規表現を使うことでアポストロフィに対応できます:
+
+>>>
+>>> import re
+>>> def titlecase(s):
+...     return re.sub(rb"[A-Za-z]+('[A-Za-z]+)?",
+...                   lambda mo: mo.group(0)[0:1].upper() +
+...                              mo.group(0)[1:].lower(),
+...                   s)
+...
+>>> titlecase(b"they're bill's friends.")
+b"They're Bill's Friends."
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.upper()
+bytearray.upper()
+シーケンスに含まれる小文字アルファベットの ASCII 文字を全て大文字アルファベットに変換したシーケンスのコピーを返します。
+
+例えば:
+
+>>>
+>>> b'Hello World'.upper()
+b'HELLO WORLD'
+ここでの小文字の ASCII 文字とは b'abcdefghijklmnopqrstuvwxyz' に含まれるバイト値です。また大文字の ASCII 文字とは b'ABCDEFGHIJKLMNOPQRSTUVWXYZ' に含まれるバイト値です。
+
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+bytes.zfill(width)
+bytearray.zfill(width)
+長さが width になるよう ASCII b'0' で左詰めしたシーケンスのコピーを返します。先頭が符号接頭辞 (b'+'/b'-') だった場合、 b'0' は符号の前ではなく 後 に挿入されます。 bytes オブジェクトの場合、 width が len(seq) 以下であれば元のシーケンスが返ります。
+
+例えば:
+
+>>>
+>>> b"42".zfill(5)
+b'00042'
+>>> b"-42".zfill(5)
+b'-0042'
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+printf 形式での bytes の書式化
+注釈 ここで述べる書式化演算には様々な癖があり、よく間違いの元になっています (タプルや辞書を正しく表示できないなど)。もし表示する値がタプルや辞書かもしれない場合、それをタプルに包むようにしてください。
+bytes オブジェクト (bytes/bytearray) には固有の操作: % 演算子 (モジュロ) があります。この演算子は bytes の 書式化 または 補間 演算子とも呼ばれます。format % values (format は bytes オブジェクト) とすると、format 中の % 変換指定は values 中のゼロ個またはそれ以上の要素で置換されます。この動作は C 言語における sprintf() に似ています。
+
+format が単一の引数しか要求しない場合、 values はタプルではない単一のオブジェクトで問題ありません。 5 それ以外の場合、 values は書式シーケンス（訳註: 先の例での format ）中で指定された項目と正確に同じ数の要素を含むタプルか、単一のマッピング型のオブジェクト (たとえば辞書) でなければなりません。
+
+一つの変換指定子は 2 またはそれ以上の文字を含み、その構成要素は以下からなりますが、示した順に出現しなければなりません:
+
+指定子の開始を示す文字 '%' 。
+マップキー (オプション)。丸括弧で囲った文字列からなります (例えば (somename)) 。
+変換フラグ (オプション)。一部の変換型の結果に影響します。
+最小のフィールド幅 (オプション)。 '*' (アスタリスク) を指定した場合、実際の文字列幅が values タプルの次の要素から読み出されます。タプルには最小フィールド幅やオプションの精度指定の後に変換したいオブジェクトがくるようにします。
+精度 (オプション)。 '.' (ドット) とその後に続く精度で与えられます。 '*' (アスタリスク) を指定した場合、精度の桁数は values タプルの次の要素から読み出されます。タプルには精度指定の後に変換したい値がくるようにします。
+精度長変換子 (オプション)。
+変換型。
+% 演算子の右側の引数が辞書の場合 (またはその他のマッピング型の場合) 、 bytes オブジェクト中のフォーマットには、辞書のキーを丸括弧で囲って文字 '%' の直後に書いたものが含まれていなければ なりません 。マップキーは書式化したい値をマッピングから選び出します。例えば:
+
+>>>
+>>> print(b'%(language)s has %(number)03d quote types.' %
+...       {b'language': b"Python", b"number": 2})
+b'Python has 002 quote types.'
+この場合、 * 指定子をフォーマットに含めてはいけません (* 指定子は順番付けされたパラメタのリストが必要だからです)。
+
+変換フラグ文字を以下に示します:
+
+Flag
+意味
+'#'
+値の変換に (下で定義されている) "別の形式" を使います。
+'0'
+数値型に対してゼロによるパディングを行います。
+'-'
+変換された値を左寄せにします ('0' と同時に与えた場合、 '0' を上書きします) 。
+' '
+(スペース) 符号付きの変換で正の数の場合、前に一つスペースを空けます (そうでない場合は空文字になります) 。
+'+'
+変換の先頭に符号文字 ('+' または '-') を付けます("スペース" フラグを上書きします) 。
+精度長変換子(h, l,または L) を使うことができますが、 Python では必要ないため無視されます。 -- つまり、例えば %ld は %d と等価です。
+
+変換型を以下に示します:
+
+変換
+意味
+注釈
+'d'
+符号付き 10 進整数。
+'i'
+符号付き 10 進整数。
+'o'
+符号付き 8 進数。
+(1)
+'u'
+旧式の型 -- 'd' と同じです。
+(8)
+'x'
+符号付き 16 進数 (小文字)。
+(2)
+'X'
+符号付き 16 進数 (大文字)。
+(2)
+'e'
+指数表記の浮動小数点数 (小文字)。
+(3)
+'E'
+指数表記の浮動小数点数 (大文字)。
+(3)
+'f'
+10 進浮動小数点数。
+(3)
+'F'
+10 進浮動小数点数。
+(3)
+'g'
+浮動小数点数。指数部が -4 以上または精度以下の場合には小文字指数表記、それ以外の場合には10進表記。
+(4)
+'G'
+浮動小数点数。指数部が -4 以上または精度以下の場合には大文字指数表記、それ以外の場合には10進表記。
+(4)
+'c'
+1 バイト (整数または要素 1 つの bytes/bytearray オブジェクトを受理します)
+'b'
+バイナリシーケンス (buffer protocol をサポートするか、 __bytes__() メソッドがあるオブジェクト)
+(5)
+'s'
+'s' は 'b' の別名です。Python 2/3 の両方を対象としたコードでのみ使用すべきです。
+(6)
+'a'
+バイナリシーケンス (Python オブジェクトを repr(obj).encode('ascii','backslashreplace) で変換します)。
+(5)
+'r'
+'r' は 'a' の別名です。Python 2/3 の両方を対象としたコードでのみ使用すべきです。
+(7)
+'%'
+引数を変換せず、返される文字列中では文字 '%' になります。
+注釈:
+
+別の形式を指定（訳注: 変換フラグ # を使用）すると 8 進数を表す接頭辞 ('0o') が最初の数字の前に挿入されます。
+別の形式を指定（訳注: 変換フラグ # を使用）すると 16 進数を表す接頭辞 '0x' または '0X' (使用するフォーマット文字が 'x' か 'X' に依存します) が最初の数字の前に挿入されます。
+この形式にした場合、変換結果には常に小数点が含まれ、それはその後ろに数字が続かない場合にも適用されます。
+
+指定精度は小数点の後の桁数を決定し、そのデフォルトは 6 です。
+この形式にした場合、変換結果には常に小数点が含まれ他の形式とは違って末尾の 0 は取り除かれません。
+
+指定精度は小数点の前後の有効桁数を決定し、そのデフォルトは 6 です。
+精度が N なら、出力は N 文字に切り詰められます。
+b'%s' は非推奨ですが、3.x 系では削除されません。
+b'%r' は非推奨ですが、3.x 系では削除されません。
+PEP 237 を参照してください。
+注釈 bytearray のこのメソッドはインプレースでは動作 しません -- 一切変化が無い場合でも、常に新しいオブジェクトを生成します。
+参考 PEP 461 - bytes と bytearray への % 書式化の追加
+バージョン 3.5 で追加.
+
+メモリビュー
+memoryview オブジェクトは、Python コードが バッファプロトコル をサポートするオブジェクトの内部データへ、コピーすることなくアクセスすることを可能にします。
+
+class memoryview(obj)
+obj を参照する memoryview を作成します。 obj はバッファプロトコルをサポートしていなければなりません。バッファプロトコルをサポートする組み込みオブジェクトには、 bytes 、 bytearray などがあります。
+
+memoryview は元となるオブジェクト obj が扱うメモリーの最小単位を 要素 として扱います。多くの単純なオブジェクト、例えば bytes や bytearray では、要素は単バイトになりますが、他の array.array 等の型では、要素はより大きくなりえます。
+
+メモリビューの長さ len(view) は、 tolist で得られるリストの長さとなります。view.ndim = 0 なら、長さは 1 です。view.ndim = 1 なら、長さはビューの要素数と等しいです。より高次元では、長さはビューのネストされたリスト表現の長さと等しいです。要素一つあたりのバイト数は itemsize 属性から取得できます。
+
+memoryview はスライスおよびインデックス指定で内容を取得できます。一次元のスライスは部分ビューになります:
+
+>>>
+>>> v = memoryview(b'abcefg')
+>>> v[1]
+98
+>>> v[-1]
+103
+>>> v[1:4]
+<memory at 0x7f3ddc9f4350>
+>>> bytes(v[1:4])
+b'bce'
+もしメモリビューの format が struct モジュールによって定義されているネイティブのフォーマット指定子であれば、整数または整数のタプルでのインデックス指定により適切な型の 要素1つ を得ることができます。一次元のメモリビューでは、整数または整数 1 つのタプルでインデックス指定できます。多次元のメモリビューでは、その次元数を ndim としたとき、ちょうど ndim 個の整数からなるタプルでインデックス指定できます。ゼロ次元のメモリビューでは、空のタプルでインデックス指定できます。
+
+format が単バイト単位ではない例を示します:
+
+>>>
+>>> import array
+>>> a = array.array('l', [-11111111, 22222222, -33333333, 44444444])
+>>> m = memoryview(a)
+>>> m[0]
+-11111111
+>>> m[-1]
+44444444
+>>> m[::2].tolist()
+[-11111111, -33333333]
+メモリビューの参照しているオブジェクトが書き込み可能であれば、一次元スライスでの代入が可能です。ただしサイズの変更はできません:
+
+>>>
+>>> data = bytearray(b'abcefg')
+>>> v = memoryview(data)
+>>> v.readonly
+False
+>>> v[0] = ord(b'z')
+>>> data
+bytearray(b'zbcefg')
+>>> v[1:4] = b'123'
+>>> data
+bytearray(b'z123fg')
+>>> v[2:3] = b'spam'
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: memoryview assignment: lvalue and rvalue have different structures
+>>> v[2:6] = b'spam'
+>>> data
+bytearray(b'z1spam')
+'B', 'b', 'c' いずれかのフォーマットのハッシュ可能な (読み出し専用の) 型の1次元メモリビューもまた、ハッシュ可能です。ハッシュは hash(m) == hash(m.tobytes()) として定義されています:
+
+>>>
+>>> v = memoryview(b'abcefg')
+>>> hash(v) == hash(b'abcefg')
+True
+>>> hash(v[2:4]) == hash(b'ce')
+True
+>>> hash(v[::-2]) == hash(b'abcefg'[::-2])
+True
+バージョン 3.3 で変更: 1 次元のメモリビューがスライス可能になりました。 'B', 'b', 'c' いずれかのフォーマットの 1 次元のメモリビューがハッシュ可能になりました。
+
+バージョン 3.4 で変更: memoryview は自動的に collections.abc.Sequence へ登録されるようになりました。
+
+バージョン 3.5 で変更: メモリビューは整数のタプルでインデックス指定できるようになりました。
+
+memoryview にはいくつかのメソッドがあります:
+
+__eq__(exporter)
+memoryview と PEP 3118 エクスポーターは、 shape が同じで、 struct のフォーマットで解釈したときの値が同じ場合に同値になります。
+
+tolist() がサポートしている struct フォーマットの一部では、 v.tolist() == w.tolist() が成り立つときに v == w になります:
+
+>>>
+>>> import array
+>>> a = array.array('I', [1, 2, 3, 4, 5])
+>>> b = array.array('d', [1.0, 2.0, 3.0, 4.0, 5.0])
+>>> c = array.array('b', [5, 3, 1])
+>>> x = memoryview(a)
+>>> y = memoryview(b)
+>>> x == a == y == b
+True
+>>> x.tolist() == a.tolist() == y.tolist() == b.tolist()
+True
+>>> z = y[::-2]
+>>> z == c
+True
+>>> z.tolist() == c.tolist()
+True
+どちらかの書式文字列が struct モジュールにサポートされていなければ、 (書式文字列とバッファの内容が同一でも) オブジェクトは常に等しくないものとして比較されます:
+
+>>>
+>>> from ctypes import BigEndianStructure, c_long
+>>> class BEPoint(BigEndianStructure):
+...     _fields_ = [("x", c_long), ("y", c_long)]
+...
+>>> point = BEPoint(100, 200)
+>>> a = memoryview(point)
+>>> b = memoryview(point)
+>>> a == point
+False
+>>> a == b
+False
+浮動小数点数の場合と同様 memoryview オブジェクトに対する v is w は v == w を意味しないことに注意してください。
+
+バージョン 3.3 で変更: 以前のバージョンは、要素フォーマットと論理的な配列構造を無視して生のメモリを比較していました。
+
+tobytes(order=None)
+バッファ中のデータをバイト文字列として返します。これはメモリビューに対して bytes コンストラクタを呼び出すのと同等です。
+
+>>>
+>>> m = memoryview(b"abc")
+>>> m.tobytes()
+b'abc'
+>>> bytes(m)
+b'abc'
+連続でない配列については、結果はすべての要素がバイトに変換されたものを含むフラットなリスト表現に等しくなります。 tobytes() は、 struct モジュール文法にないものを含むすべての書式文字列をサポートします。
+
+バージョン 3.8 で追加: order can be {'C', 'F', 'A'}. When order is 'C' or 'F', the data of the original array is converted to C or Fortran order. For contiguous views, 'A' returns an exact copy of the physical memory. In particular, in-memory Fortran order is preserved. For non-contiguous views, the data is converted to C first. order=None is the same as order='C'.
+
+hex([sep[, bytes_per_sep]])
+バッファ中の各バイトを 2 つの 16 進数で表した文字列を返します:
+
+>>>
+>>> m = memoryview(b"abc")
+>>> m.hex()
+'616263'
+バージョン 3.5 で追加.
+
+バージョン 3.8 で変更: Similar to bytes.hex(), memoryview.hex() now supports optional sep and bytes_per_sep parameters to insert separators between bytes in the hex output.
+
+tolist()
+バッファ中のデータを要素のリストとして返します。
+
+>>>
+>>> memoryview(b'abc').tolist()
+[97, 98, 99]
+>>> import array
+>>> a = array.array('d', [1.1, 2.2, 3.3])
+>>> m = memoryview(a)
+>>> m.tolist()
+[1.1, 2.2, 3.3]
+バージョン 3.3 で変更: tolist() が struct モジュール文法に含まれるすべての単一文字の native フォーマットと多次元の表現をサポートするようになりました。
+
+toreadonly()
+Return a readonly version of the memoryview object. The original memoryview object is unchanged.
+
+>>>
+>>> m = memoryview(bytearray(b'abc'))
+>>> mm = m.toreadonly()
+>>> mm.tolist()
+[89, 98, 99]
+>>> mm[0] = 42
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: cannot modify read-only memory
+>>> m[0] = 43
+>>> mm.tolist()
+[43, 98, 99]
+バージョン 3.8 で追加.
+
+release()
+memoryview オブジェクトによって晒されている、元になるバッファを解放します。多くのオブジェクトはビューに支配されているときに特殊なふるまいをします (例えば、 bytearray は大きさの変更を一時的に禁止します)。ですから、release() を呼び出すことは、これらの制約をできるだけ早く取り除く (そしてぶら下がったリソースをすべて解放する) のに便利です。
+
+このメソッドが呼ばれた後、このビュー上のそれ以上の演算は ValueError を送出します (複数回呼ばれえる release() 自身は除きます):
+
+>>>
+>>> m = memoryview(b'abc')
+>>> m.release()
+>>> m[0]
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: operation forbidden on released memoryview object
+コンテキストマネージャプロトコルは、 with 文を使って同様の効果を得るのに使えます:
+
+>>>
+>>> with memoryview(b'abc') as m:
+...     m[0]
+...
+97
+>>> m[0]
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: operation forbidden on released memoryview object
+バージョン 3.2 で追加.
+
+cast(format[, shape])
+memoryview を新しいフォーマットか shape にキャストします。 shape はデフォルトで [byte_length//new_itemsize] で、 1次元配列になります。戻り値は memoryview ですが、バッファー自体はコピーされません。サポートされている変換は 1次元配列 -> C言語型の連続配列 と C言語型の連続配列 -> 1次元配列 です（参考: contiguous）。
+
+キャスト後のフォーマットは struct 文法の単一要素ネイティブフォーマットに制限されます。フォーマットのうちの一つはバイトフォーマット ('B', 'b', 'c') でなければなりません。結果のバイト長はオリジナルの長さと同じでなければなりません。
+
+1次元 long から 1次元 unsigned byte へのキャスト:
+
+>>>
+>>> import array
+>>> a = array.array('l', [1,2,3])
+>>> x = memoryview(a)
+>>> x.format
+'l'
+>>> x.itemsize
+8
+>>> len(x)
+3
+>>> x.nbytes
+24
+>>> y = x.cast('B')
+>>> y.format
+'B'
+>>> y.itemsize
+1
+>>> len(y)
+24
+>>> y.nbytes
+24
+1次元 unsigned byte から 1次元 char へのキャスト:
+
+>>>
+>>> b = bytearray(b'zyz')
+>>> x = memoryview(b)
+>>> x[0] = b'a'
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: memoryview: invalid value for format "B"
+>>> y = x.cast('c')
+>>> y[0] = b'a'
+>>> b
+bytearray(b'ayz')
+1次元 byte から 3次元 int へ、そして 1次元 signed char へのキャスト:
+
+>>>
+>>> import struct
+>>> buf = struct.pack("i"*12, *list(range(12)))
+>>> x = memoryview(buf)
+>>> y = x.cast('i', shape=[2,2,3])
+>>> y.tolist()
+[[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]]
+>>> y.format
+'i'
+>>> y.itemsize
+4
+>>> len(y)
+2
+>>> y.nbytes
+48
+>>> z = y.cast('b')
+>>> z.format
+'b'
+>>> z.itemsize
+1
+>>> len(z)
+48
+>>> z.nbytes
+48
+1次元 unsigned long から 2次元 unsigned long へのキャスト:
+
+>>>
+>>> buf = struct.pack("L"*6, *list(range(6)))
+>>> x = memoryview(buf)
+>>> y = x.cast('L', shape=[2,3])
+>>> len(y)
+2
+>>> y.nbytes
+48
+>>> y.tolist()
+[[0, 1, 2], [3, 4, 5]]
+バージョン 3.3 で追加.
+
+バージョン 3.5 で変更: 単バイトのビューへキャストする場合、キャスト元のフォーマットについて制約は無くなりました。
+
+読み出し専用の属性もいくつか使えます:
+
+obj
+memoryview が参照しているオブジェクト:
+
+>>>
+>>> b  = bytearray(b'xyz')
+>>> m = memoryview(b)
+>>> m.obj is b
+True
+バージョン 3.3 で追加.
+
+nbytes
+nbytes == product(shape) * itemsize == len(m.tobytes()). その配列が連続表現において利用するスペースです。これは len(m) と一致するとは限りません:
+
+>>>
+>>> import array
+>>> a = array.array('i', [1,2,3,4,5])
+>>> m = memoryview(a)
+>>> len(m)
+5
+>>> m.nbytes
+20
+>>> y = m[::2]
+>>> len(y)
+3
+>>> y.nbytes
+12
+>>> len(y.tobytes())
+12
+多次元配列:
+
+>>>
+>>> import struct
+>>> buf = struct.pack("d"*12, *[1.5*x for x in range(12)])
+>>> x = memoryview(buf)
+>>> y = x.cast('d', shape=[3,4])
+>>> y.tolist()
+[[0.0, 1.5, 3.0, 4.5], [6.0, 7.5, 9.0, 10.5], [12.0, 13.5, 15.0, 16.5]]
+>>> len(y)
+3
+>>> y.nbytes
+96
+バージョン 3.3 で追加.
+
+readonly
+メモリが読み出し専用かどうかを示す真偽値です。
+
+format
+ビューの中の各要素に対する (struct モジュールスタイルの) フォーマットを含む文字列。 memoryview は、任意のフォーマット文字列を使ってエクスポーターから作成することができます。しかし、いくつかのメソッド(例えば tolist()) はネイティブの単一要素フォーマットに制限されます。
+
+バージョン 3.3 で変更: フォーマット 'B' は struct モジュール構文で扱われるようになりました。これは memoryview(b'abc')[0] == b'abc'[0] == 97 ということを意味します。
+
+itemsize
+memoryview の各要素のバイト単位の大きさ:
+
+>>>
+>>> import array, struct
+>>> m = memoryview(array.array('H', [32000, 32001, 32002]))
+>>> m.itemsize
+2
+>>> m[0]
+32000
+>>> struct.calcsize('H') == m.itemsize
+True
+ndim
+メモリが表す多次元配列が何次元かを示す整数です。
+
+shape
+メモリが表している N 次元配列の形状を表す、長さ ndim の整数のタプルです。
+
+バージョン 3.3 で変更: ndim = 0 の場合は None ではなく空のタプルとなるよう変更されました。
+
+strides
+配列のそれぞれの次元に対して、それぞれの要素にアクセスするのに必要なバイト数を表す、長さ ndim の整数のタプルです。
+
+バージョン 3.3 で変更: ndim = 0 の場合は None ではなく空のタプルとなるよう変更されました。
+
+suboffsets
+PILスタイルの配列の内部で利用している値。この値はただの情報として公開されています。
+
+c_contiguous
+メモリーが C 形式の順序で連続しているかどうかを示す真偽値（参考: contiguous ）。
+
+バージョン 3.3 で追加.
+
+f_contiguous
+メモリーがFortran形式の順序で連続しているかどうかを示す真偽値（参考: contiguous ）。
+
+バージョン 3.3 で追加.
+
+contiguous
+メモリーが連続しているかどうかを示す真偽値（参考: contiguous ）。
+
+バージョン 3.3 で追加.
+
+set（集合）型 --- set, frozenset
+set オブジェクトは、固有の hashable オブジェクトの順序なしコレクションです。通常の用途には、帰属テスト、シーケンスからの重複除去、積集合、和集合、差集合、対称差 (排他的論理和) のような数学的演算の計算が含まれます。(他のコンテナについては組み込みの dict, list, tuple クラスや collections モジュールを参照してください。)
+
+集合は、他のコレクションと同様、 x in set, len(set), for x in set をサポートします。コレクションには順序がないので、集合は挿入の順序や要素の位置を記録しません。従って、集合はインデクシング、スライシング、その他のシーケンス的な振舞いをサポートしません。
+
+set および frozenset という、2つの組み込みの集合型があります。 set はミュータブルで、add() や remove() のようなメソッドを使って内容を変更できます。ミュータブルなため、ハッシュ値を持たず、また辞書のキーや他の集合の要素として用いることができません。一方、frozenset 型はイミュータブルで、ハッシュ可能 です。作成後に内容を改変できないため、辞書のキーや他の集合の要素として用いることができます。
+
+空でない set (frozenset ではない) は、set コンストラクタに加え、要素を波括弧中にカンマで区切って列挙することでも生成できます。例: {'jack', 'sjoerd'}。
+
+どちらのクラスのコンストラクタも同様に働きます:
+
+class set([iterable])
+class frozenset([iterable])
+iterable から要素を取り込んだ、新しい set もしくは frozenset オブジェクトを返します。 集合の要素は ハッシュ可能 なものでなくてはなりません。集合の集合を表現するためには、内側の集合は frozenset オブジェクトでなくてはなりません。iterable が指定されない場合、新しい空の集合が返されます。
+
+Sets can be created by several means:
+
+Use a comma-separated list of elements within braces: {'jack', 'sjoerd'}
+Use a set comprehension: {c for c in 'abracadabra' if c not in 'abc'}
+Use the type constructor: set(), set('foobar'), set(['a', 'b', 'foo'])
+set および frozenset のインスタンスは以下の操作を提供します:
+
+len(s)
+集合 s の要素数 (s の濃度) を返します。
+
+x in s
+x が s のメンバーに含まれるか判定します。
+
+x not in s
+x が s のメンバーに含まれていないことを判定します。
+
+isdisjoint(other)
+集合が other と共通の要素を持たないとき、True を返します。集合はそれらの積集合が空集合となるときのみ、互いに素 (disjoint) となります。
+
+issubset(other)
+set <= other
+set の全ての要素が other に含まれるか判定します。
+
+set < other
+set が other の真部分集合であるかを判定します。つまり、 set <= other and set != other と等価です。
+
+issuperset(other)
+set >= other
+other の全ての要素が set に含まれるか判定します。
+
+set > other
+set が other の真上位集合であるかを判定します。つまり、 set >= other and set != other と等価です。
+
+union(*others)
+set | other | ...
+set と全ての other の要素からなる新しい集合を返します。
+
+intersection(*others)
+set & other & ...
+set と全ての other に共通する要素を持つ、新しい集合を返します。
+
+difference(*others)
+set - other - ...
+set に含まれて、かつ、全ての other に含まれない要素を持つ、新しい集合を返します。
+
+symmetric_difference(other)
+set ^ other
+set と other のいずれか一方だけに含まれる要素を持つ新しい集合を返します。
+
+copy()
+集合の浅いコピーを返します。
+
+なお、演算子でない版の union(), intersection(), difference(), symmetric_difference(), issubset(), issuperset() メソッドは、任意のイテラブルを引数として受け付けます。対して、演算子を使う版では、引数は集合でなくてはなりません。これは、set('abc') & 'cbs' のような誤りがちな構文を予防し、より読みやすい set('abc').intersection('cbs') を支持します。
+
+set と frozenset のどちらも、集合同士の比較をサポートします。二つの集合は、それぞれの集合の要素全てが他方にも含まれている (互いに他方の部分集合である) とき、かつそのときに限り等しいです。一方の集合が他方の集合の真部分集合である (部分集合であるが等しくない) とき、かつそのときに限り一方の集合は他方の集合より小さいです。一方の集合が他方の集合の真上位集合である (上位集合であるが等しくない) とき、かつそのときに限り一方の集合は他方の集合より大きいです。
+
+set のインスタンスは、 frozenset のインスタンスと、要素に基づいて比較されます。例えば、 set('abc') == frozenset('abc') や set('abc') in set([frozenset('abc')]) は True を返します。
+
+部分集合と等価性の比較は全順序付けを行う関数へと一般化することはできません。例えば、互いに素である二つの非空集合は、等しくなく、他方の部分集合でもありませんから、以下の すべて に False を返します: a<b, a==b, そして a>b.
+
+集合は半順序（部分集合関係）しか定義しないので、集合のリストにおける list.sort() メソッドの出力は未定義です。
+
+集合の要素は、辞書のキーのように、 ハッシュ可能 でなければなりません。
+
+set インスタンスと frozenset インスタンスを取り混ぜての二項演算は、第一被演算子の型を返します。例えば: frozenset('ab') | set('bc') は frozenset インスタンスを返します。
+
+以下の表に挙げる演算は set に適用されますが、frozenset のイミュータブルなインスタンスには適用されません:
+
+update(*others)
+set |= other | ...
+全ての other の要素を追加し、 set を更新します。
+
+intersection_update(*others)
+set &= other & ...
+元の set と全ての other に共通する要素だけを残して set を更新します。
+
+difference_update(*others)
+set -= other | ...
+other に含まれる要素を取り除き、 set を更新します。
+
+symmetric_difference_update(other)
+set ^= other
+どちらかにのみ含まれて、共通には持たない要素のみで set を更新します。
+
+add(elem)
+要素 elem を set に追加します。
+
+remove(elem)
+要素 elem を set から取り除きます。elem が set に含まれていなければ KeyError を送出します。
+
+discard(elem)
+要素 elem が set に含まれていれば、取り除きます。
+
+pop()
+s から任意の要素を取り除き、それを返します。集合が空の場合、 KeyError を送出します
+
+clear()
+set の全ての要素を取り除きます。
+
+なお、演算子でない版の update(), intersection_update(), difference_update(), および symmetric_difference_update() メソッドは、任意のイテラブルを引数として受け付けます。
+
+__contains__(), remove(), discard() メソッドの引数 elem は集合かもしれないことに注意してください。 その集合と等価な frozenset の検索をサポートするために、 elem から一時的な frozenset を作成します。
+
+マッピング型 --- dict
+マッピング オブジェクトは、 ハッシュ可能 な値を任意のオブジェクトに対応付けます。マッピングはミュータブルなオブジェクトです。現在、標準のマッピング型は辞書 (dictionary) だけです。 (他のコンテナについては組み込みの list, set, および tuple クラスと、 collections モジュールを参照してください。)
+
+辞書のキーは ほぼ 任意の値です。 ハッシュ可能 でない値、つまり、リストや辞書その他のミュータブルな型 (オブジェクトの同一性ではなく値で比較されるもの) はキーとして使用できません。キーとして使われる数値型は通常の数値比較のルールに従います: もしふたつの数値が (例えば 1 と 1.0 のように) 等しければ、同じ辞書の項目として互換的に使用できます。 (ただし、コンピュータは浮動小数点数を近似値として保管するので、辞書型のキーとして使用するのはたいてい賢くありません。)
+
+辞書は key: value 対のカンマ区切りのリストを波括弧でくくることで作成できます。例えば: {'jack': 4098, 'sjoerd': 4127} あるいは {4098: 'jack', 4127: 'sjoerd'} 。あるいは、 dict コンストラクタでも作成できます。
+
+class dict(**kwarg)
+class dict(mapping, **kwarg)
+class dict(iterable, **kwarg)
+オプションの位置引数と空の可能性もあるキーワード引数の集合により初期化された新しい辞書を返します。
+
+Dictionaries can be created by several means:
+
+Use a comma-separated list of key: value pairs within braces: {'jack': 4098, 'sjoerd': 4127} or {4098: 'jack', 4127: 'sjoerd'}
+Use a dict comprehension: {}, {x: x ** 2 for x in range(10)}
+Use the type constructor: dict(), dict([('foo', 100), ('bar', 200)]), dict(foo=100, bar=200)
+位置引数が何も与えられなかった場合、空の辞書が作成されます。位置引数が与えられ、それがマッピングオブジェクトだった場合、そのマッピングオブジェクトと同じキーと値のペアを持つ辞書が作成されます。それ以外の場合、位置引数は iterable オブジェクトでなければなりません。iterable のそれぞれの要素自身は、ちょうど 2 個のオブジェクトを持つイテラブルでなければなりません。それぞれの要素の最初のオブジェクトは新しい辞書のキーになり、2 番目のオブジェクトはそれに対応する値になります。同一のキーが 2 回以上現れた場合は、そのキーの最後の値が新しい辞書での対応する値になります。
+
+キーワード引数が与えられた場合、キーワード引数とその値が位置引数から作られた辞書に追加されます。既に存在しているキーが追加された場合、キーワード引数の値は位置引数の値を置き換えます。
+
+例を出すと、次の例は全て {"one": 1, "two": 2, "three": 3} に等しい辞書を返します:
+
+>>>
+>>> a = dict(one=1, two=2, three=3)
+>>> b = {'one': 1, 'two': 2, 'three': 3}
+>>> c = dict(zip(['one', 'two', 'three'], [1, 2, 3]))
+>>> d = dict([('two', 2), ('one', 1), ('three', 3)])
+>>> e = dict({'three': 3, 'one': 1, 'two': 2})
+>>> f = dict({'one': 1, 'three': 3}, two=2)
+>>> a == b == c == d == e == f
+True
+最初の例のようにキーワード引数を与える方法では、キーは有効な Python の識別子でなければなりません。それ以外の方法では、辞書のキーとして有効などんなキーでも使えます。
+
+以下は辞書型がサポートする操作です (それゆえ、カスタムのマップ型もこれらの操作をサポートするべきです):
+
+list(d)
+辞書 d で使われている全てのキーのリストを返します。
+
+len(d)
+辞書 d の項目数を返します。
+
+d[key]
+d のキー key の項目を返します。マップに key が存在しなければ、 KeyError を送出します。
+
+辞書のサブクラスが __missing__() メソッドを定義していて、 key が存在しない場合、 d[key] 演算はこのメソッドをキー key を引数として呼び出します。 d[key] 演算は、 __missing__(key) の呼び出しによって返された値をそのまま返すか、送出されたものをそのまま送出します。他の演算やメソッドは __missing__() を呼び出しません。 __missing__() が定義されていない場合、 KeyError が送出されます。 __missing__() はメソッドでなければならず、インスタンス変数であってはなりません:
+
+>>>
+>>> class Counter(dict):
+...     def __missing__(self, key):
+...         return 0
+>>> c = Counter()
+>>> c['red']
+0
+>>> c['red'] += 1
+>>> c['red']
+1
+ここでお見せした例は collections.Counter 実装の一部です。これとは違った __missing__ が collections.defaultdict で使われています。
+
+d[key] = value
+d[key] に value を設定します。
+
+del d[key]
+d から d[key] を削除します。マップに key が存在しなければ、 KeyError を送出します。
+
+key in d
+d がキー key を持っていれば True を、そうでなければ、 False を返します。
+
+key not in d
+not key in d と等価です。
+
+iter(d)
+辞書のキーに渡るイテレータを返します。これは iter(d.keys()) へのショートカットです。
+
+clear()
+辞書の全ての項目を消去します。
+
+copy()
+辞書の浅いコピーを返します。
+
+classmethod fromkeys(iterable[, value])
+iterable からキーを取り、値を value に設定した、新しい辞書を作成します。
+
+fromkeys() is a class method that returns a new dictionary. value defaults to None. All of the values refer to just a single instance, so it generally doesn't make sense for value to be a mutable object such as an empty list. To get distinct values, use a dict comprehension instead.
+
+get(key[, default])
+key が辞書にあれば key に対する値を、そうでなければ default を返します。 default が与えられなかった場合、デフォルトでは None となります。そのため、このメソッドは KeyError を送出することはありません。
+
+items()
+辞書の項目 ((key, value) 対) の新しいビューを返します。ビューオブジェクトのドキュメント を参照してください。
+
+keys()
+辞書のキーの新しいビューを返します。ビューオブジェクトのドキュメント を参照してください。
+
+pop(key[, default])
+key が辞書に存在すればその値を辞書から消去して返し、そうでなければ default を返します。 default が与えらず、かつ key が辞書に存在しなければ KeyError を送出します。
+
+popitem()
+任意の (key, value) 対を辞書から消去して返します。 対は LIFO の順序で返却されます。
+
+集合のアルゴリズムで使われるのと同じように、 popitem() は辞書に繰り返し適用して消去するのに便利です。辞書が空であれば、 popitem() の呼び出しは KeyError を送出します。
+
+バージョン 3.7 で変更: LIFO 順序が保証されるようになりました。 以前のバージョンでは、 popitem() は任意の key/value 対を返していました。
+
+reversed(d)
+Return a reverse iterator over the keys of the dictionary. This is a shortcut for reversed(d.keys()).
+
+バージョン 3.8 で追加.
+
+setdefault(key[, default])
+もし、 key が辞書に存在すれば、その値を返します。そうでなければ、値を default として key を挿入し、 default を返します。 default のデフォルトは None です。
+
+update([other])
+辞書の内容を other のキーと値で更新します。既存のキーは上書きされます。返り値は None です。
+
+update() は、他の辞書オブジェクトでもキー/値の対のイテラブル (タプル、もしくは、長さが2のイテラブル) でも、どちらでも受け付けます。キーワード引数が指定されれば、そのキー/値の対で辞書を更新します: d.update(red=1, blue=2)。
+
+values()
+辞書の値の新しいビューを返します。ビューオブジェクトのドキュメント を参照してください。
+
+An equality comparison between one dict.values() view and another will always return False. This also applies when comparing dict.values() to itself:
+
+>>>
+>>> d = {'a': 1}
+>>> d.values() == d.values()
+False
+d | other
+Create a new dictionary with the merged keys and values of d and other, which must both be dictionaries. The values of other take priority when d and other share keys.
+
+バージョン 3.9 で追加.
+
+d |= other
+Update the dictionary d with keys and values from other, which may be either a mapping or an iterable of key/value pairs. The values of other take priority when d and other share keys.
+
+バージョン 3.9 で追加.
+
+Dictionaries compare equal if and only if they have the same (key, value) pairs (regardless of ordering). Order comparisons ('<', '<=', '>=', '>') raise TypeError.
+
+辞書は挿入順序を保存するようになりました。 キーの更新は順序には影響が無いことに注意してください。 いったん削除されてから再度追加されたキーは末尾に挿入されます。:
+
+>>>
+>>> d = {"one": 1, "two": 2, "three": 3, "four": 4}
+>>> d
+{'one': 1, 'two': 2, 'three': 3, 'four': 4}
+>>> list(d)
+['one', 'two', 'three', 'four']
+>>> list(d.values())
+[1, 2, 3, 4]
+>>> d["one"] = 42
+>>> d
+{'one': 42, 'two': 2, 'three': 3, 'four': 4}
+>>> del d["two"]
+>>> d["two"] = None
+>>> d
+{'one': 42, 'three': 3, 'four': 4, 'two': None}
+バージョン 3.7 で変更: 辞書の順序が挿入順序であることが保証されるようになりました。この振る舞いは CPython 3.6 の実装詳細でした。
+
+Dictionaries and dictionary views are reversible.
+
+>>>
+>>> d = {"one": 1, "two": 2, "three": 3, "four": 4}
+>>> d
+{'one': 1, 'two': 2, 'three': 3, 'four': 4}
+>>> list(reversed(d))
+['four', 'three', 'two', 'one']
+>>> list(reversed(d.values()))
+[4, 3, 2, 1]
+>>> list(reversed(d.items()))
+[('four', 4), ('three', 3), ('two', 2), ('one', 1)]
+バージョン 3.8 で変更: Dictionaries are now reversible.
+
+参考 dict の読み出し専用ビューを作るために types.MappingProxyType を使うことができます。
+辞書ビューオブジェクト
+dict.keys(), dict.values(), dict.items() によって返されるオブジェクトは、 ビューオブジェクト です。これらは、辞書の項目の動的なビューを提供し、辞書が変更された時、ビューはその変更を反映します。
+
+辞書ビューは、イテレートすることで対応するデータを yield できます。また、帰属判定をサポートします:
+
+len(dictview)
+辞書の項目数を返します。
+
+iter(dictview)
+辞書のキー、値、または ((key, value) のタプルとして表される) 項目に渡るイテレータを返します。
+
+キーと値は挿入順序で反復されます。 これにより、 (value, key) の対の列を pairs = zip(d.values(), d.keys()) のように zip() で作成できます。 同じリストを作成する他の方法は、 pairs = [(v, k) for (k, v) in d.items()] です。
+
+辞書の項目の追加や削除中にビューをイテレートすると、 RuntimeError を送出したり、すべての項目に渡ってイテレートできなかったりします。
+
+バージョン 3.7 で変更: 辞書の順序が挿入順序であると保証されるようになりました。
+
+x in dictview
+x が元の辞書のキー、値、または項目 (項目の場合、 x は (key, value) タプルです) にあるとき True を返します。
+
+reversed(dictview)
+Return a reverse iterator over the keys, values or items of the dictionary. The view will be iterated in reverse order of the insertion.
+
+バージョン 3.8 で変更: Dictionary views are now reversible.
+
+キーのビューは、項目が一意的でハッシュ可能であるという点で、集合に似ています。すべての値がハッシュ可能なら、 (key, value) 対も一意的でハッシュ可能なので、要素のビューも集合に似ています。(値のビューは、要素が一般に一意的でないことから、集合に似ているとは考えられません。) 集合に似ているビューに対して、抽象基底クラス collections.abc.Set で定義されている全ての演算 (例えば、 ==、<、^) が利用できます。
+
+辞書ビューの使用法の例:
+
+>>>
+>>> dishes = {'eggs': 2, 'sausage': 1, 'bacon': 1, 'spam': 500}
+>>> keys = dishes.keys()
+>>> values = dishes.values()
+
+>>> # iteration
+>>> n = 0
+>>> for val in values:
+...     n += val
+>>> print(n)
+504
+
+>>> # keys and values are iterated over in the same order (insertion order)
+>>> list(keys)
+['eggs', 'sausage', 'bacon', 'spam']
+>>> list(values)
+[2, 1, 1, 500]
+
+>>> # view objects are dynamic and reflect dict changes
+>>> del dishes['eggs']
+>>> del dishes['sausage']
+>>> list(keys)
+['bacon', 'spam']
+
+>>> # set operations
+>>> keys & {'eggs', 'bacon', 'salad'}
+{'bacon'}
+>>> keys ^ {'sausage', 'juice'}
+{'juice', 'sausage', 'bacon', 'spam'}
+コンテキストマネージャ型
+Python の with 文は、コンテキストマネージャによって定義される実行時コンテキストの概念をサポートします。これは、文の本体が実行される前に進入し文の終わりで脱出する実行時コンテキストを、ユーザ定義クラスが定義できるようにする一対のメソッドで実装されます:
+
+contextmanager.__enter__()
+実行時コンテキストに入り、このオブジェクトまたは他の実行時コンテキストに関連したオブジェクトを返します。このメソッドが返す値はこのコンテキストマネージャを使う with 文の as 節の識別子に束縛されます。
+
+自分自身を返すコンテキストマネージャの例として ファイルオブジェクト があります。ファイルオブジェクトは __enter__() から自分自身を返し、 open() が with 文のコンテキスト式として使われるようにします。
+
+関連オブジェクトを返すコンテキストマネージャの例としては decimal.localcontext() が返すものがあります。このマネージャはアクティブな10進数コンテキストをオリジナルのコンテキストのコピーにセットしてそのコピーを返します。こうすることで, with 文の本体の内部で、外側のコードに影響を与えずに、 10進数コンテキストを変更できます。
+
+contextmanager.__exit__(exc_type, exc_val, exc_tb)
+実行時コンテキストから抜け、(発生していた場合) 例外を抑制するかどうかを示すブール値フラグを返します。 with 文の本体の実行中に例外が発生した場合、引数にはその例外の型と値とトレースバック情報を渡します。そうでない場合、引数は全て None となります。
+
+このメソッドから真値が返されると with 文は例外の発生を抑え、 with 文の直後の文に実行を続けます。そうでなければ、このメソッドの実行を終えると例外の伝播が続きます。このメソッドの実行中に起きた例外は with 文の本体の実行中に起こった例外を置き換えてしまいます。
+
+渡された例外を明示的に再送出すべきではありません。その代わりに、このメソッドが偽の値を返すことでメソッドの正常終了と送出された例外を抑制しないことを伝えるべきです。このようにすればコンテキストマネージャは __exit__() メソッド自体が失敗したのかどうかを簡単に見分けることができます。
+
+Python は、易しいスレッド同期、ファイルなどのオブジェクトの即時クローズ、アクティブな小数算術コンテキストの単純な操作をサポートするために、いくつかのコンテキストマネージャを用意しています。各型はコンテキスト管理プロトコルを実装しているという以上の特別の取り扱いを受けるわけではありません。例については contextlib モジュールを参照してください。
+
+Python の ジェネレータ と contextlib.contextmanager デコレータ はこのプロトコルの簡便な実装方法を提供します。ジェネレータ関数を contextlib.contextmanager デコレータでデコレートすると、デコレートされないジェネレータ関数が作成するイテレータの代わりに、必要な __enter__() および __exit__() メソッドを実装したコンテキストマネージャを返すようになります。
+
+これらのメソッドのために Python/C API の中の Python オブジェクトの型構造体に特別なスロットが作られたわけではないことに注意してください。これらのメソッドを定義したい拡張型はこれらを通常の Python からアクセスできるメソッドとして提供しなければなりません。実行時コンテキストを準備するオーバーヘッドに比べたら、一回のクラス辞書の探索のオーバーヘッドは無視できます。
+
+Generic Alias Type
+GenericAlias objects are created by subscripting a class (usually a container), such as list[int]. They are intended primarily for type annotations.
+
+Usually, the subscription of container objects calls the method __getitem__() of the object. However, the subscription of some containers' classes may call the classmethod __class_getitem__() of the class instead. The classmethod __class_getitem__() should return a GenericAlias object.
+
+注釈 If the __getitem__() of the class' metaclass is present, it will take precedence over the __class_getitem__() defined in the class (see PEP 560 for more details).
+The GenericAlias object acts as a proxy for generic types, implementing parameterized generics - a specific instance of a generic which provides the types for container elements.
+
+The user-exposed type for the GenericAlias object can be accessed from types.GenericAlias and used for isinstance() checks. It can also be used to create GenericAlias objects directly.
+
+T[X, Y, ...]
+Creates a GenericAlias representing a type T containing elements of types X, Y, and more depending on the T used. For example, a function expecting a list containing float elements:
+
+def average(values: list[float]) -> float:
+    return sum(values) / len(values)
+Another example for mapping objects, using a dict, which is a generic type expecting two type parameters representing the key type and the value type. In this example, the function expects a dict with keys of type str and values of type int:
+
+def send_post_request(url: str, body: dict[str, int]) -> None:
+    ...
+The builtin functions isinstance() and issubclass() do not accept GenericAlias types for their second argument:
+
+>>>
+>>> isinstance([1, 2], list[str])
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: isinstance() argument 2 cannot be a parameterized generic
+The Python runtime does not enforce type annotations. This extends to generic types and their type parameters. When creating an object from a GenericAlias, container elements are not checked against their type. For example, the following code is discouraged, but will run without errors:
+
+>>>
+>>> t = list[str]
+>>> t([1, 2, 3])
+[1, 2, 3]
+Furthermore, parameterized generics erase type parameters during object creation:
+
+>>>
+>>> t = list[str]
+>>> type(t)
+<class 'types.GenericAlias'>
+
+>>> l = t()
+>>> type(l)
+<class 'list'>
+Calling repr() or str() on a generic shows the parameterized type:
+
+>>>
+>>> repr(list[int])
+'list[int]'
+
+>>> str(list[int])
+'list[int]'
+The __getitem__() method of generics will raise an exception to disallow mistakes like dict[str][str]:
+
+>>>
+>>> dict[str][str]
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: There are no type variables left in dict[str]
+However, such expressions are valid when type variables are used. The index must have as many elements as there are type variable items in the GenericAlias object's __args__.
+
+>>>
+>>> from typing import TypeVar
+>>> Y = TypeVar('Y')
+>>> dict[str, Y][int]
+dict[str, int]
+Standard Generic Collections
+These standard library collections support parameterized generics.
+
+tuple
+list
+dict
+set
+frozenset
+type
+collections.deque
+collections.defaultdict
+collections.OrderedDict
+collections.Counter
+collections.ChainMap
+’’collections.abc.Awaitable
+collections.abc.Coroutine
+collections.abc.AsyncIterable
+collections.abc.AsyncIterator
+collections.abc.AsyncGenerator
+collections.abc.Iterable
+collections.abc.Iterator
+collections.abc.Generator
+collections.abc.Reversible
+collections.abc.Container
+collections.abc.Collection
+collections.abc.Callable
+collections.abc.Set
+collections.abc.MutableSet
+collections.abc.Mapping
+collections.abc.MutableMapping
+collections.abc.Sequence
+collections.abc.MutableSequence
+collections.abc.ByteString
+collections.abc.MappingView
+collections.abc.KeysView
+collections.abc.ItemsView
+collections.abc.ValuesView
+contextlib.AbstractContextManager
+contextlib.AbstractAsyncContextManager
+re.Pattern
+re.Match
+Special Attributes of Generic Alias
+All parameterized generics implement special read-only attributes.
+
+genericalias.__origin__
+This attribute points at the non-parameterized generic class:
+
+>>>
+>>> list[int].__origin__
+<class 'list'>
+genericalias.__args__
+This attribute is a tuple (possibly of length 1) of generic types passed to the original __class_getitem__() of the generic container:
+
+>>>
+>>> dict[str, list[int]].__args__
+(<class 'str'>, list[int])
+genericalias.__parameters__
+This attribute is a lazily computed tuple (possibly empty) of unique type variables found in __args__:
+
+>>>
+>>> from typing import TypeVar
+
+>>> T = TypeVar('T')
+>>> list[T].__parameters__
+(~T,)
+参考
+PEP 585 -- "Type Hinting Generics In Standard Collections"
+__class_getitem__() -- Used to implement parameterized generics.
+ジェネリクス -- typing モジュールのジェネリクス。
+バージョン 3.9 で追加.
+
+その他の組み込み型
+インタプリタは、その他いくつかの種類のオブジェクトをサポートしています。これらのほとんどは 1 つまたは 2 つの演算だけをサポートしています。
+
+モジュール (module)
+モジュールに対する唯一の特殊な演算は属性アクセス: m.name です。ここで m はモジュールで、 name は m のシンボルテーブル上に定義された名前にアクセスします。モジュール属性に代入することもできます。 (なお、import 文は、厳密にいえば、モジュールオブジェクトに対する演算ではありません; import foo は foo と名づけられたモジュールオブジェクトの存在を必要とはせず、foo と名づけられたモジュールの (外部の) 定義 を必要とします。)
+
+全てのモジュールにある特殊属性が __dict__ です。これはモジュールのシンボルテーブルを含む辞書です。この辞書を書き換えると実際にモジュールのシンボルテーブルを変更することができますが、__dict__ 属性を直接代入することはできません (m.__dict__['a'] = 1 と書いて m.a を 1 に定義することはできますが、m.__dict__ = {} と書くことはできません)。 __dict__ を直接書き換えることは推奨されません。
+
+インタプリタ内に組み込まれたモジュールは、 <module 'sys' (built-in)> のように書かれます。ファイルから読み出された場合、 <module 'os' from '/usr/local/lib/pythonX.Y/os.pyc'> と書かれます。
+
+クラスおよびクラスインスタンス
+これらについては オブジェクト、値、および型 および クラス定義 を参照してください。
+
+関数
+関数オブジェクトは関数定義によって生成されます。関数オブジェクトに対する唯一の操作は、それを呼び出すことです: func(argument-list) 。
+
+関数オブジェクトには実際には二種類あります: 組み込み関数とユーザ定義関数です。どちらも同じ操作 (関数の呼び出し) をサポートしますが、実装は異なるので、オブジェクトの型も異なります。
+
+詳細は、 関数定義 を参照してください。
+
+メソッド
+メソッドは属性表記を使って呼び出される関数です。メソッドには二種類あります: (リストの append() のような) 組み込みメソッドと、クラスインスタンスのメソッドです。組み込みメソッドは、それをサポートする型と一緒に記述されています。
+
+インスタンスを通してメソッド (クラスの名前空間内で定義された関数) にアクセスすると、特殊なオブジェクトが得られます。それは束縛メソッド (bound method) オブジェクトで、インスタンスメソッド (instance method) とも呼ばれます。呼び出された時、引数リストに self 引数が追加されます。束縛メソッドには 2 つの特殊読み出し専用属性があります。 m.__self__ はそのメソッドが操作するオブジェクトで、 m.__func__ はそのメソッドを実装している関数です。 m(arg-1, arg-2, ..., arg-n) の呼び出しは、 m.__func__(m.__self__, arg-1, arg-2, ..., arg-n) の呼び出しと完全に等価です。
+
+関数オブジェクトと同様に、メソッドオブジェクトは任意の属性の取得をサポートしています。しかし、メソッド属性は実際には下層の関数オブジェクト (meth.__func__) に記憶されているので、バインドされるメソッドにメソッド属性を設定することは許されていません。メソッドに属性を設定しようとすると AttributeError が送出されます。メソッドの属性を設定するためには、次のようにその下層の関数オブジェクトに明示的に設定する必要があります:
+
+>>>
+>>> class C:
+...     def method(self):
+...         pass
+...
+>>> c = C()
+>>> c.method.whoami = 'my name is method'  # can't set on the method
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'method' object has no attribute 'whoami'
+>>> c.method.__func__.whoami = 'my name is method'
+>>> c.method.whoami
+'my name is method'
+詳細は、 標準型の階層 を参照してください。
+
+コードオブジェクト
+コードオブジェクトは、関数本体のような "擬似コンパイルされた" Python の実行可能コードを表すために実装系によって使われます。コードオブジェクトはグローバルな実行環境への参照を持たない点で関数オブジェクトとは異なります。コードオブジェクトは組み込み関数 compile() によって返され、また関数オブジェクトの __code__ 属性として取り出せます。 code モジュールも参照してください。
+
+コードオブジェクトは、組み込み関数 exec() や eval() に (ソース文字列の代わりに) 渡すことで、実行や評価できます。
+
+詳細は、 標準型の階層 を参照してください。
+
+型オブジェクト
+型オブジェクトは様々なオブジェクト型を表します。オブジェクトの型は組み込み関数 type() でアクセスされます。型オブジェクトには特有の操作はありません。標準モジュール types には全ての組み込み型名が定義されています。
+
+型はこのように書き表されます: <class 'int'> 。
+
+ヌルオブジェクト
+このオブジェクトは明示的に値を返さない関数によって返されます。このオブジェクトには特有の操作はありません。ヌルオブジェクトは一つだけで、 None (組み込み名) と名づけられています。 type(None)() は同じシングルトンを作成します。
+
+None と書き表されます。
+
+Ellipsis オブジェクト
+このオブジェクトは一般にスライシングによって使われます (スライス表記 (slicing) を参照してください)。特殊な演算は何もサポートしていません。Ellipsis オブジェクトは一つだけで、その名前は Ellipsis (組み込み名) です。type(Ellipsis)() は単一の Ellipsis を作成します。
+
+Ellipsis または ... と書き表されます。
+
+NotImplemented オブジェクト
+このオブジェクトは、対応していない型に対して比較演算や二項演算が求められたとき、それらの演算から返されます。詳細は 比較 を参照してください。 NotImplemented オブジェクトは一つだけです。 type(NotImplemented)() はこの単一のインスタンスを作成します。
+
+NotImplemented と書き表されます。
+
+ブール値
+ブール値は二つの定数オブジェクト False および True です。これらは真理値を表すのに使われます (ただし他の値も偽や真とみなされます)。 数値処理のコンテキスト (例えば算術演算子の引数として使われた場合) では、これらはそれぞれ 0 および 1 と同様に振舞います。任意の値に対して、真理値と解釈できる場合、組み込み関数 bool() は値をブール値に変換するのに使われます (上述の 真理値判定 の節を参照してください)。
+
+それぞれ False および True と書き表されます。
+
+内部オブジェクト
+この情報は 標準型の階層 を参照してください。スタックフレームオブジェクト、トレースバックオブジェクト、スライスオブジェクトについて記述されています。
+
+特殊属性
+実装は、いくつかのオブジェクト型に対して、適切な場合には特殊な読み出し専用の属性を追加します。そのうちいくつかは dir() 組込み関数で報告されません。
+
+object.__dict__
+オブジェクトの (書き込み可能な) 属性を保存するために使われる辞書またはその他のマッピングオブジェクトです。
+
+instance.__class__
+クラスインスタンスが属しているクラスです。
+
+class.__bases__
+クラスオブジェクトの基底クラスのタプルです。
+
+definition.__name__
+クラス、関数、メソッド、デスクリプタ、ジェネレータインスタンスの名前です。
+
+definition.__qualname__
+クラス、関数、メソッド、デスクリプタ、ジェネレータインスタンスの 修飾名 です。
+
+バージョン 3.3 で追加.
+
+class.__mro__
+この属性はメソッドの解決時に基底クラスを探索するときに考慮されるクラスのタプルです。
+
+class.mro()
+このメソッドは、メタクラスによって、そのインスタンスのメソッド解決の順序をカスタマイズするために、上書きされるかも知れません。このメソッドはクラスのインスタンス化時に呼ばれ、その結果は __mro__ に格納されます。
+
+class.__subclasses__()
+Each class keeps a list of weak references to its immediate subclasses. This method returns a list of all those references still alive. The list is in definition order. Example:
+
+>>>
+>>> int.__subclasses__()
+[<class 'bool'>]
+
+組み込み例外
+Python において、すべての例外は BaseException から派生したクラスのインスタンスでなければなりません。特定のクラスを言及する except 節を伴う try 文において、その節はそのクラスから派生した例外クラスも処理しますが、そのクラスの派生 元 の例外クラスは処理しません。サブクラス化の関係にない 2 つの例外クラスは、それらが同じ名前だった場合でも等しくなりえません。
+
+以下に挙げる組み込み例外は、インタプリタや組み込み関数によって生成されます。特に注記しないかぎり、これらはエラーの詳しい原因を示す "関連値 (associated value)" を持ちます。この値は、複数の情報 (エラーコードや、そのコードを説明する文字列など) の文字列かタプルです。関連値は通常、例外クラスのコンストラクタに引数として渡されます。
+
+ユーザによるコードも組み込み例外を送出できます。これを使って、例外ハンドラをテストしたり、インタプリタが同じ例外を送出する状況と "ちょうど同じような" エラー条件であることを報告したりできます。しかし、ユーザのコードが適切でないエラーを送出するのを妨げる方法はないので注意してください。
+
+組み込み例外クラスは新たな例外を定義するためにサブクラス化することができます。新しい例外は、Exception クラスかそのサブクラスの一つから派生することをお勧めします。 BaseException からは派生しないで下さい。例外を定義する上での詳しい情報は、 Python チュートリアルの ユーザー定義例外 の項目にあります。
+
+except または finally 節内で例外を送出 (または再送出) するとき、__context__ は自動的に最後に捕まった例外に設定されます。新しい例外が処理されなければ、最終的に表示されるトレースバックは先に起きた例外も最後の例外も含みます。
+
+現在処理中の例外を raise を使って再送出するのではなく新規に例外を送出する場合、raise と一緒に from を使うことで暗黙の例外コンテキストを捕捉することができます:
+
+raise new_exc from original_exc
+from に続く式は例外か None でなくてはなりません。 式は送出される例外の __cause__ として設定されます。 __cause__ を設定することは、 __suppress_context__ 属性を暗黙的に True に設定することにもなるので、 raise new_exc from None を使うことで効率的に古い例外を新しいもので置き換えて表示する (例えば、 KeyError を AttributeError に置き換え)、古い例外はデバッグ時の調査で使えるよう __context__ に残すことができます。
+
+デフォルトの traceback 表示コードは、例外自体の traceback に加え、これらの連鎖された例外を表示します。__cause__ で明示的に連鎖させた例外は、存在するならば常に表示されます。__context__ で暗黙に連鎖させた例外は、__cause__ が None かつ __suppress_context__ が false の場合にのみ表示されます。
+
+いずれにせよ、連鎖された例外に続いて、その例外自体は常に表示されます。そのため、traceback の最終行には、常に送出された最後の例外が表示されます。
+
+基底クラス
+以下の例外は、主に他の例外の基底クラスとして使われます。
+
+exception BaseException
+全ての組み込み例外の基底クラスです。ユーザ定義の例外に直接継承されることは意図されていません (継承には Exception を使ってください)。このクラスのインスタンスに str() が呼ばれた場合、インスタンスへの引数の表現か、引数が無い場合には空文字列が返されます。
+
+args
+例外コンストラクタに与えられた引数のタプルです。組み込み例外は普通、エラーメッセージを与える一つの文字列だけを引数として呼ばれますが、中には (OSError など) いくつかの引数を必要とし、このタプルの要素に特別な意味を込めるものもあります。
+
+with_traceback(tb)
+このメソッドは tb を例外の新しいトレースバックとして設定し、例外オブジェクトを返します。これは通常次のような例外処理コードに使われます:
+
+try:
+    ...
+except SomeException:
+    tb = sys.exc_info()[2]
+    raise OtherException(...).with_traceback(tb)
+exception Exception
+システム終了以外の全ての組み込み例外はこのクラスから派生しています。全てのユーザ定義例外もこのクラスから派生させるべきです。
+
+exception ArithmeticError
+算術上の様々なエラーに対して送出される組み込み例外 OverflowError, ZeroDivisionError, FloatingPointError の基底クラスです。
+
+exception BufferError
+バッファ に関連する操作が行えなかったときに送出されます。
+
+exception LookupError
+マッピングまたはシーケンスで使われたキーやインデクスが無効な場合に送出される例外 IndexError および KeyError の基底クラスです。 codecs.lookup() によって直接送出されることもあります。
+
+具象例外
+以下の例外は、通常送出される例外です。
+
+exception AssertionError
+assert 文が失敗した場合に送出されます。
+
+exception AttributeError
+属性参照 (属性参照 を参照) や代入が失敗した場合に送出されます (オブジェクトが属性の参照や属性の代入をまったくサポートしていない場合には TypeError が送出されます)。
+
+exception EOFError
+input() が何もデータを読まずに end-of-file (EOF) に達した場合に送出されます。(注意: io.IOBase.read() と io.IOBase.readline() メソッドは、EOF に達すると空文字列を返します。)
+
+exception FloatingPointError
+現在は使われていません。
+
+exception GeneratorExit
+ジェネレータ や コルーチン が閉じられたときに送出されます。 generator.close() と coroutine.close() を参照してください。この例外は厳密に言えばエラーではないので、 Exception ではなく BaseException を直接継承しています。
+
+exception ImportError
+import 文でモジュールをロードしようとして問題が発生すると送出されます。 from ... import の中の"from list" (訳注：... の部分)の名前が見つからないときにも送出されます。
+
+コンストラクタのキーワード専用引数を使って name および path 属性を設定できます。設定された場合、インポートを試みられたモジュールの名前と、例外を引き起こしたファイルへのパスとを、それぞれ表します。
+
+バージョン 3.3 で変更: name および path 属性が追加されました。
+
+exception ModuleNotFoundError
+ImportError のサブクラスで、import 文でモジュールが見つからない場合に送出されます。また、 sys.modules に None が含まれる場合にも送出されます。
+
+バージョン 3.6 で追加.
+
+exception IndexError
+シーケンスの添字が範囲外の場合に送出されます。 (スライスのインデクスはシーケンスの範囲に収まるように暗黙のうちに調整されます; インデクスが整数でない場合、 TypeError が送出されます。)
+
+exception KeyError
+マッピング (辞書) のキーが、既存のキーの集合内に見つからなかった場合に送出されます。
+
+exception KeyboardInterrupt
+ユーザが割り込みキー (通常は Control-C または Delete) を押した場合に送出されます。実行中、割り込みは定期的に監視されます。Exception を捕捉するコードに誤って捕捉されてインタプリタの終了が阻害されないように、この例外は BaseException を継承しています。
+
+exception MemoryError
+ある操作中にメモリが不足したが、その状況は (オブジェクトをいくつか消去することで) まだ復旧可能かもしれない場合に送出されます。この例外の関連値は、メモリ不足になった (内部) 操作の種類を示す文字列です。下層のメモリ管理アーキテクチャ (C の malloc() 関数) のために、インタプリタが現状から完璧に復旧できるとはかぎらないので注意してください。それでも、プログラムの暴走が原因の場合に備えて実行スタックのトレースバックを出力できるように、例外が送出されます。
+
+exception NameError
+ローカルまたはグローバルの名前が見つからなかった場合に送出されます。これは非修飾の (訳注: spam.egg ではなく単に egg のような) 名前のみに適用されます。関連値は見つからなかった名前を含むエラーメッセージです。
+
+exception NotImplementedError
+この例外は RuntimeError から派生しています。ユーザ定義の基底クラスにおいて、抽象メソッドが派生クラスでオーバライドされることを要求する場合にこの例外を送出しなくてはなりません。またはクラスは実装中であり本来の実装を追加する必要があることを示します。
+
+注釈 演算子やメソッドがサポートされていないことを示す目的でこの例外を使用するべきではありません。そのようなケースではオペレータやメソッドを未定義のままとするか、サブクラスの場合は None を設定してください。
+注釈 NotImplementedError と NotImplemented は、似たような名前と目的を持っていますが、相互に変換できません。 利用する際には、 NotImplemented を参照してください。
+exception OSError([arg])
+exception OSError(errno, strerror[, filename[, winerror[, filename2]]])
+この例外はシステム関数がシステム関連のエラーを返した場合に送出されます。例えば "file not found" や "disk full" のような I/O の失敗が発生したときです (引数の型が不正な場合や、他の偶発的なエラーは除きます)。
+
+コンストラクタの2番目の形式は下記の対応する属性を設定します。指定されなかった場合属性はデフォルトで None です。後方互換性のために、引数が3つ渡された場合、args 属性は最初の2つの要素のみからなるタプルを持ちます。
+
+コンストラクタは実際には、 OS exceptions で述べられている OSError のサブクラスを返すことがよくあります。特定のサブクラスは最終的な errno 値によります。この挙動は OSError を直接またはエイリアスで構築し、サブクラス化時に継承されなかった場合にのみ発生します。
+
+errno
+C 変数 errno に由来する数値エラーコードです。
+
+winerror
+Windows において、ネイティブ Windows エラーコードを与えます。そして errno 属性は POSIX でいうネイティブエラーコードへのおよその翻訳です。
+
+Windows では、winerror コンストラクタ引数が整数の場合 errno 属性は Windows エラーコードから決定され、errno 引数は無視されます。他のプラットフォームでは winerror 引数は無視され、 winerror 属性は存在しません。
+
+strerror
+OS が提供するような、対応するエラーメッセージです。 POSIX では perror() で、Windows では FormatMessage() で体裁化されます。
+
+filename
+filename2
+ファイルシステムパスが1つ関与する例外 (例えば open() や os.unlink()) の場合、filename は関数に渡されたファイル名です。 ファイルシステムパスが2つ関与する関数 (例えば os.rename()) の場合、filename2 は関数に渡された2つ目のファイル名です。
+
+バージョン 3.3 で変更: EnvironmentError, IOError, WindowsError, socket.error, select.error, mmap.error が OSError に統合されました。コンストラクタはサブクラスを返すかもしれません。
+
+バージョン 3.4 で変更: filename 属性がファイルシステムのエンコーディングでエンコードやデコードされた名前から、関数に渡された元々のファイル名になりました。 また、filename2 コンストラクタ引数が追加されました。
+
+exception OverflowError
+算術演算の結果が表現できない大きな値になった場合に送出されます。これは整数では起こりません (むしろ MemoryError が送出されることになるでしょう)。しかし、歴史的な理由のため、要求された範囲の外の整数に対して OverflowError が送出されることがあります。C の浮動小数点演算の例外処理は標準化されていないので、ほとんどの浮動小数点演算もチェックされません。
+
+exception RecursionError
+この例外は RuntimeError を継承しています。インタープリタが最大再帰深度 (sys.getrecursionlimit() を参照) の超過を検出すると送出されます。
+
+バージョン 3.5 で追加: 以前は RuntimeError をそのまま送出していました。
+
+exception ReferenceError
+weakref.proxy() によって生成された弱参照 (weak reference) プロキシを使って、ガーベジコレクションによって回収された後の参照対象オブジェクトの属性にアクセスした場合に送出されます。弱参照については weakref モジュールを参照してください。
+
+exception RuntimeError
+他のカテゴリに分類できないエラーが検出された場合に送出されます。関連値は、何が問題だったのかをより詳細に示す文字列です。
+
+exception StopIteration
+組込み関数 next() と iterator の __next__() メソッドによって、そのイテレータが生成するアイテムがこれ以上ないことを伝えるために送出されます。
+
+この例外オブジェクトには一つの属性 value があり、例外を構成する際に引数として与えられ、デフォルトは None です。
+
+generator や coroutine 関数が返るとき、新しい StopIteration インスタンスが送出されます。 関数の返り値は例外のコンストラクタの value 引数として使われます。
+
+ジェネレータのコードが直接的あるいは間接的に StopIteration を送出する場合は、 RuntimeError に変換されます (StopIteration は変換後の例外の原因として保持されます)。
+
+バージョン 3.3 で変更: value 属性とジェネレータ関数が値を返すためにそれを使う機能が追加されました。
+
+バージョン 3.5 で変更: from __future__ import generator_stop による RuntimeError への変換が導入されました。 PEP 479 を参照してください。
+
+バージョン 3.7 で変更: PEP 479 が全てのコードでデフォルトで有効化されました: ジェネレータから送出された StopIteration は RuntimeError に変換されます。
+
+exception StopAsyncIteration
+イテレーションを停止するために、 asynchronous iterator オブジェクトの __anext__() メソッドによって返される必要があります。
+
+バージョン 3.5 で追加.
+
+exception SyntaxError
+パーザが構文エラーに遭遇した場合に送出されます。この例外は import 文、組み込み関数 exec() や eval() 、初期化スクリプトの読み込みや標準入力で (対話的な実行時にも) 起こる可能性があります。
+
+このクラスのインスタンスは、例外の詳細に簡単にアクセスできるようにするために、属性 filename, lineno, offset, text を持ちます。例外インスタンスに対する str() はメッセージのみを返します。
+
+exception IndentationError
+正しくないインデントに関する構文エラーの基底クラスです。これは SyntaxError のサブクラスです。
+
+exception TabError
+タブとスペースを一貫しない方法でインデントに使っているときに送出されます。これは IndentationError のサブクラスです。
+
+exception SystemError
+インタプリタが内部エラーを発見したが、状況は全ての望みを棄てさせるほど深刻ではないと思われる場合に送出されます。関連値は (下位層で) どの動作が失敗したかを示す文字列です。
+
+使用中の Python インタプリタの作者または保守担当者にこのエラーを報告してください。このとき、Python インタプリタのバージョン (sys.version 。Python の対話的セッションを開始した際にも出力されます)、正確なエラーメッセージ (例外の関連値) を忘れずに報告してください。可能な場合にはエラーを引き起こしたプログラムのソースコードも報告してください。
+
+exception SystemExit
+この例外は sys.exit() 関数から送出されます。Exception をキャッチするコードに誤ってキャッチされないように、Exception ではなく BaseException を継承しています。これにより例外は上の階層に適切に伝わり、インタープリタを終了させます。この例外が処理されなかった場合はスタックのトレースバックを表示せずに Python インタープリタは終了します。コンストラクタは sys.exit() に渡されるオプション引数と同じものを受け取ります。値が整数の場合、システムの終了ステータス (C 言語の exit() 関数に渡すもの)を指定します。値が None の場合、終了ステータスは 0 です。それ以外の型の場合 (例えば str)、 オブジェクトの値が表示され、終了ステータスは 1 です。
+
+sys.exit() は、クリーンアップのための処理 (try 文の finally 節) が実行されるようにするため、またデバッガが制御不能になるリスクを冒さずにスクリプトを実行できるようにするために例外に変換されます。即座に終了することが真に強く必要であるとき (例えば、os.fork() を呼んだ後の子プロセス内) には os._exit() 関数を使うことができます。
+
+code
+コンストラクタに渡された終了ステータス又はエラーメッセージ。(デフォルトは None)
+
+exception TypeError
+組み込み演算または関数が適切でない型のオブジェクトに対して適用された際に送出されます。関連値は型の不整合に関して詳細を述べた文字列です。
+
+この例外は、そのオブジェクトで実行しようとした操作がサポートされておらず、その予定もない場合にユーザーコードから送出されるかもしれません。オブジェクトでその操作をサポートするつもりだが、まだ実装を提供していないのであれば、送出する適切な例外は NotImplementedError です。
+
+誤った型の引数が渡された場合は (例えば、int が期待されるのに、list が渡された) TypeError となるべきです。しかし、誤った値(例えば、期待する範囲外の数)が引数として渡された場合は、 ValueError となるべきです。
+
+exception UnboundLocalError
+関数やメソッド内のローカルな変数に対して参照を行ったが、その変数には値が代入されていなかった場合に送出されます。 NameError のサブクラスです。
+
+exception UnicodeError
+Unicode に関するエンコードまたはデコードのエラーが発生した際に送出されます。 ValueError のサブクラスです。
+
+UnicodeError はエンコードまたはデコードのエラーの説明を属性として持っています。例えば、 err.object[err.start:err.end] は、無効な入力のうちコーデックが処理に失敗した箇所を表します。
+
+encoding
+エラーを送出したエンコーディングの名前です。
+
+reason
+そのコーデックエラーを説明する文字列です。
+
+object
+コーデックがエンコードまたはデコードしようとしたオブジェクトです。
+
+start
+object の最初の無効なデータのインデクスです。
+
+end
+object の最後の無効なデータの次のインデクスです。
+
+exception UnicodeEncodeError
+Unicode 関連のエラーがエンコード中に発生した際に送出されます。 UnicodeError のサブクラスです。
+
+exception UnicodeDecodeError
+Unicode 関連のエラーがデコード中に発生した際に送出されます。 UnicodeError のサブクラスです。
+
+exception UnicodeTranslateError
+Unicode 関連のエラーが変換中に発生した際に送出されます。 UnicodeError のサブクラスです。
+
+exception ValueError
+演算子や関数が、正しい型だが適切でない値を持つ引数を受け取ったときや、 IndexError のようなより詳細な例外では記述できない状況で送出されます。
+
+exception ZeroDivisionError
+除算や剰余演算の第二引数が 0 であった場合に送出されます。関連値は文字列で、その演算における被演算子と演算子の型を示します。
+
+以下の例外は、過去のバージョンとの後方互換性のために残されています; Python 3.3 より、これらは OSError のエイリアスです。
+
+exception EnvironmentError
+exception IOError
+exception WindowsError
+Windows でのみ利用できます。
+
+OS 例外
+以下の例外は OSError のサブクラスで、システムエラーコードに依存して送出されます。
+
+exception BlockingIOError
+ある操作が、ノンブロッキング操作に設定されたオブジェクト (例えばソケット) をブロックしそうになった場合に送出されます。errno EAGAIN, EALREADY, EWOULDBLOCK および EINPROGRESS に対応します。
+
+BlockingIOError は、 OSError の属性に加えて一つの属性を持ちます:
+
+characters_written
+ストリームがブロックされるまでに書き込まれた文字数を含む整数です。この属性は io からのバッファ I/O クラスを使っているときに利用できます。
+
+exception ChildProcessError
+子プロセスの操作が失敗した場合に送出されます。errno ECHILD に対応します。
+
+exception ConnectionError
+コネクション関係の問題の基底クラス。
+
+サブクラスは BrokenPipeError, ConnectionAbortedError, ConnectionRefusedError, ConnectionResetError です。
+
+exception BrokenPipeError
+ConnectionError のサブクラスで、もう一方の端が閉じられたパイプに書き込こもうとするか、書き込みのためにシャットダウンされたソケットに書き込こもうとした場合に発生します。 errno EPIPE と ESHUTDOWN に対応します。
+
+exception ConnectionAbortedError
+ConnectionError のサブクラスで、接続の試行が通信相手によって中断された場合に発生します。 errno ECONNABORTED に対応します。
+
+exception ConnectionRefusedError
+ConnectionError のサブクラスで、接続の試行が通信相手によって拒否された場合に発生します。 errno ECONNREFUSED に対応します。
+
+exception ConnectionResetError
+ConnectionError のサブクラスで、接続が通信相手によってリセットされた場合に発生します。 errno ECONNRESET に対応します。
+
+exception FileExistsError
+すでに存在するファイルやディレクトリを作成しようとした場合に送出されます。errno EEXIST に対応します。
+
+exception FileNotFoundError
+要求されたファイルやディレクトリが存在しない場合に送出されます。errno ENOENT に対応します。
+
+exception InterruptedError
+システムコールが入力信号によって中断された場合に送出されます。errno EINTR に対応します。
+
+バージョン 3.5 で変更: シグナルハンドラが例外を送出せず、システムコールが信号で中断された場合 Python は InterruptedError を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください) 。
+
+exception IsADirectoryError
+ディレクトリに (os.remove() などの) ファイル操作が要求された場合に送出されます。errno EISDIR に対応します。
+
+exception NotADirectoryError
+ディレクトリ以外のものに (os.listdir() などの) ディレクトリ操作が要求された場合に送出されます。errno ENOTDIR に対応します。
+
+exception PermissionError
+十分なアクセス権、例えばファイルシステム権限のない操作が試みられた場合に送出されます。errno EACCES および EPERM に対応します。
+
+exception ProcessLookupError
+与えられたプロセスが存在しない場合に送出されます。errno ESRCH に対応します。
+
+exception TimeoutError
+システム関数がシステムレベルでタイムアウトした場合に送出されます。errno ETIMEDOUT に対応します。
+
+バージョン 3.3 で追加: 上記のすべての OSError サブクラスが追加されました。
+
+参考 PEP 3151 - OS および IO 例外階層の手直し
+警告
+次の例外は警告カテゴリとして使われます。詳細については 警告カテゴリ のドキュメントを参照してください。
+
+exception Warning
+警告カテゴリの基底クラスです。
+
+exception UserWarning
+ユーザコードによって生成される警告の基底クラスです。
+
+exception DeprecationWarning
+他の Python 開発者へ向けて警告を発するときの、廃止予定の機能についての警告の基底クラスです。
+
+Ignored by the default warning filters, except in the __main__ module (PEP 565). Enabling the Python Development Mode shows this warning.
+
+exception PendingDeprecationWarning
+古くなって将来的に廃止される予定だが、今のところは廃止されていない機能についての警告の基底クラスです。
+
+近々起こる可能性のある機能廃止について警告を発することはまれなので、このクラスはめったに使われず、既に決まっている廃止については DeprecationWarning が望ましいです。
+
+Ignored by the default warning filters. Enabling the Python Development Mode shows this warning.
+
+exception SyntaxWarning
+曖昧な構文に対する警告の基底クラスです。
+
+exception RuntimeWarning
+あいまいなランタイム挙動に対する警告の基底クラスです。
+
+exception FutureWarning
+Python で書かれたアプリケーションのエンドユーザーへ向けて警告を発するときの、廃止予定の機能についての警告の基底クラスです。
+
+exception ImportWarning
+モジュールインポートの誤りと思われるものに対する警告の基底クラスです。
+
+Ignored by the default warning filters. Enabling the Python Development Mode shows this warning.
+
+exception UnicodeWarning
+Unicode に関連した警告の基底クラスです。
+
+exception BytesWarning
+bytes や bytearray に関連した警告の基底クラスです。
+
+exception ResourceWarning
+リソースの使用に関連した警告の基底クラスです。
+
+Ignored by the default warning filters. Enabling the Python Development Mode shows this warning.
+
+バージョン 3.2 で追加.
+
+例外のクラス階層
+組み込み例外のクラス階層は以下のとおりです:
+
+

@@ -1,0 +1,36 @@
+//
+
+Code = {
+    (Token / Other )*
+}
+
+
+Token = 
+    / Name
+    / Int
+    / String
+    / Special
+    / CToken
+
+
+Name = { [A-Za-z_] [A-Za-z0-9_]* #Name } _
+
+Int = { [0-9]+ #Value } _
+
+String = { '"' ('\\"' / !'"' .)* '"' #Value } _
+
+Special = { SPECIAL #Token } _
+
+SPECIAL = 
+    / '<blk>' / '</blk>' / '<sep>'
+
+CToken = { CTOKEN #Token } _
+
+CTOKEN =
+    / '**'
+    / [+\-*/%=]
+    / [()[\],]
+
+Other = { . (!Token .)* #Doc }
+
+_ = [ \t]*

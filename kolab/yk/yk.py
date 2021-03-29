@@ -1,4 +1,5 @@
 import pegtree as pg
+import csv
 
 peg = pg.grammar('yk.tpeg')
 parse = pg.generate(peg)
@@ -47,12 +48,20 @@ def make(code, doc, convert=convert_all):
 # make("data['名前'].values", "dataの'名前'カラムの配列")
 # make('temp=a;a=b;b=temp', 'aとbを入れ替える')
 
-make('if a> 0: print(a)', 'もしaが正の数ならばaを表示する', convert_all)
-make('if a> 0: print(a)', 'もしaが正の数ならばaを表示する', convert_nothing)
+make('if a> 0: <blk>print(a)</blk>', 'もしaが正の数ならばaを表示する', convert_all)
+make('if a> 0: <blk>print(a)</blk>', 'もしaが正の数ならばaを表示する', convert_nothing)
 
-import csv
 
 def read_csv(filename):
-    with open('filename') as f:
-        f = csv.reader(f)
-        ## お任せします。
+    with open(filename) as f:
+        with open('result.tsv', 'a') as f2:
+            reader = csv.reader(f, delimiter='\t')
+            writer = csv.writer(f2, delimiter='\t', quotechar='\\')
+
+            for row in reader:
+                code, doc = make(row[0], row[1])
+                writer.writerow([code, doc])
+
+if __name__ == '__main__':
+    f_name = './block/euler_before.tsv'
+    read_csv(f_name)

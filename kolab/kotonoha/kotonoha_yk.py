@@ -870,7 +870,8 @@ def make_tsv(line):
 # ''')
 
 if __name__ == '__main__':
-    for filename in tqdm(sys.argv[1:]):
+    # for filename in tqdm(sys.argv[1:]):
+    for filename in sys.argv[1:]:
         make_corpus(filename)
     # with open('unk.csv', 'w') as f:
     #     for term, cnt in Counter(UNK).most_common(1000):

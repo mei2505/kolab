@@ -1,0 +1,2354 @@
+string --- 一般的な文字列操作
+ソースコード: Lib/string.py
+
+参考 テキストシーケンス型 --- str
+文字列メソッド
+文字列定数
+このモジュールで定義されている定数は以下の通りです:
+
+string.ascii_letters
+後述の ascii_lowercase と ascii_uppercase を合わせたもの。この値はロケールに依存しません。
+
+string.ascii_lowercase
+小文字 'abcdefghijklmnopqrstuvwxyz' 。この値はロケールに依存せず、固定です。
+
+string.ascii_uppercase
+大文字 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 。この値はロケールに依存せず、固定です。
+
+string.digits
+文字列 '0123456789' です。
+
+string.hexdigits
+文字列 '0123456789abcdefABCDEF' です。
+
+string.octdigits
+文字列 '01234567' です。
+
+string.punctuation
+String of ASCII characters which are considered punctuation characters in the C locale: !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~.
+
+string.printable
+印刷可能な ASCII 文字で構成される文字列です。 digits, ascii_letters, punctuation および whitespace を組み合わせたものです。
+
+string.whitespace
+空白 (whitespace) として扱われる ASCII 文字全てを含む文字列です。ほとんどのシステムでは、これはスペース (space)、タブ (tab)、改行 (linefeed)、復帰 (return)、改頁 (formfeed)、垂直タブ (vertical tab) です。
+
+カスタムの文字列書式化
+組み込みの文字列 (string) クラスには、 PEP 3101 で記述されている format() メソッドによって複雑な変数置換と値のフォーマットを行う機能があります。 string モジュールの Formatter クラスでは、組み込みの format() メソッドと同じ実装を使用して、独自の文字列フォーマットの振る舞いを作成してカスタマイズすることができます。
+
+class string.Formatter
+Formatter クラスは、以下のメソッドを持ちます:
+
+format(format_string, /, *args, **kwargs)
+主要な API メソッドです。書式文字列と、任意の位置引数およびキーワード引数のセットを取ります。これは、vformat() を呼び出す単なるラッパーです。
+
+バージョン 3.7 で変更: 書式文字列は 位置専用 の引数となりました。
+
+vformat(format_string, args, kwargs)
+この関数はフォーマットの実際の仕事をします。この関数は、 *args および **kwargs シンタックスを使用して、辞書を個々の引数として unpack してから再度 pack するのではなく、引数としてあらかじめ用意した辞書を渡したい場合のために、独立した関数として公開されます。 vformat() は、書式文字列を文字データと置換フィールドに分解する仕事をします。それは、以下に記述する様々なメソッドを呼び出します。
+
+さらに、 Formatter ではサブクラスによって置き換えられることを意図した次のようないくつかのメソッドが定義されています。
+
+parse(format_string)
+format_stringを探査し、タプル、 (literal_text, field_name, format_spec, conversion) のイテラブルを返します。これは vformat() が文字列を文字としての文字データや置換フィールドに展開するために使用されます。
+
+タプルの値は、概念的に文字としての文字データと、それに続く単一の置換フィールドを表現します。文字としての文字データが無い場合は (ふたつの置換フィールドが連続した場合などに起き得ます) 、 literal_text は長さが 0 の文字列となります。置換フィールドが無い場合は、 field_name, format_spec および conversion が None となります。
+
+get_field(field_name, args, kwargs)
+引数として与えた parse() (上記参照) により返される field_name を書式指定対象オブジェクトに変換します。返り値はタプル、 (obj, used_key) です。デフォルトでは PEP 3101 に規定される "0[name]" や "label.title" のような形式の文字列を引数としてとります。 args と kwargs は vformat() に渡されます。返り値 used_key は、 get_value() の key 引数と同じ意味を持ちます。
+
+get_value(key, args, kwargs)
+与えられたフィールドの値を取り出します。 key 引数は整数でも文字列でも構いません。整数の場合は、位置引数 args のインデックス番号を示します。文字列の場合は、名前付きの引数 kwargs を意味します。
+
+args 引数は、 vformat() への位置引数のリストに設定され、 kwargs 引数は、キーワード引数の辞書に設定されます。
+
+For compound field names, these functions are only called for the first component of the field name; subsequent components are handled through normal attribute and indexing operations.
+
+つまり、例えば、フィールドが '0.name' と表現されるとき、 get_value() は、 key 引数が 0 として呼び出されます。属性 name は、組み込みの getattr() 関数が呼び出され、 get_value() が返されたのちに検索されます。
+
+インデックスまたはキーワードが存在しないアイテムを参照した場合、 IndexError または KeyError が送出されます。
+
+check_unused_args(used_args, args, kwargs)
+希望に応じて未使用の引数がないか確認する機能を実装します。この関数への引数は、書式指定文字列で実際に参照されるすべての引数のキーの set (位置引数の整数、名前付き引数の文字列) と、vformat に渡される args と kwargs への参照です。使用されない引数の set は、これらのパラメータから計算されます。 check_unused_args() は、確認の結果が偽である場合に例外を送出するものとみなされます。
+
+format_field(value, format_spec)
+format_field() は単純に組み込みのグローバル関数 format() を呼び出します。このメソッドは、サブクラスをオーバーライドするために提供されます。
+
+convert_field(value, conversion)
+(get_field() が返す) 値を (parse() メソッドが返すタプルの形式で) 与えられた変換タイプとして変換します。デフォルトバージョンは 's' (str), 'r' (repr), 'a' (ascii) 変換タイプを理解します。
+
+書式指定文字列の文法
+str.format() メソッドと Formatter クラスは、文字列の書式指定に同じ文法を共有します (ただし、 Formatter サブクラスでは、独自の書式指定文法を定義することが可能です)。 この文法は フォーマット済み文字列リテラル の文法と関係してはいますが、異なるものです。
+
+書式指定文字列は波括弧 {} に囲まれた "置換フィールド" を含みます。波括弧に囲まれた部分以外は全て単純な文字として扱われ、変更を加えることなく出力へコピーされます。波括弧を文字として扱う必要がある場合は、二重にすることでエスケープすることができます: {{ および }} 。
+
+置換フィールドの文法は以下です:
+
+replacement_field ::=  "{" [field_name] ["!" conversion] [":" format_spec] "}"
+field_name        ::=  arg_name ("." attribute_name | "[" element_index "]")*
+arg_name          ::=  [identifier | digit+]
+attribute_name    ::=  identifier
+element_index     ::=  digit+ | index_string
+index_string      ::=  <any source character except "]"> +
+conversion        ::=  "r" | "s" | "a"
+format_spec       ::=  <described in the next section>
+もっと簡単にいうと、置換フィールドは field_name で始められます。これによって指定したオブジェクトの値が、置換フィールドの代わりに書式化され出力に挿入されます。field_name の後に、感嘆符 '!' を挟んで conversion フィールドを続けることができます。最後にコロン ':' を挟んで、 format_spec を書くことができます。これは、置換される値の非デフォルトの書式を指定します。
+
+書式指定ミニ言語仕様 節も参照して下さい。
+
+field_name それ自身は、数かキーワードのいずれかである arg_name から始まります。それが数である場合、位置引数を参照します。また、それがキーワードである場合、指定されたキーワード引数を参照します。書式文字列中で数の arg_names が順に 0, 1, 2, ... である場合、それらはすべて (いくつかではありません) 省略することができます。そして数 0, 1, 2, ... は、自動的にその順で挿入されます。 arg_name は引用符で区切られていないので、書式文字列内の任意の辞書キー (例えば文字列 '10' や ':-]' など) を指定することはできません。 arg_name の後に任意の数のインデックス式または属性式を続けることができます。 '.name' 形式の式は getattr() を使用して指定された属性を選択します。一方、 '[index]' 形式の式は __getitem__() を使用してインデックス参照を行います。
+
+バージョン 3.1 で変更: str.format() を使い、位置引数指定を省略することができます。 '{} {}'.format(a, b) は '{0} {1}'.format(a, b) と同じになります。
+
+バージョン 3.4 で変更: Formatter を使い、位置引数指定を省略することができます。
+
+簡単な書式指定文字列の例を挙げます:
+
+"First, thou shalt count to {0}"  # References first positional argument
+"Bring me a {}"                   # Implicitly references the first positional argument
+"From {} to {}"                   # Same as "From {0} to {1}"
+"My quest is {name}"              # References keyword argument 'name'
+"Weight in tons {0.weight}"       # 'weight' attribute of first positional arg
+"Units destroyed: {players[0]}"   # First element of keyword argument 'players'.
+置換 (conversion) フィールドにより書式変換前に型の強制変換が実施されます。通常、値の書式変換は __format__() によって実施されます。しかしながら、場合によっては、文字列として変換することを強制したり、書式指定の定義をオーバーライドしたくなることもあります。 __format__() の呼び出し前に値を文字列に変換すると、通常の書式変換の処理は飛ばされます。
+
+現在 3つの変換フラグがサポートされています: 値に対して str() を呼ぶ '!s' 、 repr() を呼ぶ '!r' 、 ascii() を呼ぶ '!a'。
+
+いくつかの例です:
+
+"Harold's a clever {0!s}"        # Calls str() on the argument first
+"Bring out the holy {name!r}"    # Calls repr() on the argument first
+"More {!a}"                      # Calls ascii() on the argument first
+format_spec フィールドは、フィールド幅、文字揃え、埋め方、精度などの、値を表現する仕様を含みます。それぞれの値の型は、 "formatting mini-language" 、または、 format_spec の実装で定義されます。
+
+ほとんどの組み込み型は、次のセクションに記載された共通の formatting mini-language をサポートします。
+
+format_spec フィールド内には入れ子になった置換フィールドを含めることもできます。入れ子になった置換フィールドにはフィールド名、変換フラグ、書式指定を含めることができますが、さらに入れ子の階層を含めることはできません。 format_spec 中の置換フィールドは format_spec 文字列が解釈される前に置き換えられます。これにより、値の書式を動的に指定することができます。
+
+書式指定例 のいくつかの例も参照して下さい。
+
+書式指定ミニ言語仕様
+書式指定 ("Format specifications") は書式指定文字列の個々の値を表現する方法を指定するための、置換フィールドで使用されます (書式指定文字列の文法 および フォーマット済み文字列リテラル を参照してください) 。 それらは、組み込み関数の format() 関数に直接渡されます。 それぞれの書式指定可能な型について、書式指定がどのように解釈されるかが規定されます。
+
+多くの組み込み型は、書式指定に関して以下のオプションを実装します。しかしながら、いくつかの書式指定オプションは数値型でのみサポートされます。
+
+A general convention is that an empty format specification produces the same result as if you had called str() on the value. A non-empty format specification typically modifies the result.
+
+一般的な書式指定子 (standard format specifier) の書式は以下です:
+
+format_spec     ::=  [[fill]align][sign][#][0][width][grouping_option][.precision][type]
+fill            ::=  <any character>
+align           ::=  "<" | ">" | "=" | "^"
+sign            ::=  "+" | "-" | " "
+width           ::=  digit+
+grouping_option ::=  "_" | ","
+precision       ::=  digit+
+type            ::=  "b" | "c" | "d" | "e" | "E" | "f" | "F" | "g" | "G" | "n" | "o" | "s" | "x" | "X" | "%"
+有効な align 値を指定する場合、その前に fill 文字を付けることができます。 この文字には任意の文字を指定でき、省略された場合はデフォルトの空白文字となります。 formatted string literal の中や str.format() メソッドを使う場合はリテラルの波括弧 ("{" と "}") を fill 文字として使えないことに注意してください。 ただし、波括弧を入れ子になった置換フィールド内に挿入することはできます。 この制限は format() 関数には影響しません。
+
+様々な align オプションの意味は以下のとおりです:
+
+オプション
+意味
+'<'
+利用可能なスペースにおいて、左詰めを強制します (ほとんどのオブジェクトにおいてのデフォルト)。
+'>'
+利用可能なスペースにおいて、右詰めを強制します (いくつかのオブジェクトにおいてのデフォルト)。
+'='
+符号 (があれば) の後ろを埋めます。 '+000000120' のような形で表示されます。このオプションは数値型に対してのみ有効です。フィールド幅の直前が '0' の時はこれがデフォルトになります。
+'^'
+利用可能なスペースにおいて、中央寄せを強制します。
+最小のフィールド幅が定義されない限り、フィールド幅はデータを表示するために必要な幅と同じになることに注意して下さい。そのため、その場合には、 align オプションは意味を持ちません。
+
+sign オプションは数値型に対してのみ有効であり、以下のうちのひとつとなります:
+
+オプション
+意味
+'+'
+符号の使用を、正数、負数の両方に対して指定します。
+'-'
+符号の使用を、負数に対してのみ指定します (デフォルトの挙動です)。
+空白
+空白を正数の前に付け、負号を負数の前に使用することを指定します。
+The '#' option causes the "alternate form" to be used for the conversion. The alternate form is defined differently for different types. This option is only valid for integer, float and complex types. For integers, when binary, octal, or hexadecimal output is used, this option adds the prefix respective '0b', '0o', or '0x' to the output value. For float and complex the alternate form causes the result of the conversion to always contain a decimal-point character, even if no digits follow it. Normally, a decimal-point character appears in the result of these conversions only if a digit follows it. In addition, for 'g' and 'G' conversions, trailing zeros are not removed from the result.
+
+',' オプションは、千の位のセパレータにカンマを使うことを合図します。ロケール依存のセパレータには、代わりに 'n' の整数表現形式を使ってください。
+
+バージョン 3.1 で変更: ',' オプションが追加されました (PEP 378 も参照)。
+
+'_' オプションは、浮動小数点数の表現型と整数の表現型 'd' における千倍ごとの区切り文字にアンダースコアを使うというしるしです。 整数の表現型の 'b', 'o', 'x', 'X' では、4桁ごとにアンダースコアが挿入されます。 他の表現型でこのオプションを指定するとエラーになります。
+
+バージョン 3.6 で変更: '_' オプションが追加されました (PEP 515 も参照)。
+
+width is a decimal integer defining the minimum total field width, including any prefixes, separators, and other formatting characters. If not specified, then the field width will be determined by the content.
+
+alignment が明示的に与えられない場合、 width フィールドにゼロ ('0') 文字を前置することは、数値型のための符号を意識した 0 パディングを可能にします。これは fill 文字に '0' を指定して、 alignment タイプに '=' を指定したことと等価です。
+
+precision は10進数で、'f' および 'F' で指定される浮動小数点数の小数点以下、あるいは 'g' および 'G' で指定される浮動小数点数の小数点の前後に表示される桁数を指定します。非数型に対しては、最大フィールド幅を表します。言い換えると、フィールドの内容から何文字を使用するかということです。precision は整数型に対しては使うことができません。
+
+最後に、type は、データがどのように表現されるかを決定します。
+
+利用可能な文字列の表現型は以下です:
+
+型
+意味
+'s'
+文字列。これがデフォルトの値で、多くの場合省略されます。
+None
+'s' と同じです。
+利用可能な整数の表現型は以下です:
+
+型
+意味
+'b'
+2進数。出力される数値は2を基数とします。
+'c'
+文字。数値を対応する Unicode 文字に変換します。
+'d'
+10進数。出力される数値は10を基数とします。
+'o'
+8進数。出力される数値は8を基数とします。
+'x'
+16進数。出力される数値は16を基数とします。 10進で9を超える数字には小文字が使われます。
+'X'
+16進数。出力される数値は16を基数とします。 10進で9を越える数字には大文字が使われます。
+'n'
+数値。現在のロケールに従い、区切り文字を挿入することを除けば、 'd' と同じです。
+None
+'d' と同じです。
+これらの表現型に加えて、整数は ('n' と None を除く) 以下の浮動小数点数の表現型で書式指定できます。 そうすることで整数は書式変換される前に float() を使って浮動小数点数に変換されます。
+
+The available presentation types for float and Decimal values are:
+
+型
+意味
+'e'
+Scientific notation. For a given precision p, formats the number in scientific notation with the letter 'e' separating the coefficient from the exponent. The coefficient has one digit before and p digits after the decimal point, for a total of p + 1 significant digits. With no precision given, uses a precision of 6 digits after the decimal point for float, and shows all coefficient digits for Decimal. If no digits follow the decimal point, the decimal point is also removed unless the # option is used.
+'E'
+Scientific notation. Same as 'e' except it uses an upper case 'E' as the separator character.
+'f'
+Fixed-point notation. For a given precision p, formats the number as a decimal number with exactly p digits following the decimal point. With no precision given, uses a precision of 6 digits after the decimal point for float, and uses a precision large enough to show all coefficient digits for Decimal. If no digits follow the decimal point, the decimal point is also removed unless the # option is used.
+'F'
+固定小数点数表記です。nan が NAN に、inf が INF に変換されることを除き 'f' と同じです。
+'g'
+General format. For a given precision p >= 1, this rounds the number to p significant digits and then formats the result in either fixed-point format or in scientific notation, depending on its magnitude. A precision of 0 is treated as equivalent to a precision of 1.
+
+The precise rules are as follows: suppose that the result formatted with presentation type 'e' and precision p-1 would have exponent exp. Then, if m <= exp < p, where m is -4 for floats and -6 for Decimals, the number is formatted with presentation type 'f' and precision p-1-exp. Otherwise, the number is formatted with presentation type 'e' and precision p-1. In both cases insignificant trailing zeros are removed from the significand, and the decimal point is also removed if there are no remaining digits following it, unless the '#' option is used.
+
+With no precision given, uses a precision of 6 significant digits for float. For Decimal, the coefficient of the result is formed from the coefficient digits of the value; scientific notation is used for values smaller than 1e-6 in absolute value and values where the place value of the least significant digit is larger than 1, and fixed-point notation is used otherwise.
+
+正と負の無限大と 0 および NaN は精度に関係なくそれぞれ inf, -inf, 0, -0 および nan となります。
+'G'
+汎用フォーマットです。数値が大きくなったとき、 'E' に切り替わることを除き、 'g' と同じです。無限大と NaN の表示も大文字になります。
+'n'
+数値です。現在のロケールに合わせて、数値分割文字が挿入されることを除き、 'g' と同じです。
+'%'
+パーセンテージです。数値は 100 倍され、固定小数点数フォーマット ('f') でパーセント記号付きで表示されます。
+None
+For float this is the same as 'g', except that when fixed-point notation is used to format the result, it always includes at least one digit past the decimal point. The precision used is as large as needed to represent the given value faithfully.
+
+For Decimal, this is the same as either 'g' or 'G' depending on the value of context.capitals for the current decimal context.
+
+The overall effect is to match the output of str() as altered by the other format modifiers.
+書式指定例
+この節では、 str.format() 構文の例を紹介し、さらに従来の %-書式と比較します。
+
+多くの場合、新構文に {} を加え、 % の代わりに : を使うことで、古い %-書式に類似した書式になります。例えば、'%03.2f' は '{:03.2f}' と変換できます。
+
+以下の例で示すように、新構文はさらに新たに様々なオプションもサポートしています。
+
+位置引数を使ったアクセス:
+
+>>>
+>>> '{0}, {1}, {2}'.format('a', 'b', 'c')
+'a, b, c'
+>>> '{}, {}, {}'.format('a', 'b', 'c')  # 3.1+ only
+'a, b, c'
+>>> '{2}, {1}, {0}'.format('a', 'b', 'c')
+'c, b, a'
+>>> '{2}, {1}, {0}'.format(*'abc')      # unpacking argument sequence
+'c, b, a'
+>>> '{0}{1}{0}'.format('abra', 'cad')   # arguments' indices can be repeated
+'abracadabra'
+名前を使ったアクセス:
+
+>>>
+>>> 'Coordinates: {latitude}, {longitude}'.format(latitude='37.24N', longitude='-115.81W')
+'Coordinates: 37.24N, -115.81W'
+>>> coord = {'latitude': '37.24N', 'longitude': '-115.81W'}
+>>> 'Coordinates: {latitude}, {longitude}'.format(**coord)
+'Coordinates: 37.24N, -115.81W'
+引数の属性へのアクセス:
+
+>>>
+>>> c = 3-5j
+>>> ('The complex number {0} is formed from the real part {0.real} '
+...  'and the imaginary part {0.imag}.').format(c)
+'The complex number (3-5j) is formed from the real part 3.0 and the imaginary part -5.0.'
+>>> class Point:
+...     def __init__(self, x, y):
+...         self.x, self.y = x, y
+...     def __str__(self):
+...         return 'Point({self.x}, {self.y})'.format(self=self)
+...
+>>> str(Point(4, 2))
+'Point(4, 2)'
+引数の要素へのアクセス:
+
+>>>
+>>> coord = (3, 5)
+>>> 'X: {0[0]};  Y: {0[1]}'.format(coord)
+'X: 3;  Y: 5'
+%s と %r の置き換え:
+
+>>>
+>>> "repr() shows quotes: {!r}; str() doesn't: {!s}".format('test1', 'test2')
+"repr() shows quotes: 'test1'; str() doesn't: test2"
+テキストの幅を指定した整列:
+
+>>>
+>>> '{:<30}'.format('left aligned')
+'left aligned                  '
+>>> '{:>30}'.format('right aligned')
+'                 right aligned'
+>>> '{:^30}'.format('centered')
+'           centered           '
+>>> '{:*^30}'.format('centered')  # use '*' as a fill char
+'***********centered***********'
+%+f と %-f, % f の置換、そして符号の指定:
+
+>>>
+>>> '{:+f}; {:+f}'.format(3.14, -3.14)  # show it always
+'+3.140000; -3.140000'
+>>> '{: f}; {: f}'.format(3.14, -3.14)  # show a space for positive numbers
+' 3.140000; -3.140000'
+>>> '{:-f}; {:-f}'.format(3.14, -3.14)  # show only the minus -- same as '{:f}; {:f}'
+'3.140000; -3.140000'
+%x と %o の置換、そして値に対する異なる底の変換:
+
+>>>
+>>> # format also supports binary numbers
+>>> "int: {0:d};  hex: {0:x};  oct: {0:o};  bin: {0:b}".format(42)
+'int: 42;  hex: 2a;  oct: 52;  bin: 101010'
+>>> # with 0x, 0o, or 0b as prefix:
+>>> "int: {0:d};  hex: {0:#x};  oct: {0:#o};  bin: {0:#b}".format(42)
+'int: 42;  hex: 0x2a;  oct: 0o52;  bin: 0b101010'
+千の位のセパレータにカンマを使用する:
+
+>>>
+>>> '{:,}'.format(1234567890)
+'1,234,567,890'
+パーセントを表示する:
+
+>>>
+>>> points = 19
+>>> total = 22
+>>> 'Correct answers: {:.2%}'.format(points/total)
+'Correct answers: 86.36%'
+型特有の書式指定を使う:
+
+>>>
+>>> import datetime
+>>> d = datetime.datetime(2010, 7, 4, 12, 15, 58)
+>>> '{:%Y-%m-%d %H:%M:%S}'.format(d)
+'2010-07-04 12:15:58'
+引数をネストする、さらに複雑な例:
+
+>>>
+>>> for align, text in zip('<^>', ['left', 'center', 'right']):
+...     '{0:{fill}{align}16}'.format(text, fill=align, align=align)
+...
+'left<<<<<<<<<<<<'
+'^^^^^center^^^^^'
+'>>>>>>>>>>>right'
+>>>
+>>> octets = [192, 168, 0, 1]
+>>> '{:02X}{:02X}{:02X}{:02X}'.format(*octets)
+'C0A80001'
+>>> int(_, 16)
+3232235521
+>>>
+>>> width = 5
+>>> for num in range(5,12): 
+...     for base in 'dXob':
+...         print('{0:{width}{base}}'.format(num, base=base, width=width), end=' ')
+...     print()
+...
+    5     5     5   101
+    6     6     6   110
+    7     7     7   111
+    8     8    10  1000
+    9     9    11  1001
+   10     A    12  1010
+   11     B    13  1011
+テンプレート文字列
+テンプレート文字列では PEP 292 で解説されている単純な文字列置換ができます。 テンプレート文字列の主な使い道は国際化 (i18n) です。というのは、その国際化の文脈において、より簡潔な文法と機能を持つテンプレート文字列を使うと、 Python にある他の組み込みの文字列フォーマット機能よりも翻訳がしやすいからです。 テンプレート文字列の上に構築された国際化のためのライプラリの例として、 flufl.i18n を調べてみてください。
+
+テンプレート文字列は $ に基づいた置換をサポートしていて、次の規則が使われています:
+
+$$ はエスケープ文字です; $ 一つに置換されます。
+$identifier は "identifier" のマッピングキーに合致する置換プレースホルダーを指定します。デフォルトでは、 "identifier" は大文字と小文字を区別しない ASCII 英数字 (アンダースコアを含む) からなら文字列に制限されています。文字列はアンダースコアか ASCII 文字から始まるものでなければなりません。$ の後に識別子に使えない文字が出現すると、そこでプレースホルダ名の指定が終わります。
+${identifier} は $identifier と同じです。プレースホルダ名の後ろに識別子として使える文字列が続いていて、それをプレースホルダ名の一部として扱いたくない場合、例えば "${noun}ification" のような場合に必要な書き方です。
+上記以外の書き方で文字列中に $ を使うと ValueError を送出します。
+
+string モジュールでは、上記のような規則を実装した Template クラスを提供しています。 Template のメソッドを以下に示します:
+
+class string.Template(template)
+コンストラクタはテンプレート文字列になる引数を一つだけ取ります。
+
+substitute(mapping={}, /, **kwds)
+テンプレート置換を行い、新たな文字列を生成して返します。mapping はテンプレート中のプレースホルダに対応するキーを持つような任意の辞書類似オブジェクトです。辞書を指定する代わりに、キーワード引数も指定でき、その場合にはキーワードをプレースホルダ名に対応させます。mapping と kwds の両方が指定され、内容が重複した場合には、kwds に指定したプレースホルダを優先します。
+
+safe_substitute(mapping={}, /, **kwds)
+substitute() と同じですが、プレースホルダに対応するものを mapping や kwds から見つけられなかった場合に、 KeyError 例外を送出する代わりにもとのプレースホルダがそのまま入ります。また、 substitute() とは違い、規則外の書き方で $ を使った場合でも、 ValueError を送出せず単に $ を返します。
+
+その他の例外も発生し得る一方で、このメソッドが「安全 (safe) 」と呼ばれているのは、置換操作は常に、例外を送出する代わりに利用可能な文字列を返そうとするからです。別の見方をすれば、 safe_substitute() は区切り間違いによるぶら下がり (dangling delimiter) や波括弧の非対応、 Python の識別子として無効なプレースホルダ名を含むような不正なテンプレートを何も警告せずに無視するため、安全とはいえないのです。
+
+Template のインスタンスは、次のような public な属性を提供しています:
+
+template
+コンストラクタの引数 template に渡されたオブジェクトです。通常、この値を変更すべきではありませんが、読み出し専用アクセスを強制しているわけではありません。
+
+Templateの使い方の例を以下に示します:
+
+>>>
+>>> from string import Template
+>>> s = Template('$who likes $what')
+>>> s.substitute(who='tim', what='kung pao')
+'tim likes kung pao'
+>>> d = dict(who='tim')
+>>> Template('Give $who $100').substitute(d)
+Traceback (most recent call last):
+...
+ValueError: Invalid placeholder in string: line 1, col 11
+>>> Template('$who likes $what').substitute(d)
+Traceback (most recent call last):
+...
+KeyError: 'what'
+>>> Template('$who likes $what').safe_substitute(d)
+'tim likes $what'
+さらに進んだ使い方: Template のサブクラスを派生して、プレースホルダの書式、区切り文字、テンプレート文字列の解釈に使われている正規表現全体をカスタマイズできます。こうした作業には、以下のクラス属性をオーバライドします:
+
+delimiter -- プレースホルダの開始を示すリテラル文字列です。 デフォルトの値は $ です。 実装系はこの文字列に対して必要に応じて re.escape() を呼び出すので、正規表現になってしまうような文字列にしては なりません 。 さらにクラスを作成した後に delimiter を変更できない (つまり、別の delimiter を設定したいのであれば、サブクラスの名前空間で行わなければならない) ことに注意してください。
+idpattern -- This is the regular expression describing the pattern for non-braced placeholders. The default value is the regular expression (?a:[_a-z][_a-z0-9]*). If this is given and braceidpattern is None this pattern will also apply to braced placeholders.
+
+注釈 flags のデフォルトは re.IGNORECASE なので、 [a-z] というパターンはいくつかの非 ASCII 文字に適合できます。 そのため、ここではローカルの a フラグを使っています。
+バージョン 3.7 で変更: braceidpattern を使用すると、中括弧の内側と外側で使用する別々のパターンを定義できます。
+
+braceidpattern -- This is like idpattern but describes the pattern for braced placeholders. Defaults to None which means to fall back to idpattern (i.e. the same pattern is used both inside and outside braces). If given, this allows you to define different patterns for braced and unbraced placeholders.
+
+バージョン 3.7 で追加.
+
+flags -- 代入の認識のために使用される正規表現をコンパイルする際に適用される正規表現フラグ。デフォルト値は re.IGNORECASE です。re.VERBOSE が常にフラグに追加されるということに注意してください。したがって、カスタムな idpattern は verbose 正規表現の規約に従わなければなりません。
+
+バージョン 3.2 で追加.
+
+他にも、クラス属性 pattern をオーバライドして、正規表現パターン全体を指定できます。オーバライドを行う場合、 pattern の値は 4 つの名前つきキャプチャグループ (capturing group) を持った正規表現オブジェクトでなければなりません。これらのキャプチャグループは、上で説明した規則と、無効なプレースホルダに対する規則に対応しています:
+
+escaped -- このグループはエスケープシーケンス、すなわちデフォルトパターンにおける $$ に対応します。
+named -- このグループは波括弧でくくらないプレースホルダ名に対応します; キャプチャグループに区切り文字を含めてはなりません。
+braced -- このグループは波括弧でくくったプレースホルダ名に対応します; キャプチャグループに区切り文字を含めてはなりません。
+invalid -- このグループはそのほかの区切り文字のパターン (通常は区切り文字一つ) に対応し、正規表現の末尾に出現しなければなりません。
+ヘルパー関数
+string.capwords(s, sep=None)
+str.split() を使って引数を単語に分割し、 str.capitalize() を使ってそれぞれの単語の先頭の文字を大文字に変換し、 str.join() を使ってつなぎ合わせます。オプションの第2引数 sep が与えられないか None の場合、この置換処理は文字列中の連続する空白文字をスペース一つに置き換え、先頭と末尾の空白を削除します、それ以外の場合には sep は split と join に使われます。
+
+re --- 正規表現操作
+ソースコード: Lib/re.py
+
+このモジュールは Perl に見られる正規表現マッチング操作と同様のものを提供します。
+
+パターンおよび検索される文字列には、Unicode 文字列 (str) や 8 ビット文字列 (bytes) を使います。ただし、Unicode 文字列と 8 ビット文字列の混在はできません。つまり、Unicode 文字列にバイト列のパターンでマッチングしたり、その逆はできません。同様に、置換時の置換文字列はパターンおよび検索文字列の両方と同じ型でなくてはなりません。
+
+正規表現では、特殊な形式を表すためや、特殊文字をその特殊な意味を発動させず使うために、バックスラッシュ文字 ('\') を使います。こうしたバックスラッシュの使い方は、 Python の文字列リテラルにおける同じ文字の使い方と衝突します。例えば、リテラルのバックスラッシュにマッチさせるには、パターン文字列として '\\\\' と書かなければなりません。なぜなら、正規表現は \\ でなければならないうえ、それぞれのバックスラッシュは標準の Python 文字列リテラルで \\ と表現せねばならないからです。 Python の文字列リテラルにおいて、バックスラッシュの使用による不正なエスケープ文字がある場合は、DeprecationWarning が発生し、将来的には SyntaxError になることにも注意してください。この動作は、正規表現として有効な文字列に対しても同様です。
+
+これを解決するには、正規表現パターンに Python の raw 文字列記法を使います。 'r' を前置した文字列リテラル内ではバックスラッシュが特別扱いされません。従って "\n" が改行一文字からなる文字列であるのに対して、 r"\n" は '\' と 'n' の二文字からなる文字列です。通常、 Python コード中では、パターンをこの raw 文字列記法を使って表現します。
+
+重要なこととして、大抵の正規表現操作は、モジュールレベルの関数としても、 コンパイル済み正規表現 のメソッドとしても利用できます。関数は正規表現オブジェクトを前もってコンパイルする必要がない近道ですが、微調整のための変数が減ります。
+
+参考 サードパーティの regex モジュールは、標準ライブラリの re モジュールと互換な API を持ちながら、追加の機能とより徹底した Unicode サポートを提供します。
+正規表現のシンタックス
+正規表現 (または RE) は、その表現にマッチ (match) する文字列の集合を指定します。このモジュールの関数を使えば、ある文字列が与えられた正規表現にマッチするか (または、与えられた正規表現がある文字列にマッチするか、と言い換えても同じことになります) を検査できます。
+
+正規表現を連結することで新しい正規表現を作れます。A と B がともに正規表現であれば AB も正規表現です。一般的に、ある文字列 p が A にマッチし、別の文字列 q が B にマッチするなら、文字列 pq は AB にマッチします。ただし、 A または B に優先度の低い演算が含まれる場合や、 A と B との間に境界条件がある場合や、番号付けされたグループ参照をしている場合、を除きます。こうして、ここで述べるような簡単な基本表現から、複雑な表現を容易に構築できます。正規表現に関する理論と実装の詳細については Friedl 本 [Frie09] か、コンパイラの構築に関するテキストを参照してください。
+
+以下で正規表現の形式を簡単に説明します。詳細な情報ややさしい説明は、 正規表現 HOWTO を参照してください。
+
+正規表現には、特殊文字と通常文字の両方を含められます。 'A' 、 'a' 、または '0' のようなほとんどの通常文字は、最も単純な正規表現です。これは単純に、その文字自体にマッチします。通常文字は連結できるので、 last は文字列 'last' にマッチします。 (この節では以降、正規表現は一般にクオートを使わず この特殊スタイルで 表記し、マッチ対象の文字列は、 'シングルクオートで括って' 表記します。)
+
+'|' や '(' といったいくつかの文字は特殊です。特殊文字は通常文字の種別を表したり、周辺の通常文字に対する解釈方法に影響します。
+
+繰り返しの修飾子 (*、 +、 ?、 {m,n} など) は直接入れ子にはできません。これは、非貪欲な修飾子の接尾辞 ? や他の実装での他の修飾子との曖昧さを回避します。内側で繰り返したものをさらに繰り返すには、丸括弧が使えます。例えば、正規表現 (?:a{6})* は 6 の倍数個の 'a' 文字にマッチします。
+
+特殊文字を以下に示します:
+
+.
+(ドット) デフォルトのモードでは改行以外の任意の文字にマッチします。 DOTALL フラグが指定されていれば改行も含む全ての文字にマッチします。
+
+^
+(キャレット) 文字列の先頭にマッチし、 MULTILINE モードでは各改行の直後にもマッチします。
+
+$
+文字列の末尾、あるいは文字列の末尾の改行の直前にマッチし、 MULTILINE モードでは改行の前にもマッチします。 foo は 'foo' と 'foobar' の両方にマッチしますが、正規表現 foo$ は 'foo' だけにマッチします。興味深いことに、 'foo1\nfoo2\n' を foo.$ で検索した場合、通常は 'foo2' だけにマッチしますが、 MULTILINE モードでは 'foo1' にもマッチします。 $ だけで 'foo\n' を検索した場合、2 つの (空の) マッチを見つけます: 1つは改行の直前で、もう1つは文字列の末尾です。
+
+*
+直前の正規表現を 0 回以上、できるだけ多く繰り返したものにマッチさせる結果の正規表現にします。例えば ab* は 'a'、'ab'、または 'a' に任意個数の 'b' を続けたものにマッチします。
+
++
+直前の正規表現を 1 回以上繰り返したものにマッチさせる結果の正規表現にします。例えば ab+ は 'a' に 1 つ以上の 'b' が続いたものにマッチし、単なる 'a' にはマッチしません。
+
+?
+直前の正規表現を 0 回か 1 回繰り返したものにマッチさせる結果の正規表現にします。例えば ab? は 'a' あるいは 'ab' にマッチします。
+
+*?, +?, ??
+'*' 、 '+' 、および '?' 修飾子は全て 貪欲 (greedy) マッチで、できるだけ多くのテキストにマッチします。この挙動が望ましくない時もあります。例えば正規表現 <.*> が '<a> b <c>' に対してマッチされると、 '<a>' だけでなく文字列全体にマッチしてしまいます。修飾子の後に ? を追加すると、 非貪欲 (non-greedy) あるいは 最小 (minimal) のマッチが行われ、できるだけ 少ない 文字にマッチします。正規表現 <.*?> を使うと '<a>' だけにマッチします。
+
+{m}
+直前の正規表現をちょうど m 回繰り返したものにマッチさせるよう指定します。それより少ないマッチでは正規表現全体がマッチしません。例えば、 a{6} は 6 個ちょうどの 'a' 文字にマッチしますが、 5 個ではマッチしません。
+
+{m,n}
+直前の正規表現を m 回から n 回、できるだけ多く繰り返したものにマッチさせる結果の正規表現にします。例えば、a{3,5} は、3 個から 5 個の 'a' 文字にマッチします。m を省略すると下限は 0 に指定され、n を省略すると上限は無限に指定されます。例として、 a{4,}b は 'aaaab' や、1,000 個の 'a' 文字に 'b' が続いたものにマッチしますが、'aaab' にはマッチしません。コンマは省略できません、省略すると修飾子が上で述べた形式と混同されてしまうからです。
+
+{m,n}?
+結果の正規表現は、前にある正規表現を、m 回から n 回まで繰り返したものにマッチし、できるだけ 少なく 繰り返したものにマッチするようにします。これは、前の修飾子の非貪欲版です。例えば、 6 文字文字列 'aaaaaa' では、 a{3,5} は、5 個の 'a' 文字にマッチしますが、 a{3,5}? は 3 個の文字にマッチするだけです。
+
+\
+特殊文字をエスケープ ( '*' や '?' などの文字にマッチできるようにする) し、または特殊シーケンスを合図します。特殊シーケンスは後で議論します。
+
+パターンを表現するのに raw 文字列を使っていないのであれば、 Python ももまた、バックスラッシュを文字列リテラルでエスケープシーケンスとして使うことを思い出して下さい。そのエスケープシーケンスを Python のパーザが認識しないなら、そのバックスラッシュとそれに続く文字が結果の文字列に含まれます。しかし、Python が結果のシーケンスを認識するなら、そのバックスラッシュは 2 回繰り返さなければいけません。これは複雑で理解しにくいので、ごく単純な表現以外は、全て raw 文字列を使うことを強く推奨します。
+
+[]
+文字の集合を指定するのに使います。集合の中では:
+
+文字を個別に指定できます。 [amk] は 'a' 、 'm' または 'k' にマッチします。
+連続した文字の範囲を、 '-' を2 つの文字で挟んで指定できます。例えば、 [a-z] はあらゆる小文字の ASCII 文字にマッチします。[0-5][0-9] は 00 から 59 まで全ての 2 桁の数字にマッチします。[0-9A-Fa-f] は任意の 16 進数字にマッチします。- がエスケープされているか (例: [a\-z])、先頭や末尾の文字にされていると (例: [-a] や [a-])、リテラル '-' にマッチします。
+集合の中では、特殊文字はその特殊な意味を失います。例えば [(+*)] はリテラル文字 '(' 、 '+' 、 '*' 、または ')' のどれにでもマッチします。
+\w や \S のような文字クラス (後述) も集合の中で受理されますが、それにマッチする文字は ASCII や LOCALE モードが有効であるかに依存します。
+補集合 をとって範囲内にない文字にマッチできます。集合の最初の文字が '^' なら、集合に 含まれない 全ての文字にマッチします。例えば、 [^5] は '5' を除くあらゆる文字にマッチし、 [^^] は '^' を除くあらゆる文字にマッチします。 ^ は集合の最初の文字でなければ特別の意味を持ちません。
+集合の中でリテラル ']' にマッチさせるには、その前にバックスラッシュをつけるか、集合の先頭に置きます。例えば、 [()[\]{}] と []()[{}] はどちらも括弧にマッチします。
+Unicode Technical Standard #18 にあるような集合の入れ子や集合操作が将来追加される可能性があります。これは構文を変化させるもので、この変化を容易にするために、さしあたって曖昧な事例には FutureWarning が送出されます。これはリテラル '[' で始まる集合や、リテラル文字の連続 '--' 、 '&&' 、 '~~' および '||' を含む集合を含みます。警告を避けるにはバックスラッシュでエスケープしてください。
+バージョン 3.7 で変更: 文字セットが将来意味論的に変化する構造を含むなら FutureWarning が送出されます。
+
+|
+A と B を任意の正規表現として、 A|B は A と B のいずれかにマッチする正規表現を作成します。この方法で任意の数の正規表現を '|' で分離できます。これはグループ (下記参照) 中でも使えます。対象文字列を走査するとき、'|' で分離された正規表現は左から右へ順に試されます。一つのパターンが完全にマッチしたとき、そのパターン枝が受理されます。つまり、ひとたび A がマッチしてしまえば、例え B によって全体のマッチが長くなるとしても、 B はもはや走査されません。言いかえると、 '|' 演算子は決して貪欲にはなりません。リテラル '|' にマッチするには、 \| を使うか、 [|] のように文字クラス中に囲みます。
+
+(...)
+丸括弧で囲まれた正規表現にマッチするとともに、グループの開始と終了を表します。グループの中身は以下で述べるように、マッチが実行された後で回収したり、その文字列中で以降 \number 特殊シーケンスでマッチしたりできます。リテラル '(' や ')' にマッチするには、\( や \) を使うか、文字クラス中に囲みます: [(]、 [)] 。
+
+(?...)
+これは拡張記法です ('(' に続く '?' はそれ以上の意味を持ちません) 。 '?' に続く最初の文字がこの構造の意味と特有の構文を決定します。拡張は一般に新しいグループを作成しません。ただし (?P<name>...) はこの法則の唯一の例外です。現在サポートされている拡張は以下の通りです。
+
+(?aiLmsux)
+('a' 、 'i' 、 'L' 、 'm' 、 's' 、 'u' 、 'x' の集合から 1 文字以上。) このグループは空文字列にマッチします。文字は正規表現全体に、対応するフラグを設定します。 re.A (ASCII 限定マッチング)、 re.I (大文字・小文字を区別しない)、 re.L (ロケール依存)、 re.M (複数行)、 re.S (ドットが全てにマッチ)、 re.U (Unicode マッチング)、 re.X (冗長)。 (各フラグについては モジュールコンテンツ で説明します。) これは、 flag 引数を re.compile() 関数に渡すのではなく、フラグを正規表現の一部として含めたいときに便利です。フラグは表現文字列の先頭で使うべきです。
+
+(?:...)
+普通の丸括弧の、キャプチャしない版です。丸括弧で囲まれた正規表現にマッチしますが、このグループがマッチした部分文字列は、マッチを実行したあとで回収することも、そのパターン中で以降参照することも できません 。
+
+(?aiLmsux-imsx:...)
+('a' 、 'i' 、 'L' 、 'm' 、 's' 、 'u' 、 'x' の集合から 0 文字以上、必要ならさらに '-' に続けて 'i' 、 'm' 、 's' 、 'x' の集合から 1 文字以上。) 文字は表現の一部に、対応するフラグを設定または除去します。 re.A (ASCII 限定マッチング)、 re.I (大文字・小文字を区別しない)、 re.L (ロケール依存)、 re.M (複数行)、 re.S (ドットが全てにマッチ)、 re.U (Unicode マッチング)、 re.X (冗長)。 (各フラグについては モジュールコンテンツ で説明します。)
+
+文字 'a' 、 'L' および 'u' は相互に排他であり、組み合わせることも '-' に続けることもできません。その代わり、これらの内一つがインライングループ中に現れると、外側のグループでのマッチングモードを上書きします。 Unicode パターン中では (?a:...) は ASCII 限定マッチングに切り替え、 (?u:...) は Unicode マッチング (デフォルト) に切り替えます。バイト列パターン中では、 (?L:...) はロケール依存マッチングに切り替え、 (?a:...) は ASCII 限定マッチング (デフォルト) に切り替えます。この上書きは狭いインライングループにのみ影響し、元のマッチングモードはグループ外では復元されます。
+
+バージョン 3.6 で追加.
+
+バージョン 3.7 で変更: 文字 'a' 、 'L' および 'u' もグループ中で使えます。
+
+(?P<name>...)
+通常の丸括弧に似ていますが、このグループがマッチした部分文字列はシンボリックグループ名 name でアクセスできます。グループ名は有効な Python 識別子でなければならず、各グループ名は 1 個の正規表現内で一度だけ定義されていなければなりません。シンボリックグループは、そのグループが名前付けされていなかったかのように番号付けされたグループでもあります。
+
+名前付きグループは 3 つのコンテキストで参照できます。パターンが (?P<quote>['\"]).*?(?P=quote) (シングルまたはダブルクオートで囲まれた文字列にマッチ) ならば:
+
+グループ "quote" を参照するコンテキスト
+参照する方法
+その同じパターン中
+(?P=quote) (示したとおり)
+\1
+マッチオブジェクト m の処理時
+m.group('quote')
+m.end('quote') (など)
+re.sub() の repl 引数へ渡される文字列中
+\g<quote>
+\g<1>
+\1
+(?P=name)
+名前付きグループへの後方参照です。これは name という名前の既出のグループがマッチした文字列にマッチします。
+
+(?#...)
+コメントです。括弧の中身は単純に無視されます。
+
+(?=...)
+... が次に続くものにマッチすればマッチしますが、文字列をまったく消費しません。これは 先読みアサーション (lookahead assertion) と呼ばれます。例えば、Isaac (?=Asimov) は 'Isaac ' に、その後に 'Asimov' が続く場合にのみ、マッチします。
+
+(?!...)
+... が次に続くものにマッチしなければマッチします。これは 否定先読みアサーション (negative lookahead assertion) です。例えば、Isaac (?!Asimov) は 'Isaac ' に、その後に 'Asimov' が続か ない 場合にのみ、マッチします。
+
+(?<=...)
+その文字列における現在位置の前に、現在位置で終わる ... とのマッチがあれば、マッチします。これは 後読みアサーション と呼ばれます。(?<=abc)def は、後読みは 3 文字をバックアップし、含まれているパターンがマッチするか検査するので 'abcdef' にマッチを見つけます。含まれるパターンは、固定長の文字列にのみマッチしなければなりません。すなわち、 abc や a|b は許されますが、a* や a{3,4} は許されません。肯定後読みアサーションで始まるパターンは、検索される文字列の先頭とは決してマッチしないことに注意して下さい。match() 関数ではなく search() 関数を使う方が望ましいでしょう:
+
+>>>
+>>> import re
+>>> m = re.search('(?<=abc)def', 'abcdef')
+>>> m.group(0)
+'def'
+この例ではハイフンに続く単語を探します:
+
+>>>
+>>> m = re.search(r'(?<=-)\w+', 'spam-egg')
+>>> m.group(0)
+'egg'
+バージョン 3.5 で変更: 固定長のグループ参照をサポートするようになりました。
+
+(?<!...)
+その文字列における現在位置の前に ... とのマッチがなければ、マッチします。これは 否定後読みアサーション(negative lookbehind assertion) と呼ばれます。肯定後読みアサーションと同様に、含まれるパターンは固定長の文字列にのみマッチしなければなりません。否定後読みアサーションで始まるパターンは検索される文字列の先頭でマッチできます。
+
+(?(id/name)yes-pattern|no-pattern)
+与えられた id や name のグループが存在すれば yes-pattern との、存在しなければ no-pattern とのマッチを試みます。no-pattern はオプションであり省略できます。例えば、(<)?(\w+@\w+(?:\.\w+)+)(?(1)>|$) は貧弱な E-mail マッチングパターンで、'<user@host.com>' や 'user@host.com' にはマッチしますが、'<user@host.com' や 'user@host.com>' にはマッチしません。
+
+特殊シーケンスは '\' と以下のリストの文字から構成されます。通常文字が ASCII 数字でも ASCII 文字でもなければ、結果の正規表現は 2 番目の文字にマッチします。例えば、\$ は文字 '$' にマッチします。
+
+\number
+同じ番号のグループの中身にマッチします。グループは 1 から始まる番号をつけられます。例えば、 (.+) \1 は、 'the the' あるいは '55 55' にマッチしますが、 'thethe' にはマッチしません(グループの後のスペースに注意して下さい)。この特殊シーケンスは最初の 99 グループのうちの一つとのマッチにのみ使えます。 number の最初の桁が 0 であるか、 number が 3 桁の 8 進数であれば、それはグループのマッチとしてではなく、 8 進値 number を持つ文字として解釈されます。文字クラスの '[' と ']' の間では全ての数値エスケープが文字として扱われます。
+
+\A
+文字列の先頭でのみマッチします。
+
+\b
+空文字列にマッチしますが、単語の先頭か末尾でのみです。単語は単語文字の並びとして定義されます。形式的には、 \b は \w と \W 文字 (またはその逆) との、あるいは \w と文字列の先頭・末尾との境界として定義されます。例えば、 r'\bfoo\b' は 'foo' 、 'foo.' 、 '(foo)' 、 'bar foo baz' にはマッチしますが、 'foobar' や 'foo3' にはマッチしません。
+
+デフォルトの Unicode 英数字は Unicode パターン中で使われるものと同じですが、これは ASCII フラグを使って変更できます。 LOCALE フラグが使われているなら単語の境界は現在のロケールによって決定されます。Python の文字列リテラルとの互換性のため、文字列範囲中では、 \b は後退 (backspace) 文字を表します。
+
+\B
+空文字列にマッチしますが、それが単語の先頭か末尾 でない ときのみです。つまり r'py\B' は 'python' 、 'py3' 、'py2' にマッチしますが、 'py' 、 'py.' 、 または 'py!' にはマッチしません。 \B は \b のちょうど反対で、 Unicode パターンにおける単語文字は Unicode 英数字およびアンダースコアですが、 これは ASCII フラグを使って変更できます。 LOCALE フラグが使われているなら単語の境界は現在のロケールによって決定されます。
+
+\d
+Unicode (str) パターンでは:
+任意の Unicode 10 進数字 (Unicode 文字カテゴリ [Nd]) にマッチします。これは [0-9] とその他多数の数字を含みます。 ASCII フラグが使われているなら [0-9] のみにマッチします。
+
+8 ビット (bytes) パターンでは:
+任意の 10 進数字にマッチします。これは [0-9] と等価です。
+
+\D
+10 進数字でない任意の文字にマッチします。これは \d の反対です。ASCII フラグが使われているならこれは [^0-9] と等価になります。
+
+\s
+Unicode (str) パターンでは:
+Unicode 空白文字 (これは [ \t\n\r\f\v] その他多くの文字、例えば多くの言語におけるタイポグラフィ規則で定義されたノーブレークスペースなどを含みます) にマッチします。 ASCII フラグが使われているなら、[ \t\n\r\f\v] のみにマッチします。
+
+8 ビット (bytes) パターンでは:
+ASCII 文字セットで空白文字と見なされる文字にマッチします。これは [ \t\n\r\f\v] と等価です。
+
+\S
+空白文字ではない任意の文字にマッチします。これは \s の反対です。ASCII フラグが使われているならこれは [^ \t\n\r\f\v] と等価になります。
+
+\w
+Unicode (str) パターンでは:
+Unicode 単語文字にマッチします。これはあらゆる言語で単語の一部になりうるほとんどの文字、数字、およびアンダースコアを含みます。ASCII フラグが使われているなら、 [a-zA-Z0-9_] のみにマッチします。
+
+8 ビット (bytes) パターンでは:
+ASCII 文字セットで英数字と見なされる文字にマッチします。これは [a-zA-Z0-9_] と等価です。LOCALE フラグが使われているなら、現在のロケールで英数字と見なされる文字およびアンダースコアにマッチします。
+
+\W
+単語文字ではない任意の文字にマッチします。これは \w の反対です。 ASCII フラグが使われているなら、これは [^a-zA-Z0-9_] と等価になります。LOCALE フラグが使われているなら、現在のロケールの英数字でもアンダースコアでもない文字にマッチします。
+
+\Z
+文字列の末尾でのみマッチします。
+
+Python 文字列リテラルでサポートされている標準エスケープのほとんども正規表現パーザで受理されます:
+
+\a      \b      \f      \n
+\N      \r      \t      \u
+\U      \v      \x      \\
+(\b は単語の境界を表すのに使われ、文字クラス中でのみ "後退 (backspace)" 文字を意味することに注意してください。)
+
+'\u'、'\U' および '\N' エスケープシーケンスは、Unicode パターン内でのみ認識されます。バイト列ではエラーとなります。ASCII 文字のエスケープで未知のものは将来使うために予約されていて、エラーとして扱われます。
+
+8 進エスケープは限られた形式でのみ含まれます。その最初の桁が 0 であるか、それが 3 桁の 8 進数であるならば、それは 8 進エスケープと見なされます。そうでなければ、それはグループ参照です。文字列リテラルでは、8 進エスケープは常にたかだか 3 桁長です。
+
+バージョン 3.3 で変更: '\u' と '\U' エスケープシーケンスが追加されました。
+
+バージョン 3.6 で変更: '\' と ASCII 文字からなる未知のエスケープはエラーになります。
+
+バージョン 3.8 で変更: '\N{name}' エスケープシーケンスが追加されました。文字列リテラルでは、同名のUnicode 文字に展開されます。('\N{EM DASH}' など)
+
+モジュールコンテンツ
+このモジュールはいくつかの関数、定数、例外を定義します。このうちいくつかの関数は、コンパイル済み正規表現がそなえる完全な機能のメソッドを簡易にしたものです。些細なものを除くほとんどのアプリケーションは常にコンパイル済み形式を使います。
+
+バージョン 3.6 で変更: フラグ定数は、enum.IntFlag のサブクラスである RegexFlag のインスタンスになりました。
+
+re.compile(pattern, flags=0)
+正規表現パターンを 正規表現オブジェクト にコンパイルし、以下に述べる match() 、 search() その他のメソッドを使ってマッチングに使えるようにします。
+
+式の挙動は flags の値を指定することで加減できます。値は以下の変数のうち任意のものを、ビット単位 OR ( | 演算子) で組み合わせたものです。
+
+シーケンス
+
+prog = re.compile(pattern)
+result = prog.match(string)
+は、以下と同等です
+
+result = re.match(pattern, string)
+が、 re.compile() を使い、結果の正規表現オブジェクトを保存して再利用するほうが、一つのプログラムでその表現を何回も使うときに効率的です。
+
+注釈 re.compile() やモジュールレベルのマッチング関数に渡された最新のパターンはコンパイル済みのものがキャッシュされるので、一度に正規表現を少ししか使わないプログラムでは正規表現をコンパイルする必要はありません。
+re.A
+re.ASCII
+\w 、\W 、\b 、\B 、\d 、\D 、\s 、および \S に、完全な Unicode マッチングではなく ASCII 限定マッチングを行わせます。これは Unicode パターンでのみ意味があり、バイト列パターンでは無視されます。インラインフラグの (?a) に相当します。
+
+後方互換性のため、re.U フラグ (と同義の re.UNICODE および埋め込みで使用する (?u)) はまだ存在しますが、Python 3 では文字列のマッチがデフォルトで Unicode (そしてバイト列では Unicode マッチングが扱えない) なので冗長です。
+
+re.DEBUG
+コンパイル済み表現に関するデバッグ情報を表示します。相当するインラインフラグはありません。
+
+re.I
+re.IGNORECASE
+大文字・小文字を区別しないマッチングを行います; [A-Z] のような正規表現は小文字にもマッチします。 re.ASCII フラグを使い、非 ASCII マッチが無効化されていない限り、 (Ü が ü にマッチするような) 完全な Unicode マッチングも有効です。 re.LOCALE フラグも一緒に使われていない限り、現在のロケールがこのフラグの効果を変更することはありません。 インラインフラグの (?i) に相当します。
+
+Unicode パターン [a-z] または [A-Z] が IGNORECASE フラグとあわせて使われたとき、52 の ASCII 文字に加えて 4 の非 ASCII 文字 'İ' (U+0130, Latin capital letter I with dot above) 、 'ı' (U+0131, Latin small letter dotless i) 、 'ſ' (U+017F, Latin small letter long s) および 'K' (U+212A, Kelvin sign) にマッチすることに注意してください。 ASCII フラグが使われているなら、文字 'a' から 'z' および 'A' から 'Z' にのみマッチします。
+
+re.L
+re.LOCALE
+\w 、 \W 、 \b 、 \B および大文字・小文字を区別しないマッチングを、現在のロケールに依存させます。ロケールの仕組みは信頼できず、一度に一つの "文化" しか扱えず、 8 ビットロケールでしか働かないので、このフラグを使うことは推奨されません。Python 3 において Unicode (str) パターンでは Unicode マッチングはデフォルトですでに有効にされていて、異なるロケールや言語を扱えます。インラインフラグの (?L) に相当します。
+
+バージョン 3.6 で変更: re.LOCALE はバイト列パターンにのみ使え、re.ASCII と互換ではありません。
+
+バージョン 3.7 で変更: re.LOCALE フラグがあるコンパイル済み正規表現オブジェクトはコンパイル時のロケールに依存しなくなりました。マッチング時のロケールのみがマッチングの結果に影響します。
+
+re.M
+re.MULTILINE
+指定されていると、パターン文字 '^' は文字列の先頭で、および各行の先頭 (各改行の直後) で、マッチします。そしてパターン文字 '$' は文字列の末尾で、および各行の末尾 (各改行の直前) で、マッチします。デフォルトでは、 '^' は文字列の先頭でのみ、'$' は文字列の末尾および文字列の末尾の改行 (もしあれば) の直前でのみマッチします。インラインフラグの (?m) に相当します。
+
+re.S
+re.DOTALL
+'.' 特殊文字を、改行を含むあらゆる文字にマッチさせます。このフラグがなければ、'.' は、改行 以外の あらゆる文字とマッチします。インラインフラグの (?s) に相当します。
+
+re.X
+re.VERBOSE
+このフラグは正規表現を、パターンの論理的な節を視覚的に分割し、コメントを加えることで、見た目よく読みやすく書けるようにします。パターン中の空白は、文字クラス中にあるときと、エスケープされていないバックスラッシュの後にあるときと、 *? 、 (?: や (?P<...> のようなトークン中を除いて無視されます。ある行が文字クラス中でもエスケープされていないバックスラッシュの後でもない # を含むなら、一番左のそのような # から行末までの全ての文字は無視されます。
+
+つまり、10 進数字にマッチする下記のふたつの正規表現オブジェクトは、機能的に等価です:
+
+a = re.compile(r"""\d +  # the integral part
+                   \.    # the decimal point
+                   \d *  # some fractional digits""", re.X)
+b = re.compile(r"\d+\.\d*")
+インラインフラグの (?x) に相当します。
+
+re.search(pattern, string, flags=0)
+string を走査し、正規表現 pattern がマッチを生じさせる最初の場所を探して、対応する マッチオブジェクト を返します。文字列内にパターンにマッチする場所がなければ None を返します。これは文字列のどこかで長さ 0 のマッチを見つけるのとは異なることに注意してください。
+
+re.match(pattern, string, flags=0)
+string の先頭で 0 個以上の文字が正規表現 pattern にマッチすれば、対応する マッチオブジェクト を返します。文字列がパターンにマッチしなければ None を返します。これは長さ 0 のマッチとは異なることに注意して下さい。
+
+MULTILINE モードにおいても、re.match() は各行の先頭でマッチするのではなく、文字列の先頭でのみマッチすることに注意してください。
+
+string 中のどこででもマッチさせたいなら、代わりに search() を使ってください (search() vs. match() も参照してください)。
+
+re.fullmatch(pattern, string, flags=0)
+string 全体が正規表現 pattern にマッチするなら、対応する マッチオブジェクト を返します。文字列がパターンにマッチしないなら None を返します。これは長さ 0 のマッチとは異なることに注意して下さい。
+
+バージョン 3.4 で追加.
+
+re.split(pattern, string, maxsplit=0, flags=0)
+string を、出現した pattern で分割します。 pattern 中でキャプチャの丸括弧が使われていれば、パターン中の全てのグループのテキストも結果のリストの一部として返されます。maxsplit が 0 でなければ、分割は最大 maxsplit 回起こり、残りの文字列はリストの最終要素として返されます。
+
+>>>
+>>> re.split(r'\W+', 'Words, words, words.')
+['Words', 'words', 'words', '']
+>>> re.split(r'(\W+)', 'Words, words, words.')
+['Words', ', ', 'words', ', ', 'words', '.', '']
+>>> re.split(r'\W+', 'Words, words, words.', 1)
+['Words', 'words, words.']
+>>> re.split('[a-f]+', '0a3B9', flags=re.IGNORECASE)
+['0', '3', '9']
+セパレータ中にキャプチャグループがあり、それが文字列の先頭にマッチするなら、結果は空文字列で始まります。同じことが文字列の末尾にも言えます。
+
+>>>
+>>> re.split(r'(\W+)', '...words, words...')
+['', '...', 'words', ', ', 'words', '...', '']
+そうして、結果のリストにおいて、セパレータの構成要素は常に同じ相対的インデックスに見つかります。
+
+パターンへの空マッチは、直前の空マッチに隣接していないときのみ文字列を分割します。
+
+>>>
+>>> re.split(r'\b', 'Words, words, words.')
+['', 'Words', ', ', 'words', ', ', 'words', '.']
+>>> re.split(r'\W*', '...words...')
+['', '', 'w', 'o', 'r', 'd', 's', '', '']
+>>> re.split(r'(\W*)', '...words...')
+['', '...', '', '', 'w', '', 'o', '', 'r', '', 'd', '', 's', '...', '', '', '']
+バージョン 3.1 で変更: オプションの flags 引数が追加されました。
+
+バージョン 3.7 で変更: 空文字列にマッチしうるパターンでの分割をサポートするようになりました。
+
+re.findall(pattern, string, flags=0)
+string 中の pattern による全ての重複しないマッチを、文字列のリストとして返します。 string は左から右へ走査され、マッチは見つかった順で返されます。パターン中に 1 つ以上のグループがあれば、グループのリストを返します。パターンに複数のグループがあればタプルのリストになります。空マッチは結果に含まれます。
+
+バージョン 3.7 で変更: 空でないマッチが前の空マッチの直後から始められるようになりました。
+
+re.finditer(pattern, string, flags=0)
+string 中の正規表現 pattern の重複しないマッチ全てに渡る マッチオブジェクト を yield する イテレータ を返します。 string は左から右へ走査され、マッチは見つかった順で返されます。空マッチは結果に含まれます。
+
+バージョン 3.7 で変更: 空でないマッチが前の空マッチの直後から始められるようになりました。
+
+re.sub(pattern, repl, string, count=0, flags=0)
+string 中に出現する最も左の重複しない pattern を置換 repl で置換することで得られる文字列を返します。 パターンが見つからない場合、 string がそのまま返されます。 repl は文字列または関数です。 repl が文字列の場合は、その中の全てのバックスラッシュエスケープが処理されます。 \n は 1 つの改行文字に変換され、 \r はキャリッジリターンに変換される、などです。 ASCII 文字のエスケープで未知のものは将来使うために予約されていて、エラーとして扱われます。 それ以外の \& のような未知のエスケープは残されます。 \6 のような後方参照は、パターンのグループ 6 がマッチした部分文字列で置換されます。 例えば:
+
+>>>
+>>> re.sub(r'def\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*\(\s*\):',
+...        r'static PyObject*\npy_\1(void)\n{',
+...        'def myfunc():')
+'static PyObject*\npy_myfunc(void)\n{'
+repl が関数であれば、それは重複しない pattern が出現するたびに呼び出されます。この関数は一つの マッチオブジェクト 引数を取り、置換文字列を返します。例えば:
+
+>>>
+>>> def dashrepl(matchobj):
+...     if matchobj.group(0) == '-': return ' '
+...     else: return '-'
+>>> re.sub('-{1,2}', dashrepl, 'pro----gram-files')
+'pro--gram files'
+>>> re.sub(r'\sAND\s', ' & ', 'Baked Beans And Spam', flags=re.IGNORECASE)
+'Baked Beans & Spam'
+パターンは、文字列でも パターンオブジェクト でも構いません。
+
+オプション引数 count は出現したパターンを置換する最大の回数です。 count は非負整数です。省略されるか 0 なら、出現した全てが置換されます。パターンへの空マッチは前の空マッチに隣接していないときのみ置換されるので、 sub('x*', '-', 'abxd') は '-a-b--d-' を返します。
+
+文字列型 repl 引数では、上で述べた文字エスケープや後方参照に加えて、 \g<name> は (?P<name>...) 構文で定義された name という名前のグループがマッチした部分文字列を使い、 \g<number> は対応するグループ番号を使います。よって \g<2> は \2 と等価ですが、 \g<2>0 のような置換においても曖昧になりません。 \20 は、グループ 20 への参照として解釈され、グループ 2 への参照にリテラル文字 '0' が続いたものとしては解釈されません。後方参照 \g<0> は正規表現とマッチした部分文字列全体で置き換わります。
+
+バージョン 3.1 で変更: オプションの flags 引数が追加されました。
+
+バージョン 3.5 で変更: マッチしなかったグループは空文字列に置き換えられます。
+
+バージョン 3.6 で変更: pattern 中に '\' と ASCII 文字からなる未知のエスケープがあると、エラーになります。
+
+バージョン 3.7 で変更: repl 中に '\' と ASCII 文字からなる未知のエスケープがあると、エラーになります。
+
+バージョン 3.7 で変更: パターンへの空マッチは前の空でないマッチに隣接しているとき置き換えられます。
+
+re.subn(pattern, repl, string, count=0, flags=0)
+sub() と同じ操作を行いますが、タプル (new_string、 number_of_subs_made) を返します。
+
+バージョン 3.1 で変更: オプションの flags 引数が追加されました。
+
+バージョン 3.5 で変更: マッチしなかったグループは空文字列に置き換えられます。
+
+re.escape(pattern)
+pattern 中の特殊文字をエスケープします。これは正規表現メタ文字を含みうる任意のリテラル文字列にマッチしたい時に便利です。
+
+>>>
+>>> print(re.escape('http://www.python.org'))
+http://www\.python\.org
+
+>>> legal_chars = string.ascii_lowercase + string.digits + "!#$%&'*+-.^_`|~:"
+>>> print('[%s]+' % re.escape(legal_chars))
+[abcdefghijklmnopqrstuvwxyz0123456789!\#\$%\&'\*\+\-\.\^_`\|\~:]+
+
+>>> operators = ['+', '-', '*', '/', '**']
+>>> print('|'.join(map(re.escape, sorted(operators, reverse=True))))
+/|\-|\+|\*\*|\*
+この関数は、バックスラッシュのみをエスケープするべき sub() および subn() における置換文字列に使われてはなりません。例えば:
+
+>>>
+>>> digits_re = r'\d+'
+>>> sample = '/usr/sbin/sendmail - 0 errors, 12 warnings'
+>>> print(re.sub(digits_re, digits_re.replace('\\', r'\\'), sample))
+/usr/sbin/sendmail - \d+ errors, \d+ warnings
+バージョン 3.3 で変更: '_' 文字がエスケープされなくなりました。
+
+バージョン 3.7 で変更: 正規表現で特別な意味を持つ文字だけがエスケープされます。結果として、 '!'、 '"'、 '%'、 "'"、 ','、 '/'、 ':'、 ';'、 '<'、 '='、 '>'、 '@'、 と "`" はもはやエスケープされません。
+
+re.purge()
+正規表現キャッシュをクリアします。
+
+exception re.error(msg, pattern=None, pos=None)
+ここの関数のいずれかに渡された文字列が有効な正規表現ではない (例: 括弧が対になっていない) とき、またはコンパイルやマッチングの際にその他なんらかのエラーが発生した場合に送出される例外です。文字列にパターンとマッチする部分がなくても、それはエラーではありません。エラーインスタンスには、次のような追加の属性があります。
+
+msg
+フォーマットされていないエラーメッセージです。
+
+pattern
+正規表現のパターンです。
+
+pos
+pattern のコンパイルに失敗した場所のインデックスです (None の場合もあります)。
+
+lineno
+pos に対応する行です (None の場合もあります)。
+
+colno
+pos に対応する列です (None の場合もあります)。
+
+バージョン 3.5 で変更: 追加の属性が追加されました。
+
+正規表現オブジェクト
+コンパイル済み正規表現オブジェクトは以下のメソッドと属性をサポートします:
+
+Pattern.search(string[, pos[, endpos]])
+string を走査し、この正規表現がマッチを生じさせる最初の場所を探して、対応する マッチオブジェクト を返します。文字列内にパターンにマッチする場所がなければ None を返します。これは文字列内のある場所で長さが 0 のマッチが見つかった場合とは異なることに注意してください。
+
+オプションの第二引数 pos は、文字列のどこから探し始めるかを指定するインデックスで、デフォルトでは 0 です。これは文字列のスライスと完全には同じではありません。パターン文字 '^' は本当の文字列の先頭と改行の直後でマッチしますが、検索を開始するインデックスでマッチするとは限りません。
+
+オプションの引数 endpos は文字列がどこまで検索されるかを制限します。文字列の長さが endpos 文字だったかのようになるので、pos から endpos - 1 の文字に対してだけマッチを探します。endpos が pos よりも小さいと、マッチは見つかりません。そうでなければ、rx をコンパイル済み正規表現オブジェクトとして、rx.search(string, 0, 50) は rx.search(string[:50], 0) と等価です。
+
+>>>
+>>> pattern = re.compile("d")
+>>> pattern.search("dog")     # Match at index 0
+<re.Match object; span=(0, 1), match='d'>
+>>> pattern.search("dog", 1)  # No match; search doesn't include the "d"
+Pattern.match(string[, pos[, endpos]])
+string の 先頭 で 0 文字以上がこの正規表現とマッチするなら、対応する マッチオブジェクト を返します。文字列がパターンにマッチしなければ None を返します。これは長さ 0 のマッチとは異なることに注意してください。
+
+オプションの pos および endpos 引数は search() メソッドのものと同じ意味です。
+
+>>>
+>>> pattern = re.compile("o")
+>>> pattern.match("dog")      # No match as "o" is not at the start of "dog".
+>>> pattern.match("dog", 1)   # Match as "o" is the 2nd character of "dog".
+<re.Match object; span=(1, 2), match='o'>
+string 中のどこででもマッチさせたいなら、代わりに search() を使ってください (search() vs. match() も参照してください)。
+
+Pattern.fullmatch(string[, pos[, endpos]])
+string 全体がこの正規表現にマッチすれば、対応する マッチオブジェクト を返します。文字列がパターンにマッチしなければ None を返します。これは長さ 0 のマッチとは異なることに注意してください。
+
+オプションの pos および endpos 引数は search() メソッドのものと同じ意味です。
+
+>>>
+>>> pattern = re.compile("o[gh]")
+>>> pattern.fullmatch("dog")      # No match as "o" is not at the start of "dog".
+>>> pattern.fullmatch("ogre")     # No match as not the full string matches.
+>>> pattern.fullmatch("doggie", 1, 3)   # Matches within given limits.
+<re.Match object; span=(1, 3), match='og'>
+バージョン 3.4 で追加.
+
+Pattern.split(string, maxsplit=0)
+split() 関数にこのコンパイル済みパターンを使うのと同じです。
+
+Pattern.findall(string[, pos[, endpos]])
+findall() 関数にこのコンパイル済みパターンを使うのと似ていますが、オプションの pos および endpos 引数で search() のように検索範囲を制限できます。
+
+Pattern.finditer(string[, pos[, endpos]])
+finditer() 関数にこのコンパイル済みパターンを使うのと似ていますが、オプションの pos および endpos 引数で search() のように検索範囲を制限できます。
+
+Pattern.sub(repl, string, count=0)
+sub() 関数にこのコンパイル済みパターンを使うのと同じです。
+
+Pattern.subn(repl, string, count=0)
+subn() 関数にこのコンパイル済みパターンを使うのと同じです。
+
+Pattern.flags
+正規表現のマッチングフラグです。これは compile() に与えられたフラグ、パターン中の (?...) インラインフラグ、およびパターンが Unicode 文字列だった時の UNICODE のような暗黙のフラグの組み合わせです。
+
+Pattern.groups
+パターン中のキャプチャグループの数です。
+
+Pattern.groupindex
+(?P<id>) で定義されたあらゆるシンボリックグループ名をグループ番号へ写像する辞書です。シンボリックグループがパターン中で全く使われていなければ、この辞書は空です。
+
+Pattern.pattern
+パターンオブジェクトがコンパイルされた元のパターン文字列です。
+
+バージョン 3.7 で変更: copy.copy() および copy.deepcopy() をサポートするようになりました。コンパイル済み正規表現オブジェクトはアトミックであると見なされます。
+
+マッチオブジェクト
+マッチオブジェクトのブール値は常に True です。 match() および search() はマッチがないとき None を返すので、マッチがあるか単純な if 文で判定できます。
+
+match = re.search(pattern, string)
+if match:
+    process(match)
+マッチオブジェクトは以下のメソッドおよび属性をサポートしています:
+
+Match.expand(template)
+テンプレート文字列 template に sub() メソッドの行うバックスラッシュ置換を行って得られる文字列を返します。 \n のようなエスケープは適切な文字に変換され、数後方参照 (\1, \2) および名前付き後方参照 (\g<1>, \g<name>) は対応するグループの内容に置換されます。
+
+バージョン 3.5 で変更: マッチしなかったグループは空文字列に置き換えられます。
+
+Match.group([group1, ...])
+このマッチの 1 つ以上のサブグループを返します。引数が 1 つなら結果は 1 つの文字列です。複数の引数があれば、結果は引数ごとに 1 項目のタプルです。引数がなければ、 group1 はデフォルトで 0 (マッチ全体が返される) です。 groupN 引数が 0 なら、対応する返り値はマッチした文字列全体です。1 以上 99 以下なら、丸括弧による対応するグループにマッチする文字列です。グループ番号が負であるかパターン中で定義されたグループの数より大きければ、 IndexError 例外が送出されます。あるグループがパターンのマッチしなかった部分に含まれているなら、対応する結果は None です。あるグループがパターンの複数回マッチした部分に含まれているなら、最後のマッチが返されます。
+
+>>>
+>>> m = re.match(r"(\w+) (\w+)", "Isaac Newton, physicist")
+>>> m.group(0)       # The entire match
+'Isaac Newton'
+>>> m.group(1)       # The first parenthesized subgroup.
+'Isaac'
+>>> m.group(2)       # The second parenthesized subgroup.
+'Newton'
+>>> m.group(1, 2)    # Multiple arguments give us a tuple.
+('Isaac', 'Newton')
+正規表現が (?P<name>...) 構文を使うなら、 groupN 引数はグループ名でグループを識別する文字列でも構いません。文字列引数がパターン中でグループ名として使われていなければ、 IndexError 例外が送出されます。
+
+やや複雑な例:
+
+>>>
+>>> m = re.match(r"(?P<first_name>\w+) (?P<last_name>\w+)", "Malcolm Reynolds")
+>>> m.group('first_name')
+'Malcolm'
+>>> m.group('last_name')
+'Reynolds'
+名前付きグループはインデックスでも参照できます:
+
+>>>
+>>> m.group(1)
+'Malcolm'
+>>> m.group(2)
+'Reynolds'
+あるグループが複数回マッチすると、その最後のマッチにのみアクセスできます:
+
+>>>
+>>> m = re.match(r"(..)+", "a1b2c3")  # Matches 3 times.
+>>> m.group(1)                        # Returns only the last match.
+'c3'
+Match.__getitem__(g)
+これは m.group(g) と同等です。これでマッチの個別のグループに簡単にアクセスできます:
+
+>>>
+>>> m = re.match(r"(\w+) (\w+)", "Isaac Newton, physicist")
+>>> m[0]       # The entire match
+'Isaac Newton'
+>>> m[1]       # The first parenthesized subgroup.
+'Isaac'
+>>> m[2]       # The second parenthesized subgroup.
+'Newton'
+バージョン 3.6 で追加.
+
+Match.groups(default=None)
+このマッチの、1 からパターン中のグループ数まで、全てのサブグループを含むタプルを返します。default 引数はマッチに関係しなかったグループに使われます。デフォルトでは None です。
+
+例えば:
+
+>>>
+>>> m = re.match(r"(\d+)\.(\d+)", "24.1632")
+>>> m.groups()
+('24', '1632')
+少数位およびその後の全てをオプションにすると、全てのグループがマッチに関係するとは限りません。そういったグループは default 引数が与えられない限りデフォルトで None になります。
+
+>>>
+>>> m = re.match(r"(\d+)\.?(\d+)?", "24")
+>>> m.groups()      # Second group defaults to None.
+('24', None)
+>>> m.groups('0')   # Now, the second group defaults to '0'.
+('24', '0')
+Match.groupdict(default=None)
+このマッチの、全ての 名前付き サブグループを含む、サブグループ名をキーとする辞書を返します。 default 引数はマッチに関係しなかったグループに使われます。デフォルトは None です。例えば:
+
+>>>
+>>> m = re.match(r"(?P<first_name>\w+) (?P<last_name>\w+)", "Malcolm Reynolds")
+>>> m.groupdict()
+{'first_name': 'Malcolm', 'last_name': 'Reynolds'}
+Match.start([group])
+Match.end([group])
+group がマッチした部分文字列の先頭と末尾のインデックスを返します。 group はデフォルトで 0 (マッチした部分文字列全体という意味) です。 group が存在してかつマッチには寄与していなかったなら -1 を返します。マッチオブジェクト m と、マッチに寄与したグループ g に対して、グループ g がマッチした部分文字列 (m.group(g) と等価です) は以下の通りです
+
+m.string[m.start(g):m.end(g)]
+group が空文字列にマッチしていたら m.start(group) は m.end(group) と等しくなることに注意して下さい。例えば、 m = re.search('b(c?)', 'cba') とすると、 m.start(0) は 1 で、 m.end(0) は 2 で、 m.start(1) と m.end(1) はともに 2 であり、 m.start(2) は IndexError 例外を発生します。
+
+メールアドレスから remove_this を取り除く例:
+
+>>>
+>>> email = "tony@tiremove_thisger.net"
+>>> m = re.search("remove_this", email)
+>>> email[:m.start()] + email[m.end():]
+'tony@tiger.net'
+Match.span([group])
+マッチ m について、2 タプル (m.start(group), m.end(group)) を返します。 group がマッチに寄与していなければ、これは (-1, -1) です。 group はデフォルトで 0 、マッチ全体です。
+
+Match.pos
+正規表現オブジェクト の search() や match() に渡された pos の値です。これは正規表現エンジンがマッチを探し始める位置の文字列のインデックスです。
+
+Match.endpos
+正規表現オブジェクト の search() や match() に渡された endpos の値です。これは正規表現エンジンがそれ以上は進まない文字列のインデックスです。
+
+Match.lastindex
+最後にマッチしたキャプチャグループの整数インデックスです。どのグループも全くマッチしなければ None です。例えば、表現 (a)b 、 ((a)(b)) や ((ab)) が 'ab' に適用されると lastindex == 1 となり、同じ文字列に (a)(b) が適用されると lastindex == 2 となります。
+
+Match.lastgroup
+最後にマッチしたキャプチャグループの名前です。そのグループに名前がないか、どのグループも全くマッチしていなければ None です。
+
+Match.re
+このマッチインスタンスを生じさせた match() または search() メソッドの属する 正規表現オブジェクト です。
+
+Match.string
+match() や search() へ渡された文字列です。
+
+バージョン 3.7 で変更: copy.copy() および copy.deepcopy() をサポートするようになりました。マッチオブジェクトはアトミックであると見なされます。
+
+正規表現の例
+ペアの確認
+この例では、マッチオブジェクトをより美しく表示するために、この補助関数を使用します:
+
+def displaymatch(match):
+    if match is None:
+        return None
+    return '<Match: %r, groups=%r>' % (match.group(), match.groups())
+あなたがポーカープログラムを書いているとします。プレイヤーの手札は 5 文字の文字列によって表され、それぞれの文字が 1 枚のカードを表します。 "a" はエース、 "k" はキング、 "q" はクイーン、 "j" はジャック、 "t" は 10、そして "2" から "9" はその数字のカードを表します。
+
+与えられた文字列が有効な手札であるか見るには、以下のようにできます:
+
+>>>
+>>> valid = re.compile(r"^[a2-9tjqk]{5}$")
+>>> displaymatch(valid.match("akt5q"))  # Valid.
+"<Match: 'akt5q', groups=()>"
+>>> displaymatch(valid.match("akt5e"))  # Invalid.
+>>> displaymatch(valid.match("akt"))    # Invalid.
+>>> displaymatch(valid.match("727ak"))  # Valid.
+"<Match: '727ak', groups=()>"
+最後の手札、 "727ak" 、はペア、すなわち同じ値の 2 枚のカードを含みます。正規表現でこれにマッチするには、このように後方参照を使えます:
+
+>>>
+>>> pair = re.compile(r".*(.).*\1")
+>>> displaymatch(pair.match("717ak"))     # Pair of 7s.
+"<Match: '717', groups=('7',)>"
+>>> displaymatch(pair.match("718ak"))     # No pairs.
+>>> displaymatch(pair.match("354aa"))     # Pair of aces.
+"<Match: '354aa', groups=('a',)>"
+ペアになっているのがどのカードか調べるには、このようにマッチオブジェクトの group() メソッドを使えます:
+
+>>>
+>>> pair = re.compile(r".*(.).*\1")
+>>> pair.match("717ak").group(1)
+'7'
+
+# Error because re.match() returns None, which doesn't have a group() method:
+>>> pair.match("718ak").group(1)
+Traceback (most recent call last):
+  File "<pyshell#23>", line 1, in <module>
+    re.match(r".*(.).*\1", "718ak").group(1)
+AttributeError: 'NoneType' object has no attribute 'group'
+
+>>> pair.match("354aa").group(1)
+'a'
+scanf() をシミュレートする
+Python には現在のところ、 scanf() に相当するものがありません。正規表現は一般的に、 scanf() のフォーマット文字列より強力ですが、冗長でもあります。以下の表に、 scanf() のフォーマットトークンと正規表現のおおよその対応付けを示します。
+
+scanf() トークン
+正規表現
+%c
+.
+%5c
+.{5}
+%d
+[-+]?\d+
+%e, %E, %f, %g
+[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?
+%i
+[-+]?(0[xX][\dA-Fa-f]+|0[0-7]*|\d+)
+%o
+[-+]?[0-7]+
+%s
+\S+
+%u
+\d+
+%x, %X
+[-+]?(0[xX])?[\dA-Fa-f]+
+以下のような文字列からファイル名と数を抽出するには
+
+/usr/sbin/sendmail - 0 errors, 4 warnings
+以下のように scanf() フォーマットを使えます
+
+%s - %d errors, %d warnings
+等価な正規表現はこうです
+
+(\S+) - (\d+) errors, (\d+) warnings
+search() vs. match()
+Python は正規表現ベースの 2 つの異なる基本的な関数、文字列の先頭でのみのマッチを確認する re.match() および、文字列中の位置にかかわらずマッチを確認する re.search() (これが Perl でのデフォルトの挙動です) を提供しています。
+
+例えば:
+
+>>>
+>>> re.match("c", "abcdef")    # No match
+>>> re.search("c", "abcdef")   # Match
+<re.Match object; span=(2, 3), match='c'>
+'^' で始まる正規表現を search() で使って、マッチを文字列の先頭でのみに制限できます:
+
+>>>
+>>> re.match("c", "abcdef")    # No match
+>>> re.search("^c", "abcdef")  # No match
+>>> re.search("^a", "abcdef")  # Match
+<re.Match object; span=(0, 1), match='a'>
+ただし、 MULTILINE モードにおいて match() は文字列の先頭でのみマッチし、 '^' で始まる正規表現で search() を使うと各行の先頭でマッチすることに注意してください。
+
+>>>
+>>> re.match('X', 'A\nB\nX', re.MULTILINE)  # No match
+>>> re.search('^X', 'A\nB\nX', re.MULTILINE)  # Match
+<re.Match object; span=(4, 5), match='X'>
+電話帳を作る
+split() は渡されたパターンで文字列を分割してリストにします。このメソッドは、テキストデータをデータ構造に変換して、読みやすくしたり、以下の例で実演する電話帳作成のように Python で編集したりしやすくするのに、非常に役に立ちます。
+
+最初に、入力を示します。通常、これはファイルからの入力になるでしょう。ここでは、3重引用符の書式とします。
+
+>>> text = """Ross McFluff: 834.345.1254 155 Elm Street
+...
+... Ronald Heathmore: 892.345.3428 436 Finley Avenue
+... Frank Burger: 925.541.7625 662 South Dogwood Way
+...
+...
+... Heather Albrecht: 548.326.4584 919 Park Place"""
+各項目は 1 つ以上の改行で区切られています。まずは文字列を変換して、空行でない各行を項目とするリストにします:
+
+>>> entries = re.split("\n+", text)
+>>> entries
+['Ross McFluff: 834.345.1254 155 Elm Street',
+'Ronald Heathmore: 892.345.3428 436 Finley Avenue',
+'Frank Burger: 925.541.7625 662 South Dogwood Way',
+'Heather Albrecht: 548.326.4584 919 Park Place']
+そして各項目を、ファーストネーム、ラストネーム、電話番号、住所に分割してリストにします。分割パターンである空白文字は住所にも含まれるので、 split() の maxsplit 引数を使います:
+
+>>> [re.split(":? ", entry, 3) for entry in entries]
+[['Ross', 'McFluff', '834.345.1254', '155 Elm Street'],
+['Ronald', 'Heathmore', '892.345.3428', '436 Finley Avenue'],
+['Frank', 'Burger', '925.541.7625', '662 South Dogwood Way'],
+['Heather', 'Albrecht', '548.326.4584', '919 Park Place']]
+この :? パターンはラストネームの次のコロンにマッチして、分割結果のリストに出てこないようにします。 maxsplit を 4 にすれば、家屋番号とストリート名を分割できます:
+
+>>> [re.split(":? ", entry, 4) for entry in entries]
+[['Ross', 'McFluff', '834.345.1254', '155', 'Elm Street'],
+['Ronald', 'Heathmore', '892.345.3428', '436', 'Finley Avenue'],
+['Frank', 'Burger', '925.541.7625', '662', 'South Dogwood Way'],
+['Heather', 'Albrecht', '548.326.4584', '919', 'Park Place']]
+テキストの秘匿
+sub() は出現する各パターンを文字列で、または関数の返り値で置き換えます。この例ではテキストを「秘匿」する関数と合わせて sub() を使うところを実演します。具体的には、文中の各単語について、最初と最後の文字を除く全ての文字をランダムに並び替えます:
+
+>>>
+>>> def repl(m):
+...     inner_word = list(m.group(2))
+...     random.shuffle(inner_word)
+...     return m.group(1) + "".join(inner_word) + m.group(3)
+>>> text = "Professor Abdolmalek, please report your absences promptly."
+>>> re.sub(r"(\w)(\w+)(\w)", repl, text)
+'Poefsrosr Aealmlobdk, pslaee reorpt your abnseces plmrptoy.'
+>>> re.sub(r"(\w)(\w+)(\w)", repl, text)
+'Pofsroser Aodlambelk, plasee reoprt yuor asnebces potlmrpy.'
+全ての副詞を見つける
+search() は最初のパターンにのみマッチしますが、 findall() は出現する 全ての パターンにマッチします。例えば、ライターがあるテキストの全ての副詞を見つけたいなら、以下のように findall() を使えます:
+
+>>>
+>>> text = "He was carefully disguised but captured quickly by police."
+>>> re.findall(r"\w+ly", text)
+['carefully', 'quickly']
+全ての副詞とその位置を見つける
+パターンの全てのマッチについて、マッチしたテキスト以上の情報が必要なら、文字列ではなく マッチオブジェクト を返す finditer() が便利です。先の例に続いて、ライターがあるテキストの全ての副詞 およびその位置 を見つけたいなら、以下のように finditer() を使えます:
+
+>>>
+>>> text = "He was carefully disguised but captured quickly by police."
+>>> for m in re.finditer(r"\w+ly", text):
+...     print('%02d-%02d: %s' % (m.start(), m.end(), m.group(0)))
+07-16: carefully
+40-47: quickly
+Raw 文字列記法
+Raw 文字列記法 (r"text") で正規表現をまともに保てます。それがなければ、正規表現中のバックスラッシュ ('\') を個々にバックスラッシュを前置してエスケープしなければなりません。例えば、以下の 2 行のコードは機能的に等価です:
+
+>>>
+>>> re.match(r"\W(.)\1\W", " ff ")
+<re.Match object; span=(0, 4), match=' ff '>
+>>> re.match("\\W(.)\\1\\W", " ff ")
+<re.Match object; span=(0, 4), match=' ff '>
+リテラルのバックスラッシュにマッチさせたいなら、正規表現中ではエスケープする必要があります。Raw 文字列記法では、r"\\" になります。Raw 文字列記法を用いないと、"\\\\" としなくてはならず、以下のコードは機能的に等価です:
+
+>>>
+>>> re.match(r"\\", r"\\")
+<re.Match object; span=(0, 1), match='\\'>
+>>> re.match("\\\\", r"\\")
+<re.Match object; span=(0, 1), match='\\'>
+トークナイザを書く
+トークナイザやスキャナ は文字列を解析し、文字のグループにカテゴリ分けします。これはコンパイラやインタプリタを書くうえで役立つ第一段階です。
+
+テキストのカテゴリは正規表現で指定されます。この技法では、それらを一つのマスター正規表現に結合し、マッチの連続についてループします:
+
+from typing import NamedTuple
+import re
+
+class Token(NamedTuple):
+    type: str
+    value: str
+    line: int
+    column: int
+
+def tokenize(code):
+    keywords = {'IF', 'THEN', 'ENDIF', 'FOR', 'NEXT', 'GOSUB', 'RETURN'}
+    token_specification = [
+        ('NUMBER',   r'\d+(\.\d*)?'),  # Integer or decimal number
+        ('ASSIGN',   r':='),           # Assignment operator
+        ('END',      r';'),            # Statement terminator
+        ('ID',       r'[A-Za-z]+'),    # Identifiers
+        ('OP',       r'[+\-*/]'),      # Arithmetic operators
+        ('NEWLINE',  r'\n'),           # Line endings
+        ('SKIP',     r'[ \t]+'),       # Skip over spaces and tabs
+        ('MISMATCH', r'.'),            # Any other character
+    ]
+    tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
+    line_num = 1
+    line_start = 0
+    for mo in re.finditer(tok_regex, code):
+        kind = mo.lastgroup
+        value = mo.group()
+        column = mo.start() - line_start
+        if kind == 'NUMBER':
+            value = float(value) if '.' in value else int(value)
+        elif kind == 'ID' and value in keywords:
+            kind = value
+        elif kind == 'NEWLINE':
+            line_start = mo.end()
+            line_num += 1
+            continue
+        elif kind == 'SKIP':
+            continue
+        elif kind == 'MISMATCH':
+            raise RuntimeError(f'{value!r} unexpected on line {line_num}')
+        yield Token(kind, value, line_num, column)
+
+statements = '''
+    IF quantity THEN
+        total := total + price * quantity;
+        tax := price * 0.05;
+    ENDIF;
+'''
+
+for token in tokenize(statements):
+    print(token)
+このトークナイザは以下の出力を作成します:
+
+Token(type='IF', value='IF', line=2, column=4)
+Token(type='ID', value='quantity', line=2, column=7)
+Token(type='THEN', value='THEN', line=2, column=16)
+Token(type='ID', value='total', line=3, column=8)
+Token(type='ASSIGN', value=':=', line=3, column=14)
+Token(type='ID', value='total', line=3, column=17)
+Token(type='OP', value='+', line=3, column=23)
+Token(type='ID', value='price', line=3, column=25)
+Token(type='OP', value='*', line=3, column=31)
+Token(type='ID', value='quantity', line=3, column=33)
+Token(type='END', value=';', line=3, column=41)
+Token(type='ID', value='tax', line=4, column=8)
+Token(type='ASSIGN', value=':=', line=4, column=12)
+Token(type='ID', value='price', line=4, column=15)
+Token(type='OP', value='*', line=4, column=21)
+Token(type='NUMBER', value=0.05, line=4, column=23)
+Token(type='END', value=';', line=4, column=27)
+Token(type='ENDIF', value='ENDIF', line=5, column=4)
+Token(type='END', value=';', line=5, column=9)
+Frie09
+Friedl, Jeffrey. Mastering Regular Expressions. 3rd ed., O'Reilly Media, 2009. 当書の第三版ではもはや Python についてまったく取り扱っていませんが、初版では良い正規表現を書くことを綿密に取り扱っていました。
+
+difflib --- 差分の計算を助ける
+ソースコード: Lib/difflib.py
+
+This module provides classes and functions for comparing sequences. It can be used for example, for comparing files, and can produce information about file differences in various formats, including HTML and context and unified diffs. For comparing directories and files, see also, the filecmp module.
+
+class difflib.SequenceMatcher
+柔軟性のあるクラスで、二つのシーケンスの要素が ハッシュ可能 な型であれば、どの型の要素を含むシーケンスも比較可能です。基本的なアルゴリズムは、1980年代の後半に発表された Ratcliff と Obershelp による"ゲシュタルトパターンマッチング"と大げさに名づけられたアルゴリズム以前から知られている、やや凝ったアルゴリズムです。その考え方は、"junk" 要素を含まない最も長い互いに隣接したマッチ列を探すことです。ここで、 "junk" 要素とは、空行や空白などの、意味を持たない要素のことです。 (junk を処理するのは、Ratcliff と Obershelp のアルゴリズムに追加された拡張です。)この考え方は、マッチ列の左右に隣接するシーケンスの断片に対して再帰的にあてはめられます。この方法では編集を最小にするシーケンスは生まれませんが、人間の目からみて「正しい感じ」にマッチする傾向があります。
+
+実行時間: 基本的な Ratcliff-Obershelp アルゴリズムは、最悪の場合3乗、期待値で2乗となります。 SequenceMatcher オブジェクトでは、最悪のケースで2乗、期待値は比較されるシーケンス中に共通に現れる要素数に非常にややこしく依存しています。最良の場合は線形時間になります。
+
+自動 junk ヒューリスティック: SequenceMatcher は、シーケンスの特定の要素を自動的に junk として扱うヒューリスティックをサポートしています。このヒューリスティックは、各個要素がシーケンス内に何回現れるかを数えます。ある要素の重複数が (最初のものは除いて) 合計でシーケンスの 1% 以上になり、そのシーケンスが 200 要素以上なら、その要素は "popular" であるものとしてマークされ、シーケンスのマッチングの目的からは junk として扱われます。このヒューリスティックは、 SequenceMatcher の作成時に autojunk パラメタを False に設定することで無効化できます。
+
+バージョン 3.2 で追加: autojunk パラメータ。
+
+class difflib.Differ
+テキスト行からなるシーケンスを比較するクラスです。人が読むことのできる差分を作成します。 Differ クラスは SequenceMatcher クラスを利用して、行からなるシーケンスを比較したり、(ほぼ)同一の行内の文字を比較したりします。
+
+Differ クラスによる差分の各行は、2文字のコードで始まります:
+
+コード
+意味
+'- '
+行はシーケンス1にのみ存在する
+'+ '
+行はシーケンス2にのみ存在する
+'  '
+行は両方のシーケンスで同一
+'? '
+行は入力シーケンスのどちらにも存在しない
+'?' で始まる行は、行内のどこに差異が存在するかに注意を向けようとします。その行は、入力されたシーケンスのどちらにも存在しません。シーケンスがタブ文字を含むとき、これらの行は判別しづらいものになることがあります。
+
+class difflib.HtmlDiff
+このクラスは、二つのテキストを左右に並べて比較表示し、行間あるいは行内の変更点を強調表示するような HTML テーブル (またはテーブルの入った完全な HTML ファイル) を生成するために使います。テーブルは完全差分モード、コンテキスト差分モードのいずれでも生成できます。
+
+このクラスのコンストラクタは以下のようになっています:
+
+__init__(tabsize=8, wrapcolumn=None, linejunk=None, charjunk=IS_CHARACTER_JUNK)
+HtmlDiff のインスタンスを初期化します。
+
+tabsize はオプションのキーワード引数で、タブストップ幅を指定します。デフォルトは 8 です。
+
+wrapcolumn はオプションのキーワード引数で、テキストを折り返すカラム幅を指定します。デフォルトは None で折り返しを行いません。
+
+linejunk および charjunk はオプションのキーワード引数で、 ndiff() (HtmlDiff はこの関数を使って左右のテキストの差分を HTML で生成します) に渡されます。それぞれの引数のデフォルト値および説明は ndiff() のドキュメントを参照してください。
+
+以下のメソッドが public になっています:
+
+make_file(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5, *, charset='utf-8')
+fromlines と tolines (いずれも文字列のリスト) を比較し、行間または行内の変更点が強調表示された行差分の入った表を持つ完全な HTML ファイルを文字列で返します。
+
+fromdesc および todesc はオプションのキーワード引数で、差分表示テーブルにおけるそれぞれ差分元、差分先ファイルのカラムのヘッダになる文字列を指定します (いずれもデフォルト値は空文字列です)。
+
+context および numlines はともにオプションのキーワード引数です。context を True にするとコンテキスト差分を表示し、デフォルトの False にすると完全なファイル差分を表示します。numlines のデフォルト値は 5 で、context が True の場合、numlines は強調部分の前後にあるコンテキスト行の数を制御します。context が False の場合、numlines は "next" と書かれたハイパーリンクをたどった時に到達する場所が次の変更部分より何行前にあるかを制御します (値をゼロにした場合、"next" ハイパーリンクを辿ると変更部分の強調表示がブラウザの最上部に表示されるようになります)。
+
+注釈 fromdesc と todesc はエスケープされていないHTMLとして解釈されます。信頼できないソースからの入力を受け取る際には適切にエスケープされるべきです。
+バージョン 3.5 で変更: charset キーワード専用引数が追加されました。HTML 文書のデフォルトの文字集合が 'ISO-8859-1' から 'utf-8' に変更されました。
+
+make_table(fromlines, tolines, fromdesc='', todesc='', context=False, numlines=5)
+fromlines と tolines (いずれも文字列のリスト) を比較し、行間または行内の変更点が強調表示された行差分の入った完全な HTML テーブルを文字列で返します。
+
+このメソッドの引数は、 make_file() メソッドの引数と同じです。
+
+Tools/scripts/diff.py はこのクラスへのコマンドラインフロントエンドで、使い方を学ぶ上で格好の例題が入っています。
+
+difflib.context_diff(a, b, fromfile='', tofile='', fromfiledate='', tofiledate='', n=3, lineterm='\n')
+a と b (文字列のリスト) を比較し、差分 (差分形式の行を生成する ジェネレータ) を、 context diff のフォーマット(以下「コンテキスト形式」)で返します。
+
+コンテキスト形式は、変更があった行に前後数行を加えてある、コンパクトな表現方法です。変更箇所は、変更前/変更後に分けて表します。コンテキスト (変更箇所前後の行) の行数は n で指定し、デフォルト値は 3 です。
+
+デフォルトで、 diff 制御行 (*** や --- を含む行) は改行付きで生成されます。 io.IOBase.readlines() で作られた入力が io.IOBase.writelines() で扱うのに適した diff になるので (なぜなら入力と出力の両方が改行付きのため) 、これは有用です。
+
+行末に改行文字を持たない入力に対しては、出力でも改行文字を付加しないように lineterm 引数に "" を渡してください。
+
+コンテキスト形式は、通常、ヘッダにファイル名と変更時刻を持っています。この情報は、文字列 fromfile, tofile, fromfiledate, tofiledate で指定できます。変更時刻の書式は、通常、ISO 8601 フォーマットで表されます。指定しなかった場合のデフォルト値は、空文字列です。
+
+>>>
+>>> s1 = ['bacon\n', 'eggs\n', 'ham\n', 'guido\n']
+>>> s2 = ['python\n', 'eggy\n', 'hamster\n', 'guido\n']
+>>> sys.stdout.writelines(context_diff(s1, s2, fromfile='before.py', tofile='after.py'))
+*** before.py
+--- after.py
+***************
+*** 1,4 ****
+! bacon
+! eggs
+! ham
+  guido
+--- 1,4 ----
+! python
+! eggy
+! hamster
+  guido
+より詳細な例は、 difflib のコマンドラインインタフェース を参照してください。
+
+difflib.get_close_matches(word, possibilities, n=3, cutoff=0.6)
+「十分」なマッチの上位のリストを返します。word はマッチさせたいシーケンス (大概は文字列) です。possibilities は word にマッチさせるシーケンスのリスト (大概は文字列のリスト) です。
+
+オプションの引数 n (デフォルトでは 3)はメソッドの返すマッチの最大数です。n は 0 より大きくなければなりません。
+
+オプションの引数 cutoff (デフォルトでは 0.6)は、区間 [0, 1] に入る小数の値です。word との一致率がそれ未満の possibilities の要素は無視されます。
+
+possibilities の要素でマッチした上位(多くても n 個)は、類似度のスコアに応じて(一番似たものを先頭に)ソートされたリストとして返されます。
+
+>>>
+>>> get_close_matches('appel', ['ape', 'apple', 'peach', 'puppy'])
+['apple', 'ape']
+>>> import keyword
+>>> get_close_matches('wheel', keyword.kwlist)
+['while']
+>>> get_close_matches('pineapple', keyword.kwlist)
+[]
+>>> get_close_matches('accept', keyword.kwlist)
+['except']
+difflib.ndiff(a, b, linejunk=None, charjunk=IS_CHARACTER_JUNK)
+a と b (文字列のリスト) を比較し、差分 (差分形式の行を生成する ジェネレータ) を、 Differ のスタイルで返します。
+
+オプションのキーワード引数 linejunk と charjunk には、フィルタ関数 (または None) を渡します。
+
+linejunk: 文字列型の引数 1 つを受け取る関数です。文字列が junk の場合は真を、そうでない場合は偽を返します。デフォルトでは None です。モジュールレべルの関数 IS_LINE_JUNK() は、高々 1 つのシャープ記号('#')を除いて可視の文字を含まない行をフィルタリングするものです。しかし、下層にある SequenceMatcher クラスが、どの行が雑音となるほど頻繁に登場するかを動的に分析します。このクラスによる分析は、この関数を使用するよりも通常うまく動作します。
+
+charjunk: 文字 (長さ1の文字列) を受け取る関数です。文字列が junk の場合は真を、そうでない場合は偽を返します。デフォルトでは、モジュールレべルの関数 IS_CHARACTER_JUNK() であり、これは空白文字類 (空白またはタブ、改行文字をこれに含めてはいけません) をフィルタして排除します。
+
+Tools/scripts/ndiff.py は、この関数のコマンドラインのフロントエンド（インターフェイス）です。
+
+>>>
+>>> diff = ndiff('one\ntwo\nthree\n'.splitlines(keepends=True),
+...              'ore\ntree\nemu\n'.splitlines(keepends=True))
+>>> print(''.join(diff), end="")
+- one
+?  ^
++ ore
+?  ^
+- two
+- three
+?  -
++ tree
++ emu
+difflib.restore(sequence, which)
+差分を生成した元の二つのシーケンスのうち一つを返します。
+
+Differ.compare() または ndiff() によって生成された sequence を与えられると、行頭のプレフィクスを取りのぞいてファイル 1 または 2 (引数 which で指定される) に由来する行を復元します。
+
+例:
+
+>>>
+>>> diff = ndiff('one\ntwo\nthree\n'.splitlines(keepends=True),
+...              'ore\ntree\nemu\n'.splitlines(keepends=True))
+>>> diff = list(diff) # materialize the generated delta into a list
+>>> print(''.join(restore(diff, 1)), end="")
+one
+two
+three
+>>> print(''.join(restore(diff, 2)), end="")
+ore
+tree
+emu
+difflib.unified_diff(a, b, fromfile='', tofile='', fromfiledate='', tofiledate='', n=3, lineterm='\n')
+a と b (文字列のリスト) を比較し、差分 (差分形式の行を生成する ジェネレータ) を、 unified diff フォーマット(以下「ユニファイド形式」)で返します。
+
+ユニファイド形式は変更があった行にコンテキストとなる前後数行を加えた、コンパクトな表現方法です。変更箇所は (変更前/変更後を分離したブロックではなく) インラインスタイルで表されます。コンテキストの行数は、n で指定し、デフォルト値は 3 です。
+
+デフォルトで、 diff 制御行 (---, +++, @@ を含む行) は改行付きで生成されます。 io.IOBase.readlines() で作られた入力が io.IOBase.writelines() で扱うのに適した diff になるので (なぜなら入力と出力の両方が改行付きのため) 、これは有用です。
+
+行末に改行文字を持たない入力に対しては、出力でも改行文字を付加しないように lineterm 引数に "" を渡してください。
+
+コンテキスト形式は、通常、ヘッダにファイル名と変更時刻を持っています。この情報は、文字列 fromfile, tofile, fromfiledate, tofiledate で指定できます。変更時刻の書式は、通常、ISO 8601 フォーマットで表されます。指定しなかった場合のデフォルト値は、空文字列です。
+
+>>>
+>>> s1 = ['bacon\n', 'eggs\n', 'ham\n', 'guido\n']
+>>> s2 = ['python\n', 'eggy\n', 'hamster\n', 'guido\n']
+>>> sys.stdout.writelines(unified_diff(s1, s2, fromfile='before.py', tofile='after.py'))
+--- before.py
++++ after.py
+@@ -1,4 +1,4 @@
+-bacon
+-eggs
+-ham
++python
++eggy
++hamster
+ guido
+より詳細な例は、 difflib のコマンドラインインタフェース を参照してください。
+
+difflib.diff_bytes(dfunc, a, b, fromfile=b'', tofile=b'', fromfiledate=b'', tofiledate=b'', n=3, lineterm=b'\n')
+dfunc を使用して a と b (bytes オブジェクトのリスト) を比較して、差分形式の行 (これも bytes オブジェクトです) を*dfunc* の戻り値の形式で返します。dfunc は、呼び出し可能である必要があります。一般に、これは unified_diff() または context_diff() です。
+
+未知のエンコーディングまたは一貫性のないエンコーディングのデータ同士を比較できます。n 以外のすべての入力は、bytes オブジェクトである必要があります。n 以外のすべての入力を損失なく str に変換して、dfunc(a, b, fromfile, tofile, fromfiledate, tofiledate, n, lineterm) を呼び出すことにより動作します。dfunc の出力は、bytes 型に変換されます。これにより、受け取る差分形式の行のエンコーディングは、a と b の未知または一貫性のないエンコーディングと同一になります。
+
+バージョン 3.5 で追加.
+
+difflib.IS_LINE_JUNK(line)
+無視できる行のとき True を返します。行 line は空白、または '#' ひとつのときに無視できます。それ以外のときには無視できません。古いバージョンでは ndiff() の引数 linejunk にデフォルトで使用されました。
+
+difflib.IS_CHARACTER_JUNK(ch)
+無視できる文字のとき True を返します。文字 ch が空白、またはタブ文字のときには無視できます。それ以外の時には無視できません。 ndiff() の引数 charjunk としてデフォルトで使用されます。
+
+参考
+Pattern Matching: The Gestalt Approach
+John W. Ratcliff と D. E. Metzener による類似のアルゴリズムに関する議論。Dr. Dobb's Journal 1988年7月号掲載。
+SequenceMatcherオブジェクト
+SequenceMatcher クラスには、以下のようなコンストラクタがあります:
+
+class difflib.SequenceMatcher(isjunk=None, a='', b='', autojunk=True)
+オプションの引数 isjunk は、None (デフォルトの値です) にするか、単一の引数をとる関数でなければなりません。後者の場合、関数はシーケンスの要素を受け取り、要素が junk であり、無視すべきである場合に限り真を返すようにしなければなりません。isjunk に None を渡すと、lambda x: False を渡したのと同じになります; すなわち、いかなる要素も無視しなくなります。例えば以下のような引数を渡すと:
+
+lambda x: x in " \t"
+空白とタブ文字を無視して文字のシーケンスを比較します。
+
+オプションの引数 a と b は、比較される文字列で、デフォルトでは空の文字列です。両方のシーケンスの要素は、 ハッシュ可能 である必要があります。
+
+オプションの引数 autojunk は、自動 junk ヒューリスティックを無効にするために使えます。
+
+バージョン 3.2 で追加: autojunk パラメータ。
+
+SequenceMatcher オブジェクトは3つのデータ属性を持っています: bjunk は、 isjunk が True であるような b の要素の集合です; bpopular は、 (無効でなければ) ヒューリスティックによって popular であると考えられる非ジャンク要素の集合です; b2j は、 b の残りの要素をそれらが生じる位置のリストに写像する dict です。この 3 つは set_seqs() または set_seq2() で b がリセットされる場合は常にリセットされます。
+
+バージョン 3.2 で追加: bjunk および bpopular 属性。
+
+SequenceMatcher オブジェクトは以下のメソッドを持ちます:
+
+set_seqs(a, b)
+比較される2つの文字列を設定します。
+
+SequenceMatcher オブジェクトは、2つ目のシーケンスについての詳細な情報を計算し、キャッシュします。 1つのシーケンスをいくつものシーケンスと比較する場合、まず set_seq2() を使って文字列を設定しておき、別の文字列を1つずつ比較するために、繰り返し set_seq1() を呼び出します。
+
+set_seq1(a)
+比較を行う1つ目のシーケンスを設定します。比較される2つ目のシーケンスは変更されません。
+
+set_seq2(b)
+比較を行う2つ目のシーケンスを設定します。比較される1つ目のシーケンスは変更されません。
+
+find_longest_match(alo=0, ahi=None, blo=0, bhi=None)
+a[alo:ahi] と b[blo:bhi] の中から、最長のマッチ列を探します。
+
+isjunk が省略されたか None の時、 find_longest_match() は a[i:i+k] が b[j:j+k] と等しいような (i, j, k) を返します。その値は alo <= i <= i+k <= ahi かつ blo <= j <= j+k <= bhi となります。 (i', j', k') でも、同じようになります。さらに k >= k', i <= i' が i == i', j <= j' でも同様です。言い換えると、いくつものマッチ列すべてのうち、 a 内で最初に始まるものを返します。そしてその a 内で最初のマッチ列すべてのうち b 内で最初に始まるものを返します。
+
+>>>
+>>> s = SequenceMatcher(None, " abcd", "abcd abcd")
+>>> s.find_longest_match(0, 5, 0, 9)
+Match(a=0, b=4, size=5)
+引数 isjunk が与えられている場合、上記の通り、はじめに最長のマッチ列を判定します。ブロック内に junk 要素が見当たらないような追加条件の際はこれに該当しません。次にそのマッチ列を、その両側の junk 要素にマッチするよう、できる限り広げていきます。そのため結果となる列は、探している列のたまたま直前にあった同一の junk 以外の junk にはマッチしません。
+
+以下は前と同じサンプルですが、空白を junk とみなしています。これは ' abcd' が2つ目の列の末尾にある ' abcd' にマッチしないようにしています。代わりに 'abcd' にはマッチします。そして 2つ目の文字列中、一番左の 'abcd' にマッチします:
+
+>>>
+>>> s = SequenceMatcher(lambda x: x==" ", " abcd", "abcd abcd")
+>>> s.find_longest_match(0, 5, 0, 9)
+Match(a=1, b=0, size=4)
+どんな列にもマッチしない時は、(alo, blo, 0) を返します。
+
+このメソッドは named tuple Match(a, b, size) を返します。
+
+バージョン 3.9 で変更: デフォルト引数が追加されました。
+
+get_matching_blocks()
+マッチした互いに重複の無いシーケンスを表す、3つ組の値のリストを返します。 それぞれの値は (i, j, n) という形式で表され、a[i:i+n] == b[j:j+n] という関係を意味します。3つの値は i と j の間で単調に増加します。
+
+最後の3つ組はダミーで、(len(a), len(b), 0) という値を持ちます。これは n == 0 である唯一のタプルです。もし (i, j, n) と (i', j', n') がリストで並んでいる3つ組で、2つ目が最後の3つ組でなければ、i+n < i' または j+n < j' です。言い換えると並んでいる3つ組は常に隣接していない同じブロックを表しています。
+
+>>> s = SequenceMatcher(None, "abxcd", "abcd")
+>>> s.get_matching_blocks()
+[Match(a=0, b=0, size=2), Match(a=3, b=2, size=2), Match(a=5, b=4, size=0)]
+get_opcodes()
+a を b にするための方法を記述する5つのタプルを返します。それぞれのタプルは (tag, i1, i2, j1, j2) という形式であらわされます。最初のタプルは i1 == j1 == 0 であり、i1 はその前にあるタプルの i2 と同じ値です。同様に j1 は前の j2 と同じ値になります。
+
+tag の値は文字列であり、次のような意味です:
+
+値
+意味
+'replace'
+a[i1:i2] は b[j1:j2] に置き換えられる。
+'delete'
+a[i1:i2] は削除される。この時、j1 == j2 である。
+'insert'
+b[j1:j2] が a[i1:i1] に挿入される。この時 i1 == i2 である。
+'equal'
+a[i1:i2] == b[j1:j2] (サブシーケンスは等しい).
+例えば:
+
+>>>
+>>> a = "qabxcd"
+>>> b = "abycdf"
+>>> s = SequenceMatcher(None, a, b)
+>>> for tag, i1, i2, j1, j2 in s.get_opcodes():
+...     print('{:7}   a[{}:{}] --> b[{}:{}] {!r:>8} --> {!r}'.format(
+...         tag, i1, i2, j1, j2, a[i1:i2], b[j1:j2]))
+delete    a[0:1] --> b[0:0]      'q' --> ''
+equal     a[1:3] --> b[0:2]     'ab' --> 'ab'
+replace   a[3:4] --> b[2:3]      'x' --> 'y'
+equal     a[4:6] --> b[3:5]     'cd' --> 'cd'
+insert    a[6:6] --> b[5:6]       '' --> 'f'
+get_grouped_opcodes(n=3)
+最大 n 行までのコンテキストを含むグループを生成するような、 ジェネレータ を返します。
+
+このメソッドは、 get_opcodes() で返されるグループの中から、似たような差異のかたまりに分け、間に挟まっている変更の無い部分を省きます。
+
+グループは get_opcodes() と同じ書式で返されます。
+
+ratio()
+[0, 1] の範囲の浮動小数点数で、シーケンスの類似度を測る値を返します。
+
+T が2つのシーケンスの要素数の総計だと仮定し、M をマッチした数とすると、この値は 2.0*M / T であらわされます。もしシーケンスがまったく同じ場合、値は 1.0 となり、まったく異なる場合には 0.0 となります。
+
+このメソッドは get_matching_blocks() または get_opcodes() がまだ呼び出されていない場合には非常にコストが高いです。この場合、上限を素早く計算するために、 quick_ratio() もしくは real_quick_ratio() を最初に試してみる方がいいかもしれません。
+
+注釈 注意: ratio() の呼び出しの結果は引数の順序に依存します。例えば次の通りです:
+>>>
+>>> SequenceMatcher(None, 'tide', 'diet').ratio()
+0.25
+>>> SequenceMatcher(None, 'diet', 'tide').ratio()
+0.5
+quick_ratio()
+ratio() の上界を、より高速に計算します。
+
+real_quick_ratio()
+ratio() の上界を、非常に高速に計算します。
+
+この文字列全体のマッチ率を返す3つのメソッドは、精度の異なる近似値を返します。 quick_ratio() と real_quick_ratio() は、常に ratio() 以上の値を返します:
+
+>>>
+>>> s = SequenceMatcher(None, "abcd", "bcde")
+>>> s.ratio()
+0.75
+>>> s.quick_ratio()
+0.75
+>>> s.real_quick_ratio()
+1.0
+SequenceMatcher の例
+この例は2つの文字列を比較します。空白を "junk" とします:
+
+>>>
+>>> s = SequenceMatcher(lambda x: x == " ",
+...                     "private Thread currentThread;",
+...                     "private volatile Thread currentThread;")
+ratio() は、[0, 1] の範囲の値を返し、シーケンスの類似度を測ります。経験によると、 ratio() の値が0.6を超えると、シーケンスがよく似ていることを示します:
+
+>>>
+>>> print(round(s.ratio(), 3))
+0.866
+シーケンスのどこがマッチしているかにだけ興味のある時には get_matching_blocks() が手軽でしょう:
+
+>>>
+>>> for block in s.get_matching_blocks():
+...     print("a[%d] and b[%d] match for %d elements" % block)
+a[0] and b[0] match for 8 elements
+a[8] and b[17] match for 21 elements
+a[29] and b[38] match for 0 elements
+get_matching_blocks() が返す最後のタプルが常にダミーであることに注目してください。このダミーは (len(a), len(b), 0) であり、これはタプルの最後の要素（マッチする要素の数）が 0 となる唯一のケースです。
+
+はじめのシーケンスがどのようにして2番目のものになるのかを知るには、 get_opcodes() を使います:
+
+>>>
+>>> for opcode in s.get_opcodes():
+...     print("%6s a[%d:%d] b[%d:%d]" % opcode)
+ equal a[0:8] b[0:8]
+insert a[8:8] b[8:17]
+ equal a[8:29] b[17:38]
+参考
+SequenceMatcher を使った、シンプルで使えるコードを知るには、このモジュールの関数 get_close_matches() を参照してください。
+Simple version control recipe SequenceMatcher で作った小規模アプリケーション。
+Differ オブジェクト
+Differ オブジェクトによって生成された差分が 最小 であるなどとは言いません。むしろ、最小の差分はしばしば直観に反しています。その理由は、どこでもできるとなれば一致を見いだしてしまうからで、ときには思いがけなく100ページも離れたマッチになってしまうのです。一致点を互いに隣接したマッチに制限することで、場合によって長めの差分を出力するというコストを掛けることにはなっても、ある種の局所性を保つことができるのです。
+
+Differ は、以下のようなコンストラクタを持ちます:
+
+class difflib.Differ(linejunk=None, charjunk=None)
+オプションのキーワードパラメータ linejunk と charjunk は、フィルタ関数を渡します (使わないときは None):
+
+linejunk: ひとつの文字列引数を受け取る関数です。文字列が junk のときに真を返します。デフォルトでは、None であり、どんな行であっても junk とは見なされません。
+
+charjunk: この関数は文字(長さ1の文字列)を引数として受け取り、文字が junk であるときに真を返します。デフォルトは None であり、どんな文字も junk とは見なされません。
+
+これらの junk フィルター関数により、差分を発見するマッチングが高速化し、差分の行や文字が無視されることがなくなります。説明については、 find_longest_match() メソッドの isjunk 引数の説明をご覧ください。
+
+Differ オブジェクトは、以下の1つのメソッドを通して利用されます。（差分を生成します）:
+
+compare(a, b)
+文字列からなる2つのシーケンスを比較し、差分（を表す文字列からなるシーケンス）を生成します。
+
+各シーケンスの要素は、改行で終わる独立した単一行からなる文字列でなければなりません。そのようなシーケンスは、ファイル風オブジェクトの readlines() メソッドによって得ることができます。（得られる）差分は改行文字で終了する文字列のシーケンスとして得られ、ファイル風オブジェクトの writelines() メソッドによって出力できる形になっています。
+
+Differ の例
+以下の例は2つのテキストを比較しています。最初に、テキストを行毎に改行で終わる文字列のシーケンスにセットアップします (そのようなシーケンスは、ファイル風オブジェクトの readlines() メソッドからも得ることができます):
+
+>>>
+>>> text1 = '''  1. Beautiful is better than ugly.
+...   2. Explicit is better than implicit.
+...   3. Simple is better than complex.
+...   4. Complex is better than complicated.
+... '''.splitlines(keepends=True)
+>>> len(text1)
+4
+>>> text1[0][-1]
+'\n'
+>>> text2 = '''  1. Beautiful is better than ugly.
+...   3.   Simple is better than complex.
+...   4. Complicated is better than complex.
+...   5. Flat is better than nested.
+... '''.splitlines(keepends=True)
+次に Differ オブジェクトをインスタンス化します:
+
+>>>
+>>> d = Differ()
+注意: Differ オブジェクトをインスタンス化するとき、行 junk と文字 junk をフィルタリングする関数を渡すことができます。詳細は Differ() コンストラクタを参照してください。
+
+最後に、2つを比較します:
+
+>>>
+>>> result = list(d.compare(text1, text2))
+result は文字列のリストなので、pretty-printしてみましょう:
+
+>>>
+>>> from pprint import pprint
+>>> pprint(result)
+['    1. Beautiful is better than ugly.\n',
+ '-   2. Explicit is better than implicit.\n',
+ '-   3. Simple is better than complex.\n',
+ '+   3.   Simple is better than complex.\n',
+ '?     ++\n',
+ '-   4. Complex is better than complicated.\n',
+ '?            ^                     ---- ^\n',
+ '+   4. Complicated is better than complex.\n',
+ '?           ++++ ^                      ^\n',
+ '+   5. Flat is better than nested.\n']
+これは、複数行の文字列として、次のように出力されます:
+
+>>>
+>>> import sys
+>>> sys.stdout.writelines(result)
+    1. Beautiful is better than ugly.
+-   2. Explicit is better than implicit.
+-   3. Simple is better than complex.
++   3.   Simple is better than complex.
+?     ++
+-   4. Complex is better than complicated.
+?            ^                     ---- ^
++   4. Complicated is better than complex.
+?           ++++ ^                      ^
++   5. Flat is better than nested.
+difflib のコマンドラインインタフェース
+この例は、 difflib を使って diff に似たユーティリティーを作成する方法を示します。これは、 Python のソース配布物にも、 Tools/scripts/diff.py として含まれています。
+
+#!/usr/bin/env python3
+""" Command line interface to difflib.py providing diffs in four formats:
+
+* ndiff:    lists every line and highlights interline changes.
+* context:  highlights clusters of changes in a before/after format.
+* unified:  highlights clusters of changes in an inline format.
+* html:     generates side by side comparison with change highlights.
+
+"""
+
+import sys, os, difflib, argparse
+from datetime import datetime, timezone
+
+def file_mtime(path):
+    t = datetime.fromtimestamp(os.stat(path).st_mtime,
+                               timezone.utc)
+    return t.astimezone().isoformat()
+
+def main():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', action='store_true', default=False,
+                        help='Produce a context format diff (default)')
+    parser.add_argument('-u', action='store_true', default=False,
+                        help='Produce a unified format diff')
+    parser.add_argument('-m', action='store_true', default=False,
+                        help='Produce HTML side by side diff '
+                             '(can use -c and -l in conjunction)')
+    parser.add_argument('-n', action='store_true', default=False,
+                        help='Produce a ndiff format diff')
+    parser.add_argument('-l', '--lines', type=int, default=3,
+                        help='Set number of context lines (default 3)')
+    parser.add_argument('fromfile')
+    parser.add_argument('tofile')
+    options = parser.parse_args()
+
+    n = options.lines
+    fromfile = options.fromfile
+    tofile = options.tofile
+
+    fromdate = file_mtime(fromfile)
+    todate = file_mtime(tofile)
+    with open(fromfile) as ff:
+        fromlines = ff.readlines()
+    with open(tofile) as tf:
+        tolines = tf.readlines()
+
+    if options.u:
+        diff = difflib.unified_diff(fromlines, tolines, fromfile, tofile, fromdate, todate, n=n)
+    elif options.n:
+        diff = difflib.ndiff(fromlines, tolines)
+    elif options.m:
+        diff = difflib.HtmlDiff().make_file(fromlines,tolines,fromfile,tofile,context=options.c,numlines=n)
+    else:
+        diff = difflib.context_diff(fromlines, tolines, fromfile, tofile, fromdate, todate, n=n)
+
+    sys.stdout.writelines(diff)
+
+if __name__ == '__main__':
+    main()
+目次
+difflib --- 差分の計算を助ける
+SequenceMatcherオブジェクト
+SequenceMatcher の例
+Differ オブジェクト
+Differ の例
+difflib のコマンドラインインタフェース
+前のトピックへ
+re --- 正規表現操作
+
+次のトピックへ
+textwrap --- テキストの折り返しと詰め込み
+
+textwrap --- テキストの折り返しと詰め込み
+ソースコード: Lib/textwrap.py
+
+textwrap モジュールは、実際の処理を行う TextWrapper とともに、いくつかの便利な関数を提供しています。1つか2つの文字列を wrap あるいは fill するだけの場合は便利関数で十分ですが、多くの処理を行う場合は効率のために TextWrapper のインスタンスを使うべきでしょう。
+
+textwrap.wrap(text, width=70, **kwargs)
+text (文字列)内の段落を一つだけ折り返しを行います。したがって、すべての行が高々 width 文字の長さになります。最後に改行が付かない出力行のリストを返します。
+
+オプションのキーワード引数は、以下で説明する TextWrapper のインスタンス属性に対応しています。 width はデフォルトで 70 です。
+
+wrap() の動作についての詳細は TextWrapper.wrap() メソッドを参照してください。
+
+textwrap.fill(text, width=70, **kwargs)
+text 内の段落を一つだけ折り返しを行い、折り返しが行われた段落を含む一つの文字列を返します。 fill() はこれの省略表現です
+
+"\n".join(wrap(text, ...))
+特に、 fill() は wrap() とまったく同じ名前のキーワード引数を受け取ります。
+
+textwrap.shorten(text, width, **kwargs)
+与えられた text を折りたたみ、切り詰めて、与えられた width に収まるようにします。
+
+最初に、text 内の空白が折りたたまれます (すべての空白を、1 文字の空白文字で置き換えます)。結果が width 内に収まった場合、その結果が返されます。width に収まらない場合、残りの文字数と placeholder との和が width 内に収まるように、末尾から単語が切り捨てられます:
+
+>>>
+>>> textwrap.shorten("Hello  world!", width=12)
+'Hello world!'
+>>> textwrap.shorten("Hello  world!", width=11)
+'Hello [...]'
+>>> textwrap.shorten("Hello world", width=10, placeholder="...")
+'Hello...'
+オプションのキーワード引数は、以下で説明する TextWrapper インスタンスの属性に対応します。文字列が TextWrapper の fill() 関数に渡される前に、空白が折りたたまれます。そのため、tabsize、expand_tabs、drop_whitespace、replace_whitespace の値を変更しても、意味がありません。
+
+バージョン 3.4 で追加.
+
+textwrap.dedent(text)
+text の各行に対し、共通して現れる先頭の空白を削除します。
+
+この関数は通常、三重引用符で囲われた文字列をスクリーン/その他の左端にそろえ、なおかつソースコード中ではインデントされた形式を損なわないようにするために使われます。
+
+タブとスペースはともにホワイトスペースとして扱われますが、同じではないことに注意してください: "  hello" という行と "\thello" は、同じ先頭の空白文字をもっていないとみなされます。
+
+空白文字しか含まない行は入力の際に無視され、出力の際に単一の改行文字に正規化されます。
+
+例えば:
+
+def test():
+    # end first line with \ to avoid the empty line!
+    s = '''\
+    hello
+      world
+    '''
+    print(repr(s))          # prints '    hello\n      world\n    '
+    print(repr(dedent(s)))  # prints 'hello\n  world\n'
+textwrap.indent(text, prefix, predicate=None)
+text の中の選択された行の先頭に prefix を追加します。
+
+行の分割は text.splitlines(True) で行います。
+
+デフォルトでは、(改行文字を含む)空白文字だけの行を除いてすべての行に prefix を追加します。
+
+例えば:
+
+>>>
+>>> s = 'hello\n\n \nworld'
+>>> indent(s, '  ')
+'  hello\n\n \n  world'
+省略可能な predicate 引数を使って、どの行をインデントするかを制御することができます。例えば、空行や空白文字のみの行にも prefix を追加するのは簡単です:
+
+>>>
+>>> print(indent(s, '+ ', lambda line: True))
++ hello
++
++
++ world
+バージョン 3.3 で追加.
+
+wrap()、fill()、shorten() は TextWrapper インスタンスを作成し、その一つのメソッドを呼び出すことで機能します。そのインスタンスは再利用されません。したがって、wrap() や fill() を使用して多くのテキスト文字列を処理するアプリケーションについては、独自の TextWrapper オブジェクトを作成する方が効率が良い方法でしょう。
+
+テキストはなるべく空白か、ハイフンを含む語のハイフンの直後で折り返されます。 TextWrapper.break_long_words が偽に設定されていなければ、必要な場合に長い語が分解されます。
+
+class textwrap.TextWrapper(**kwargs)
+TextWrapper コンストラクタはたくさんのオプションのキーワード引数を受け取ります。それぞれのキーワード引数は一つのインスタンス属性に対応します。したがって、例えば
+
+wrapper = TextWrapper(initial_indent="* ")
+はこれと同じです
+
+wrapper = TextWrapper()
+wrapper.initial_indent = "* "
+あなたは同じ TextWrapper オブジェクトを何回も再利用できます。また、使用中にインスタンス属性へ代入することでそのオプションのどれでも変更できます。
+
+TextWrapper インスタンス属性(とコンストラクタのキーワード引数)は以下の通りです:
+
+width
+(デフォルト: 70) 折り返しが行われる行の最大の長さ。入力行に width より長い単一の語が無い限り、 TextWrapper は width 文字より長い出力行が無いことを保証します。
+
+expand_tabs
+(デフォルト: True) もし真ならば、そのときは text 内のすべてのタブ文字は text の expandtabs() メソッドを用いて空白に展開されます。
+
+tabsize
+(デフォルト: 8) expand_tabs が真の場合、 text の中のすべてのTAB文字は tabsize と現在のカラムに応じて、ゼロ以上のスペースに展開されます。
+
+バージョン 3.3 で追加.
+
+replace_whitespace
+(デフォルト: True) 真の場合、 wrap() メソッドはタブの展開の後、 wrap 処理の前に各種空白文字をスペース1文字に置換します。置換される空白文字は: TAB, 改行, 垂直TAB, FF, CR ('\t\n\v\f\r') です。
+
+注釈 expand_tabs が偽で replace_whitespace が真ならば、各タブ文字は1つの空白に置き換えられます。それはタブ展開と同じでは ありません 。
+注釈 replace_whitespace が偽の場合、改行が行の途中で現れることで出力がおかしくなることがあります。このため、テキストを(str.splitlines() などを使って)段落ごとに分けて別々に wrap する必要があります。
+drop_whitespace
+(デフォルト: True) 真の場合、(wrap 処理のあとインデント処理の前に) 各行の最初と最後の空白文字を削除します。ただし、段落の最初の空白については、次の文字が空白文字でない場合は削除されません。削除される空白文字が行全体に及ぶ場合は、行自体を削除します。
+
+initial_indent
+(default: '') wrap の出力の最初の行の先頭に付与する文字列。最初の行の長さに加算されます。空文字列の場合インデントされません。
+
+subsequent_indent
+(デフォルト: '') 一行目以外の折り返しが行われる出力のすべての行の先頭に付けられる文字列。一行目以外の各行の折り返しまでの長さにカウントされます。
+
+fix_sentence_endings
+(デフォルト: False) もし真ならば、 TextWrapper は文の終わりを見つけようとし、確実に文がちょうど二つの空白で常に区切られているようにします。これは一般的に固定スペースフォントのテキストに対して望ましいです。しかし、文の検出アルゴリズムは完全ではありません: 文の終わりには、後ろに空白がある '.', '!' または '?' の中の一つ、ことによると '"' あるいは "'" が付随する小文字があると仮定しています。これに伴う一つの問題はアルゴリズムで下記の"Dr."と
+
+[...] Dr. Frankenstein's monster [...]
+下記の"Spot."の間の差異を検出できないことです
+
+[...] See Spot. See Spot run [...]
+fix_sentence_endings はデフォルトで偽です。
+
+Since the sentence detection algorithm relies on string.lowercase for the definition of "lowercase letter", and a convention of using two spaces after a period to separate sentences on the same line, it is specific to English-language texts.
+
+break_long_words
+(デフォルト: True) もし真ならば、そのとき width より長い行が確実にないようにするために、 width より長い語は切られます。偽ならば、長い語は切られないでしょう。そして、 width より長い行があるかもしれません。 (width を超える分を最小にするために、長い語は単独で一行に置かれるでしょう。)
+
+break_on_hyphens
+(デフォルト: True) 真の場合、英語で一般的なように、ラップ処理は空白か合成語に含まれるハイフンの直後で行われます。偽の場合、空白だけが改行に適した位置として判断されます。ただし、本当に語の途中で改行が行われないようにするためには、 break_long_words 属性を真に設定する必要があります。過去のバージョンでのデフォルトの振る舞いは、常にハイフンの直後での改行を許していました。
+
+max_lines
+(デフォルト None) None 以外の場合、出力は行数 max_lines を超えないようにされ、切り詰める際には出力の最後の行を placeholder に置き換えます。
+
+バージョン 3.4 で追加.
+
+placeholder
+(デフォルト: ' [...]') 切り詰める場合に出力の最後の行に置く文字列です。
+
+バージョン 3.4 で追加.
+
+TextWrapper はモジュールレベルの簡易関数に類似したいくつかの公開メソッドも提供します:
+
+wrap(text)
+1段落の文字列 text を、各行が width 文字以下になるように wrap します。 wrap のすべてのオプションは TextWrapper インスタンスの属性から取得します。結果の、行末に改行のない行のリストを返します。出力の内容が空になる場合は、返すリストも空になります。
+
+fill(text)
+text 内の段落を一つだけ折り返しを行い、折り返しが行われた段落を含む一つの文字列を返します。
+
+unicodedata --- Unicode データベース
+This module provides access to the Unicode Character Database (UCD) which defines character properties for all Unicode characters. The data contained in this database is compiled from the UCD version 13.0.0.
+
+このモジュールは、ユニコード標準付録 #44 「 ユニコード文字データベース 」で定義されているのと同じ名前およびシンボルを使用します。このモジュールは次のような関数を定義します:
+
+unicodedata.lookup(name)
+名前に対応する文字を探します。その名前の文字が見つかった場合、その文字が返されます。見つからなかった場合には、 KeyError を発生させます。
+
+バージョン 3.3 で変更: name aliases 1 と named sequences 2 のサポートが追加されました。
+
+unicodedata.name(chr[, default])
+文字 chr に付いている名前を、文字列で返します。名前が定義されていない場合には default が返されますが、この引数が与えられていなければ ValueError を発生させます。
+
+unicodedata.decimal(chr[, default])
+文字 chr に割り当てられている十進数を、整数で返します。この値が定義されていない場合には default が返されますが、この引数が与えられていなければ ValueError を発生させます。
+
+unicodedata.digit(chr[, default])
+文字 chr に割り当てられている数値を、整数で返します。この値が定義されていない場合には default が返されますが、この引数が与えられていなければ ValueError を発生させます。
+
+unicodedata.numeric(chr[, default])
+文字 chr に割り当てられている数値を、float で返します。この値が定義されていない場合には default が返されますが、この引数が与えられていなければ ValueError を発生させます。
+
+unicodedata.category(chr)
+文字 chr に割り当てられた、汎用カテゴリを返します。
+
+unicodedata.bidirectional(chr)
+文字 chr に割り当てられた、双方向クラスを返します。そのような値が定義されていない場合、空の文字列が返されます。
+
+unicodedata.combining(chr)
+文字 chr に割り当てられた正規結合クラスを返します。結合クラス定義されていない場合、0 が返されます。
+
+unicodedata.east_asian_width(chr)
+ユニコード文字 chr に割り当てられたeast asian widthを文字列で返します。
+
+unicodedata.mirrored(chr)
+文字 chr に割り当てられた、鏡像化のプロパティを返します。その文字が双方向テキスト内で鏡像化された文字である場合には 1 を、それ以外の場合には 0 を返します。
+
+unicodedata.decomposition(chr)
+文字 chr に割り当てられた、文字分解マッピングを、文字列型で返します。そのようなマッピングが定義されていない場合、空の文字列が返されます。
+
+unicodedata.normalize(form, unistr)
+Unicode 文字列 unistr の正規形 form を返します。 form の有効な値は、'NFC'、'NFKC'、'NFD'、'NFKD' です。
+
+Unicode 規格は標準等価性 (canonical equivalence) と互換等価性 (compatibility equivalence) に基づいて、様々な Unicode文字列の正規形を定義します。Unicode では、複数の方法で表現できる文字があります。たとえば、文字 U+00C7 (LATIN CAPITAL LETTER C WITH CEDILLA) は、U+0043 (LATIN CAPITAL LETTER C) U+0327 (COMBINING CEDILLA) というシーケンスとしても表現できます。
+
+各文字には2つの正規形があり、それぞれ正規形 C と正規形 D といいます。正規形 D (NFD) は標準分解 (canonical decomposition) としても知られており、各文字を分解された形に変換します。正規形 C (NFC) は標準分解を適用した後、結合済文字を再構成します。
+
+互換等価性に基づいて、2つの正規形が加えられています。Unicode では、一般に他の文字との統合がサポートされている文字があります。たとえば、U+2160 (ROMAN NUMERAL ONE) は事実上 U+0049 (LATIN CAPITAL LETTER I) と同じものです。しかし、Unicode では、既存の文字集合 (たとえば gb2312) との互換性のために、これがサポートされています。
+
+正規形 KD (NFKD) は、互換分解 (compatibility decomposition) を適用します。すなわち、すべての互換文字を、等価な文字で置換します。正規形 KC (NFKC) は、互換分解を適用してから、標準分解を適用します。
+
+2つのunicode文字列が正規化されていて人間の目に同じに見えても、片方が結合文字を持っていてもう片方が持っていない場合、それらは完全に同じではありません。
+
+unicodedata.is_normalized(form, unistr)
+Return whether the Unicode string unistr is in the normal form form. Valid values for form are 'NFC', 'NFKC', 'NFD', and 'NFKD'.
+
+バージョン 3.8 で追加.
+
+更に、本モジュールは以下の定数を公開します:
+
+unicodedata.unidata_version
+このモジュールで使われている Unicode データベースのバージョン。
+
+unicodedata.ucd_3_2_0
+これはモジュール全体と同じメソッドを具えたオブジェクトですが、Unicode データベースバージョン 3.2 を代わりに使っており、この特定のバージョンの Unicode データベースを必要とするアプリケーション(IDNA など)のためものです。
+
+例:
+
+>>>
+>>> import unicodedata
+>>> unicodedata.lookup('LEFT CURLY BRACKET')
+'{'
+>>> unicodedata.name('/')
+'SOLIDUS'
+>>> unicodedata.decimal('9')
+9
+>>> unicodedata.decimal('a')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ValueError: not a decimal
+>>> unicodedata.category('A')  # 'L'etter, 'u'ppercase
+'Lu'
+>>> unicodedata.bidirectional('\u0660') # 'A'rabic, 'N'umber
+'AN'
+
+stringprep --- インターネットのための文字列調製
+ソースコード: Lib/stringprep.py
+
+(ホスト名のような) インターネット上にある存在に識別名をつける際、しばしば識別名間の "等価性" 比較を行う必要があります。厳密には、例えば大小文字の区別をするかしないかいったように、比較をどのように行うかはアプリケーションの領域に依存します。また、例えば "印字可能な" 文字で構成された識別名だけを許可するといったように、可能な識別名を制限することも必要となるかもしれません。
+
+RFC 3454 では、インターネットプロトコル上で Unicode 文字列を "調製 (prepare)" するためのプロシジャを定義しています。文字列は通信路に載せられる前に調製プロシジャで処理され、その結果ある正規化された形式になります。RFC ではあるテーブルの集合を定義しており、それらはプロファイルにまとめられています。各プロファイルでは、どのテーブルを使い、 stringprep プロシジャのどのオプション部分がプロファイルの一部になっているかを定義しています。 stringprep プロファイルの一つの例は nameprep で、国際化されたドメイン名に使われます。
+
+stringprep は RFC 3454 のテーブルを公開しているに過ぎません。これらのテーブルは辞書やリストとして表現するにはバリエーションが大きすぎるので、このモジュールでは Unicode 文字データベースを内部的に利用しています。モジュールソースコード自体は mkstringprep.py ユーティリティを使って生成されました。
+
+その結果、これらのテーブルはデータ構造体ではなく、関数として公開されています。RFC には 2 種類のテーブル: 集合およびマップ、が存在します。集合については、 stringprep は "特性関数 (characteristic function)" 、すなわち引数が集合の一部である場合に True を返す関数を提供します。マッピングについては、マップ関数: キーが与えられると、それに関連付けられた値を返す関数を提供します。以下はこのモジュールで利用可能な全ての関数を列挙したものです。
+
+stringprep.in_table_a1(code)
+code がテーブル A.1 (Unicode 3.2 における未割り当てコードポイント: unassigned code point) かどうか判定します。
+
+stringprep.in_table_b1(code)
+code がテーブル B.1 (一般には何にも対応付けられていない: commonly mapped to nothing) かどうか判定します。
+
+stringprep.map_table_b2(code)
+テーブル B.2 (NFKC で用いられる大小文字の対応付け) に従って、code に対応付けられた値を返します。
+
+stringprep.map_table_b3(code)
+テーブル B.3 (正規化を伴わない大小文字の対応付け) に従って、code に対応付けられた値を返します。
+
+stringprep.in_table_c11(code)
+code がテーブル C.1.1 (ASCII スペース文字) かどうか判定します。
+
+stringprep.in_table_c12(code)
+code がテーブル C.1.2 (非 ASCII スペース文字) かどうか判定します。
+
+stringprep.in_table_c11_c12(code)
+code がテーブル C.1 (スペース文字、C.1.1 および C.1.2 の和集合) かどうか判定します。
+
+stringprep.in_table_c21(code)
+code がテーブル C.2.1 (ASCII 制御文字) かどうか判定します。
+
+stringprep.in_table_c22(code)
+code がテーブル C.2.2 (非 ASCII 制御文字) かどうか判定します。
+
+stringprep.in_table_c21_c22(code)
+code がテーブル C.2 (制御文字、C.2.1 および C.2.2 の和集合) かどうか判定します。
+
+stringprep.in_table_c3(code)
+code がテーブル C.3 (プライベート利用) かどうか判定します。
+
+stringprep.in_table_c4(code)
+code がテーブル C.4 (非文字コードポイント: non-character code points) かどうか判定します。
+
+stringprep.in_table_c5(code)
+code がテーブル C.5 (サロゲーションコード) かどうか判定します。
+
+stringprep.in_table_c6(code)
+code がテーブル C.6 (平文:plain text として不適切) かどうか判定します。
+
+stringprep.in_table_c7(code)
+code がテーブル C.7 (標準表現:canonical representation として不適切) かどうか判定します。
+
+stringprep.in_table_c8(code)
+code がテーブル C.8 (表示プロパティの変更または撤廃) かどうか判定します。
+
+stringprep.in_table_c9(code)
+code がテーブル C.9 (タグ文字) かどうか判定します。
+
+stringprep.in_table_d1(code)
+code がテーブル D.1 (双方向プロパティ "R" または "AL" を持つ文字) かどうか判定します。
+
+stringprep.in_table_d2(code)
+code がテーブル D.2 (双方向プロパティ "L" を持つ文字) かどうか判定します。
+
+readline --- GNU readline のインタフェース
+readline モジュールでは、補完や Python インタプリタからの履歴ファイルの読み書きを容易にするための多くの関数を定義しています。 このモジュールは直接、または rlcompleter モジュールを介して使うことができます。 rlcompleter モジュールは対話的プロンプトで Python 識別子の補完をサポートするものです。 このモジュールで利用される設定は、インタプリタの対話プロンプトならびに組み込みの input() 関数の両方の挙動に影響します。
+
+readline のキーバインディングは初期化ファイルで設定できます。 このファイルは、たいていはホームディレクトリに .inputrc という名前で置いてあります。 GNU Readline マニュアルの Readline Init File を参照して、そのファイルの形式や可能な構成、 Readline ライブラリ全体の機能を知ってください。
+
+注釈 下層の Readline ライブラリー API は GNU readline ではなく libedit ライブラリーで実装される可能性があります。 macOS では readline モジュールはどのライブラリーが使われているかを実行時に検出します。
+libedit の設定ファイルは GNU readline のものとは異なります。もし設定文字列をプログラムからロードしているなら、 GNU readline と libedit を区別するために "libedit" という文字列が readline.__doc__ に含まれているかどうかチェックしてください。
+If you use editline/libedit readline emulation on macOS, the initialization file located in your home directory is named .editrc. For example, the following content in ~/.editrc will turn ON vi keybindings and TAB completion:
+python:bind -v
+python:bind ^I rl_complete
+初期化ファイル
+以下の関数は初期化ファイルならびにユーザ設定関連のものです:
+
+readline.parse_and_bind(string)
+string 引数で渡された最初の行を実行します。これにより下層のライブラリーの rl_parse_and_bind() が呼ばれます。
+
+readline.read_init_file([filename])
+readline 初期化ファイルを実行します。デフォルトのファイル名は最後に使用されたファイル名です。これにより下層のライブラリーの rl_read_init_file() が呼ばれます。
+
+行バッファ
+以下の関数は行バッファを操作します:
+
+readline.get_line_buffer()
+行バッファ (下層のライブラリーの rl_line_buffer) の現在の内容を返します。
+
+readline.insert_text(string)
+テキストをカーサー位置の行バッファに挿入します。これにより下層のライブラリーの rl_insert_text() が呼ばれますが、戻り値は無視されます。
+
+readline.redisplay()
+スクリーンの表示を変更して行バッファの現在の内容を反映させます。これにより下層のライブラリーの rl_redisplay() が呼ばれます。
+
+履歴ファイル
+以下の関数は履歴ファイルを操作します:
+
+readline.read_history_file([filename])
+readline 履歴ファイルを読み込み、履歴リストに追加します。デフォルトのファイル名は ~/.history です。これにより下層のライブラリーの read_history() が呼ばれます。
+
+readline.write_history_file([filename])
+履歴リストを readline 履歴ファイルに保存します。既存のファイルは上書きされます。デフォルトのファイル名は ~/.history です。これにより下層のライブラリーの write_history() が呼ばれます。
+
+readline.append_history_file(nelements[, filename])
+履歴の最後の nelements 項目をファイルに追加します。でふぉるのファイル名は ~/.history です。ファイルは存在していなくてはなりません。これにより下層のライブラリーの append_history() が呼ばれます。Python がこの機能をサポートするライブラリーのバージョンでコンパイルされたときのみ、この関数は存在します。
+
+バージョン 3.5 で追加.
+
+readline.get_history_length()
+readline.set_history_length(length)
+Set or return the desired number of lines to save in the history file. The write_history_file() function uses this value to truncate the history file, by calling history_truncate_file() in the underlying library. Negative values imply unlimited history file size.
+
+履歴リスト
+以下の関数はグローバルな履歴リストを操作します:
+
+readline.clear_history()
+現在の履歴をクリアします。これにより下層のライブラリーの clear_history() が呼ばれます。Python がこの機能をサポートするライブラリーのバージョンでコンパイルされたときのみ、この関数は存在します。
+
+readline.get_current_history_length()
+履歴に現在ある項目の数を返します。 (get_history_length() は履歴ファイルに書かれる最大行数を返します。)
+
+readline.get_history_item(index)
+現在の履歴の index 番目の項目を返します。添字は1から始まります。これにより下層のライブラリーの history_get() が呼ばれます。
+
+readline.remove_history_item(pos)
+履歴から指定された位置の項目を削除します。添字は0から始まります。これにより下層のライブラリーの remove_history() が呼ばれます。
+
+readline.replace_history_item(pos, line)
+指定された位置の項目を line で置き換えます。添字は0から始まります。これにより下層のライブラリーの replace_history_entry() が呼ばれます。
+
+readline.add_history(line)
+最後に入力したかのように、 line を履歴バッファに追加します。これにより下層のライブラリーの add_history() が呼ばれます。
+
+readline.set_auto_history(enabled)
+Enable or disable automatic calls to add_history() when reading input via readline. The enabled argument should be a Boolean value that when true, enables auto history, and that when false, disables auto history.
+
+バージョン 3.6 で追加.
+
+CPython implementation detail: Auto history is enabled by default, and changes to this do not persist across multiple sessions.
+開始フック
+readline.set_startup_hook([function])
+Set or remove the function invoked by the rl_startup_hook callback of the underlying library. If function is specified, it will be used as the new hook function; if omitted or None, any function already installed is removed. The hook is called with no arguments just before readline prints the first prompt.
+
+readline.set_pre_input_hook([function])
+Set or remove the function invoked by the rl_pre_input_hook callback of the underlying library. If function is specified, it will be used as the new hook function; if omitted or None, any function already installed is removed. The hook is called with no arguments after the first prompt has been printed and just before readline starts reading input characters. This function only exists if Python was compiled for a version of the library that supports it.
+
+補完
+The following functions relate to implementing a custom word completion function. This is typically operated by the Tab key, and can suggest and automatically complete a word being typed. By default, Readline is set up to be used by rlcompleter to complete Python identifiers for the interactive interpreter. If the readline module is to be used with a custom completer, a different set of word delimiters should be set.
+
+readline.set_completer([function])
+completer 関数を設定または削除します。function が指定された場合、新たな completer 関数として用いられます; 省略された場合や None の場合、現在インストールされている completer 関数は削除されます。completer 関数は function(text, state) の形式で、関数が文字列でない値を返すまで state を 0, 1, 2, ..., にして呼び出します。この関数は text から始まる補完結果として次に来そうなものを返さなければなりません。
+
+The installed completer function is invoked by the entry_func callback passed to rl_completion_matches() in the underlying library. The text string comes from the first parameter to the rl_attempted_completion_function callback of the underlying library.
+
+readline.get_completer()
+completer 関数を取得します。completer 関数が設定されていなければ None を返します。
+
+readline.get_completion_type()
+Get the type of completion being attempted. This returns the rl_completion_type variable in the underlying library as an integer.
+
+readline.get_begidx()
+readline.get_endidx()
+Get the beginning or ending index of the completion scope. These indexes are the start and end arguments passed to the rl_attempted_completion_function callback of the underlying library.
+
+readline.set_completer_delims(string)
+readline.get_completer_delims()
+Set or get the word delimiters for completion. These determine the start of the word to be considered for completion (the completion scope). These functions access the rl_completer_word_break_characters variable in the underlying library.
+
+readline.set_completion_display_matches_hook([function])
+Set or remove the completion display function. If function is specified, it will be used as the new completion display function; if omitted or None, any completion display function already installed is removed. This sets or clears the rl_completion_display_matches_hook callback in the underlying library. The completion display function is called as function(substitution, [matches], longest_match_length) once each time matches need to be displayed.
+
+使用例
+以下の例では、ユーザのホームディレクトリにある履歴ファイル .python_history の読み込みと保存を自動的に行うために、 readline モジュールの履歴の読み書き関数をどのように使うかを示しています。以下のソースコードは通常、対話セッション中はユーザの PYTHONSTARTUP ファイルから自動的に実行されます:
+
+import atexit
+import os
+import readline
+
+histfile = os.path.join(os.path.expanduser("~"), ".python_history")
+try:
+    readline.read_history_file(histfile)
+    # default history len is -1 (infinite), which may grow unruly
+    readline.set_history_length(1000)
+except FileNotFoundError:
+    pass
+
+atexit.register(readline.write_history_file, histfile)
+Python が 対話モード で実行される時、このコードは実際には自動的に実行されます ( readline の設定 を参照してください)。
+
+次の例では上記と同じ目的を達成できますが、ここでは新規の履歴のみを追加することで、並行して対話セッションがサポートされます:
+
+import atexit
+import os
+import readline
+histfile = os.path.join(os.path.expanduser("~"), ".python_history")
+
+try:
+    readline.read_history_file(histfile)
+    h_len = readline.get_current_history_length()
+except FileNotFoundError:
+    open(histfile, 'wb').close()
+    h_len = 0
+
+def save(prev_h_len, histfile):
+    new_h_len = readline.get_current_history_length()
+    readline.set_history_length(1000)
+    readline.append_history_file(new_h_len - prev_h_len, histfile)
+atexit.register(save, h_len, histfile)
+次の例では code.InteractiveConsole クラスを拡張し、履歴の保存・復旧をサポートします。
+
+import atexit
+import code
+import os
+import readline
+
+class HistoryConsole(code.InteractiveConsole):
+    def __init__(self, locals=None, filename="<console>",
+                 histfile=os.path.expanduser("~/.console-history")):
+        code.InteractiveConsole.__init__(self, locals, filename)
+        self.init_history(histfile)
+
+    def init_history(self, histfile):
+        readline.parse_and_bind("tab: complete")
+        if hasattr(readline, "read_history_file"):
+            try:
+                readline.read_history_file(histfile)
+            except FileNotFoundError:
+                pass
+            atexit.register(self.save_history, histfile)
+
+    def save_history(self, histfile):
+        readline.set_history_length(1000)
+        readline.write_history_file(histfile)
+
+rlcompleter --- GNU readline向け補完関数
+ソースコード: Lib/rlcompleter.py
+
+rlcompleter モジュールではPythonの識別子やキーワードを定義した readline モジュール向けの補完関数を定義しています。
+
+このモジュールが Unixプラットフォームでimportされ、 readline が利用できるときには、 Completer クラスのインスタンスが自動的に作成され、 complete() メソッドが readline 補完に設定されます。
+
+以下はプログラム例です:
+
+>>>
+>>> import rlcompleter
+>>> import readline
+>>> readline.parse_and_bind("tab: complete")
+>>> readline. <TAB PRESSED>
+readline.__doc__          readline.get_line_buffer(  readline.read_init_file(
+readline.__file__         readline.insert_text(      readline.set_completer(
+readline.__name__         readline.parse_and_bind(
+>>> readline.
+rlcompleter モジュールは、 Python の 対話モード と一緒に使用するのを意図して設計されています。Python を -S オプションをつけずに実行している場合、このモジュールが自動的にインポートされ、構成されます (readline の設定 を参照)。
+
+readline のないプラットフォームでも、このモジュールで定義される Completer クラスは独自の目的に使えます。
+
+Completerオブジェクト
+Completerオブジェクトは以下のメソッドを持っています:
+
+Completer.complete(text, state)
+text の state 番目の補完候補を返します。
+
+もし text がピリオド('.')を含まない場合、 __main__ 、 builtins で定義されている名前か、キーワード (keyword モジュールで定義されている) から補完されます。
+
+ピリオドを含む名前の場合、副作用を出さずに名前を最後まで評価しようとします(関数を明示的に呼び出しはしませんが、 __getattr__() を呼んでしまうことはあります)そして、 dir() 関数でマッチする語を見つけます。式を評価中に発生した全ての例外は補足して無視され、 None を返します。
+
+

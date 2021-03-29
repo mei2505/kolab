@@ -1,0 +1,4343 @@
+threading --- スレッドベースの並列処理
+ソースコード: Lib/threading.py
+
+このモジュールでは、高水準のスレッドインタフェースをより低水準 な _thread モジュールの上に構築しています。 queue モジュールのドキュメントも参照してください。
+
+バージョン 3.7 で変更: このモジュールは以前はオプションでしたが、常に利用可能なモジュールとなりました。
+
+注釈 ここには載っていませんが、Python 2.x シリーズでこのモジュールの一部のメソッドや関数に使われていた camelCase 名は、まだこのモジュールでサポートされます。
+CPython implementation detail: In CPython, due to the Global Interpreter Lock, only one thread can execute Python code at once (even though certain performance-oriented libraries might overcome this limitation). If you want your application to make better use of the computational resources of multi-core machines, you are advised to use multiprocessing or concurrent.futures.ProcessPoolExecutor. However, threading is still an appropriate model if you want to run multiple I/O-bound tasks simultaneously.
+
+このモジュールは以下の関数を定義しています:
+
+threading.active_count()
+生存中の Thread オブジェクトの数を返します。この数は enumerate() の返すリストの長さと同じです。
+
+threading.current_thread()
+関数を呼び出している処理のスレッドに対応する Thread オブジェクトを返します。関数を呼び出している処理のスレッドが threading モジュールで生成したものでない場合、限定的な機能しかもたないダミースレッドオブジェクトを返します。
+
+threading.excepthook(args, /)
+Handle uncaught exception raised by Thread.run().
+
+The args argument has the following attributes:
+
+exc_type: Exception type.
+
+exc_value: Exception value, can be None.
+
+exc_traceback: Exception traceback, can be None.
+
+thread: Thread which raised the exception, can be None.
+
+If exc_type is SystemExit, the exception is silently ignored. Otherwise, the exception is printed out on sys.stderr.
+
+If this function raises an exception, sys.excepthook() is called to handle it.
+
+threading.excepthook() can be overridden to control how uncaught exceptions raised by Thread.run() are handled.
+
+Storing exc_value using a custom hook can create a reference cycle. It should be cleared explicitly to break the reference cycle when the exception is no longer needed.
+
+Storing thread using a custom hook can resurrect it if it is set to an object which is being finalized. Avoid storing thread after the custom hook completes to avoid resurrecting objects.
+
+参考 sys.excepthook() handles uncaught exceptions.
+バージョン 3.8 で追加.
+
+threading.get_ident()
+現在のスレッドの 'スレッドID' を返します。非ゼロの整数です。この値は直接の意味を持っていません; 例えばスレッド特有のデータの辞書に索引をつけるためのような、マジッククッキーとして意図されています。スレッドが終了し、他のスレッドが作られたとき、スレッド ID は再利用されるかもしれません。
+
+バージョン 3.3 で追加.
+
+threading.get_native_id()
+Return the native integral Thread ID of the current thread assigned by the kernel. This is a non-negative integer. Its value may be used to uniquely identify this particular thread system-wide (until the thread terminates, after which the value may be recycled by the OS).
+
+Availability: Windows, FreeBSD, Linux, macOS, OpenBSD, NetBSD, AIX.
+
+バージョン 3.8 で追加.
+
+threading.enumerate()
+現在、生存中の Thread オブジェクト全てのリストを返します。リストには、デーモンスレッド (daemonic thread)、 current_thread() の生成するダミースレッドオブジェクト、そして主スレッドが入ります。終了したスレッドとまだ開始していないスレッドは入りません。
+
+threading.main_thread()
+main Thread オブジェクトを返します。通常の条件では、メインスレッドはPythonインタプリタが起動したスレッドを指します。
+
+バージョン 3.4 で追加.
+
+threading.settrace(func)
+threading モジュールを使って開始した全てのスレッドにトレース関数を設定します。 func は各スレッドの run() を呼び出す前にスレッドの sys.settrace() に渡されます。
+
+threading.setprofile(func)
+threading モジュールを使って開始した全てのスレッドにプロファイル関数を設定します。 func は各スレッドの run() を呼び出す前にスレッドの sys.setprofile() に渡されます。
+
+threading.stack_size([size])
+新しいスレッドを作るときのスレッドスタックサイズを返します。オプションの size 引数にはこれ以降に作成するスレッドのスタックサイズを指定し、0 (プラットフォームのデフォルト値または設定されたデフォルト値) か、 32,768 (32 KiB) 以上の正の整数でなければなりません。size が指定されない場合 0 が使われます。スレッドのスタックサイズの変更がサポートされていない場合、 RuntimeError を送出します。不正なスタックサイズが指定された場合、 ValueError を送出して、スタックサイズは変更されません。32 KiB は現在のインタープリタ自身のために十分であると保証された最小のスタックサイズです。いくつかのプラットフォームではスタックサイズに対して制限があることに注意してください。例えば最小のスタックサイズが 32 KiB より大きかったり、システムのメモリページサイズ の整数倍の必要があるなどです。この制限についてはプラットフォームのドキュメントを参照してください (一般的なページサイズは 4 KiB なので、プラットフォームに関する情報がない場合は 4096 の整数倍のスタックサイズを選ぶといいかもしれません)。
+
+Availability: Windows, systems with POSIX threads.
+
+このモジュールでは以下の定数も定義しています:
+
+threading.TIMEOUT_MAX
+ブロックする関数 (Lock.acquire(), RLock.acquire(), Condition.wait() など) の timeout 引数に許される最大値。これ以上の値を timeout に指定すると OverflowError が発生します。
+
+バージョン 3.2 で追加.
+
+このモジュールは多くのクラスを定義しています。それらは下記のセクションで詳しく説明されます。
+
+このモジュールのおおまかな設計は Java のスレッドモデルに基づいています。とはいえ、 Java がロックと条件変数を全てのオブジェクトの基本的な挙動にしているのに対し、 Python ではこれらを別個のオブジェクトに分けています。 Python の Thread クラスがサポートしているのは Java の Thread クラスの挙動のサブセットにすぎません; 現状では、優先度 (priority)やスレッドグループがなく、スレッドの破壊 (destroy)、中断 (stop)、一時停止 (suspend)、復帰 (resume)、割り込み (interrupt) は行えません。 Java の Thread クラスにおける静的メソッドに対応する機能が実装されている場合にはモジュールレベルの関数になっています。
+
+以下に説明するメソッドは全て原子的 (atomic) に実行されます。
+
+スレッドローカルデータ
+スレッドローカルデータは、その値がスレッド固有のデータです。スレッドローカルデータを管理するには、単に local (あるいはそのサブクラス) のインスタンスを作成して、その属性に値を設定してください:
+
+mydata = threading.local()
+mydata.x = 1
+インスタンスの値はスレッドごとに違った値になります。
+
+class threading.local
+スレッドローカルデータを表現するクラス。
+
+詳細と例題については、 _threading_local モジュールのドキュメンテーション文字列を参照してください。
+
+Thread オブジェクト
+Thread クラスは個別のスレッド中で実行される活動 (activity) を表現します。活動を決める方法は 2 つあり、一つは呼び出し可能オブジェクトをコンストラクタへ渡す方法、もう一つはサブクラスで run() メソッドをオーバライドする方法です。 (コンストラクタを除く) その他のメソッドは一切サブクラスでオーバライドしてはなりません。言い換えるならば、このクラスの __init__() と run() メソッド だけ をオーバライドしてくださいということです。
+
+ひとたびスレッドオブジェクトを生成すると、スレッドの start() メソッドを呼び出して活動を開始しなければなりません。 start() メソッド はそれぞれのスレッドの run() メソッドを起動します。
+
+スレッドの活動が始まると、スレッドは '生存中 (alive)' とみなされます。 スレッドは、通常 run() メソッドが終了するまで、もしくは捕捉されない例外が送出されるまで生存中となります。 is_alive() メソッドは、スレッドが生存中であるかどうか調べます。
+
+スレッドは他のスレッドの join() メソッドを呼び出すことができます。このメソッドは、 join() メソッドを呼ばれたスレッドが終了するまでメソッドの呼び出し元のスレッドをブロックします。
+
+スレッドは名前を持っています。名前はコンストラクタに渡すことができ、 name 属性を通して読み出したり変更したりできます。
+
+If the run() method raises an exception, threading.excepthook() is called to handle it. By default, threading.excepthook() ignores silently SystemExit.
+
+スレッドには "デーモンスレッド (daemon thread)" であるというフラグを立てられます。 このフラグには、残っているスレッドがデーモンスレッドだけになった時に Python プログラム全体を終了させるという意味があります。フラグの初期値はスレッドを生成したスレッドから継承します。フラグの値は daemon プロパティまたは daemon コンストラクタ引数を通して設定できます。
+
+注釈 デーモンスレッドは終了時にいきなり停止されます。デーモンスレッドで使われたリソース (開いているファイル、データベースのトランザクションなど) は適切に解放されないかもしれません。きちんと (gracefully) スレッドを停止したい場合は、スレッドを非デーモンスレッドにして、Event のような適切なシグナル送信機構を使用してください。
+スレッドには "主スレッド (main thread)" オブジェクトがあります。主スレッドは Python プログラムを最初に制御していたスレッドです。主スレッドはデーモンスレッドではありません。
+
+"ダミースレッド (dummy thread)" オブジェクトを作成することができます。 ダミースレッドは、 "外来スレッド (alien thread)" に対応するスレッドオブジェクトです。ダミースレッドは、 C コードから直接生成されたスレッドのような、 threading モジュールの外で開始された処理スレッドです。 ダミースレッドオブジェクトには限られた機能しかなく、常に生存中、かつデーモンスレッドであるとみなされ、 join() できません。また、外来スレッドの終了を検出するのは不可能なので、ダミースレッドは削除できません。
+
+class threading.Thread(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
+コンストラクタは常にキーワード引数を使って呼び出さなければなりません。各引数は以下の通りです:
+
+group は None でなければなりません。将来 ThreadGroup クラスが実装されたときの拡張用に予約されている引数です。
+
+target は run() メソッドによって起動される呼び出し可能オブジェクトです。デフォルトでは何も呼び出さないことを示す None になっています。
+
+name はスレッドの名前です。デフォルトでは、 N を小さな 10 進数として、 "Thread- N" という形式の一意な名前を生成します。
+
+args は target を呼び出すときの引数タプルです。デフォルトは () です。
+
+kwargs は target を呼び出すときのキーワード引数の辞書です。デフォルトは {} です。
+
+None でない場合、daemon はスレッドがデーモンかどうかを明示的に設定します。None の場合 (デフォルト)、デーモン属性は現在のスレッドから継承されます。
+
+サブクラスでコンストラクタをオーバライドした場合、必ずスレッドが何かを始める前に基底クラスのコンストラクタ (Thread.__init__()) を呼び出しておかなくてはなりません。
+
+バージョン 3.3 で変更: daemon 引数が追加されました。
+
+start()
+スレッドの活動を開始します。
+
+このメソッドは、スレッドオブジェクトあたり一度しか呼び出してはなりません。 start() は、オブジェクトの run() メソッドが個別の処理スレッド中で呼び出されるように調整します。
+
+同じスレッドオブジェクトに対し、このメソッドを2回以上呼び出した場合、 RuntimeError を送出します。
+
+run()
+スレッドの活動をもたらすメソッドです。
+
+You may override this method in a subclass. The standard run() method invokes the callable object passed to the object's constructor as the target argument, if any, with positional and keyword arguments taken from the args and kwargs arguments, respectively.
+
+join(timeout=None)
+スレッドが終了するまで待機します。 このメソッドは、 join() を呼ばれたスレッドが正常終了あるいは処理されない例外によって終了するか、オプションのタイムアウトが発生するまで、メソッドの呼び出し元のスレッドをブロックします。
+
+timeout 引数が存在して None 以外の場合、それは操作に対するタイムアウト秒 (あるいは秒未満の端数) を表す浮動小数点数でなければなりません。 join() は常に None を返すので、 join() の後に is_alive() を呼び出してタイムアウトしたかどうかを確認しなければなりません。もしスレッドがまだ生存中であれば、 join() はタイムアウトしています。
+
+timeout が指定されないかまたは None であるときは、この操作はスレッドが終了するまでブロックします。
+
+一つのスレッドに対して何度でも join() できます。
+
+現在のスレッドに対して join() を呼び出そうとすると、デッドロックを引き起こすため RuntimeError が送出されます。 スレッドが開始される前に join() を呼び出すことも同様のエラーのため、同じ例外が送出されます。
+
+name
+識別のためにのみ用いられる文字列です。名前には機能上の意味づけ (semantics) はありません。複数のスレッドに同じ名前をつけてもかまいません。名前の初期値はコンストラクタで設定されます。
+
+getName()
+setName()
+name に対する古い getter/setter API; 代わりにプロパティを直接使用してください。
+
+ident
+The 'thread identifier' of this thread or None if the thread has not been started. This is a nonzero integer. See the get_ident() function. Thread identifiers may be recycled when a thread exits and another thread is created. The identifier is available even after the thread has exited.
+
+native_id
+The native integral thread ID of this thread. This is a non-negative integer, or None if the thread has not been started. See the get_native_id() function. This represents the Thread ID (TID) as assigned to the thread by the OS (kernel). Its value may be used to uniquely identify this particular thread system-wide (until the thread terminates, after which the value may be recycled by the OS).
+
+注釈 Similar to Process IDs, Thread IDs are only valid (guaranteed unique system-wide) from the time the thread is created until the thread has been terminated.
+Availability: Requires get_native_id() function.
+
+バージョン 3.8 で追加.
+
+is_alive()
+スレッドが生存中かどうかを返します。
+
+このメソッドは、 run() メソッドが起動する直前から run() メソッドが終了する直後までの間 True を返します。モジュール関数 enumerate() は、全ての生存中のスレッドのリストを返します。
+
+daemon
+このスレッドがデーモンスレッドか (True) か否か (False) を示すブール値。この値は start() の呼び出し前に設定されなければなりません。さもなければ RuntimeError が送出されます。初期値は生成側のスレッドから継承されます; メインスレッドはデーモンスレッドではないので、メインスレッドで作成されたすべてのスレッドは、デフォルトで daemon = False になります。
+
+デーモンでない生存中のスレッドが全てなくなると、 Python プログラム全体が終了します。
+
+isDaemon()
+setDaemon()
+daemon に対する古い getter/setter API; 代わりにプロパティを直接使用してください。
+
+Lock オブジェクト
+プリミティブロックとは、ロックが生じた際に特定のスレッドによって所有されない同期プリミティブです。 Python では現在のところ拡張モジュール _thread で直接実装されている最も低水準の同期プリミティブを使えます。
+
+プリミティブロックは2つの状態、 "ロック" または "アンロック" があります。ロックはアンロック状態で作成されます。ロックには基本となる二つのメソッド、 acquire() と release() があります。ロックの状態がアンロックである場合、 acquire() は状態をロックに変更して即座に処理を戻します。 状態がロックの場合、 acquire() は他のスレッドが release() を呼び出してロックの状態をアンロックに変更するまでブロックします。その後、 acquire() 呼び出しは状態を再度ロックに設定してから処理を戻します。 release() メソッドを呼び出すのはロック状態のときでなければなりません; このメソッドはロックの状態をアンロックに変更して、即座に処理を戻します。 アンロックの状態のロックを解放しようとすると RuntimeError が送出されます。
+
+ロックは コンテキストマネージメントプロトコル もサポートします。
+
+複数のスレッドにおいて acquire() がアンロック状態への遷移を待っているためにブロックが起きている時に release() を呼び出してロックの状態をアンロックにすると、一つのスレッドだけが処理を進行できます。 どのスレッドが処理を進行できるのかは定義されておらず、実装によって異なるかもしれません。
+
+全てのメソッドはアトミックに実行されます。
+
+class threading.Lock
+プリミティブロック (primitive lock) オブジェクトを実装しているクラスです。スレッドが一度ロックを獲得すると、それ以後のロック獲得の試みはロックが解放されるまでブロックします。どのスレッドでもロックを解放できます。
+
+Note that Lock is actually a factory function which returns an instance of the most efficient version of the concrete Lock class that is supported by the platform.
+
+acquire(blocking=True, timeout=-1)
+ブロックあり、またはブロックなしでロックを獲得します。
+
+引数 blocking を True (デフォルト) に設定して呼び出した場合、ロックがアンロック状態になるまでブロックします。そしてそれをロック状態にしてから True を返します。
+
+引数 blocking の値を False にして呼び出すとブロックしません。blocking を True にして呼び出した場合にブロックするような状況では、直ちに False を返します。それ以外の場合には、ロックをロック状態にして True を返します。
+
+正の値に設定された浮動小数点の timeout 引数とともに起動された場合、ロックを得られなければ最大で timeout によって指定された秒数だけブロックします。timeout 引数の -1 は無制限の待機を指定します。blocking が false の場合に timeout を指定することは禁止されています。
+
+ロックを獲得すると True を、ロックを獲得できなかったとき (例えば timeout が過ぎた場合) には False を返します。
+
+バージョン 3.2 で変更: 新しい timeout 引数。
+
+バージョン 3.2 で変更: Lock acquisition can now be interrupted by signals on POSIX if the underlying threading implementation supports it.
+
+release()
+ロックを解放します。これはロックを獲得したスレッドだけでなく、任意のスレッドから呼ぶことができます。
+
+ロックの状態がロックのとき、状態をアンロックにリセットして処理を戻します。他のスレッドがロックがアンロック状態になるのを待ってブロックしている場合、ただ一つのスレッドだけが処理を継続できるようにします。
+
+アンロック状態のロックに対して呼び出された場合、RuntimeError が送出されます。
+
+戻り値はありません。
+
+locked()
+Return true if the lock is acquired.
+
+RLock オブジェクト
+再入可能ロック (reentrant lock) とは、同じスレッドが複数回獲得できるような同期プリミティブです。再入可能ロックの内部では、プリミティブロックの使うロック／アンロック状態に加え、 "所有スレッド (owning thread)" と "再帰レベル (recursion level)" という概念を用いています。ロック状態では何らかのスレッドがロックを所有しており、アンロック状態ではいかなるスレッドもロックを所有していません。
+
+このロックの状態をロックにするには、スレッドがロックの acquire() メソッドを呼び出します。このメソッドはスレッドがロックを所有すると処理を戻します。ロックの状態をアンロックにするには release() メソッドを呼び出します。 acquire() / release() からなるペアの呼び出しはネストできます; 最後に呼び出した release() (最も外側の呼び出しペアの release()) だけがロックの状態をアンロックにリセットして、 acquire() でブロック中の別のスレッドの処理を進行させることができます。
+
+再入可能ロックは コンテキストマネージメントプロトコル もサポートします。
+
+class threading.RLock
+このクラスは再入可能ロックオブジェクトを実装します。再入可能ロックはそれを獲得したスレッドによって解放されなければなりません。いったんスレッドが再入可能ロックを獲得すると、同じスレッドはブロックされずにもう一度それを獲得できます ; そのスレッドは獲得した回数だけ解放しなければいけません。
+
+RLock は実際にはファクトリ関数で、プラットフォームでサポートされる最も効率的なバージョンの具体的な RLock クラスのインスタンスを返すことに注意してください。
+
+acquire(blocking=True, timeout=-1)
+ブロックあり、またはブロックなしでロックを獲得します。
+
+引数なしで呼び出した場合: スレッドが既にロックを所有している場合、再帰レベルをインクリメントして即座に処理を戻します。それ以外の場合、他のスレッドがロックを所有していれば、そのロックの状態がアンロックになるまでブロックします。その後、ロックの状態がアンロックになる (いかなるスレッドもロックを所有しない状態になる) と、ロックの所有権を獲得し、再帰レベルを 1 にセットして処理を戻します。ロックの状態がアンロックになるのを待っているスレッドが複数ある場合、その中の一つだけがロックの所有権を獲得できます。この場合、戻り値はありません。
+
+When invoked with the blocking argument set to true, do the same thing as when called without arguments, and return True.
+
+When invoked with the blocking argument set to false, do not block. If a call without an argument would block, return False immediately; otherwise, do the same thing as when called without arguments, and return True.
+
+When invoked with the floating-point timeout argument set to a positive value, block for at most the number of seconds specified by timeout and as long as the lock cannot be acquired. Return True if the lock has been acquired, false if the timeout has elapsed.
+
+バージョン 3.2 で変更: 新しい timeout 引数。
+
+release()
+再帰レベルをデクリメントしてロックを解放します。デクリメント後に再帰レベルがゼロになった場合、ロックの状態をアンロック (いかなるスレッドにも所有されていない状態) にリセットし、ロックの状態がアンロックになるのを待ってブロックしているスレッドがある場合にはその中のただ一つだけが処理を進行できるようにします。デクリメント後も再帰レベルがゼロでない場合、ロックの状態はロックのままで、呼び出し側のスレッドに所有されたままになります。
+
+呼び出し側のスレッドがロックを所有しているときにのみこのメソッドを呼び出してください。ロックの状態がアンロックの時にこのメソッドを呼び出すと、 RuntimeError が送出されます。
+
+戻り値はありません。
+
+Condition オブジェクト
+条件変数 (condition variable) は、常にある種のロックに関連付けられています; このロックは明示的に渡すことも、デフォルトで生成させることもできます。複数の条件変数で同じロックを共有しなければならない場合には、引渡しによる関連付けが便利です。ロックは条件オブジェクトの一部です: それを別々に扱う必要はありません。
+
+条件変数は コンテキスト管理プロトコル に従います: with 文を使って囲まれたブロックの間だけ関連付けられたロックを獲得することができます。 acquire() メソッドと release() メソッドは、さらに関連付けられたロックの対応するメソッドを呼び出します。
+
+他のメソッドは、関連付けられたロックを保持した状態で呼び出さなければなりません。 wait() メソッドはロックを解放します。そして別のスレッドが notify() または notify_all() を呼ぶことによってスレッドを起こすまでブロックします。一旦起こされたなら、 wait() は再びロックを得て戻ります。タイムアウトを指定することも可能です。
+
+notify() メソッドは条件変数待ちのスレッドを1つ起こします。 notify_all() メソッドは条件変数待ちの全てのスレッドを起こします。
+
+注意: notify() と notify_all() はロックを解放しません; 従って、スレッドが起こされたとき、 wait() の呼び出しは即座に処理を戻すわけではなく、 notify() または notify_all() を呼び出したスレッドが最終的にロックの所有権を放棄したときに初めて処理を返すのです。
+
+条件変数を使う典型的なプログラミングスタイルでは、何らかの共有された状態変数へのアクセスを同期させるためにロックを使います; 状態変数が特定の状態に変化したことを知りたいスレッドは、自分の望む状態になるまで繰り返し wait() を呼び出します。その一方で、状態変更を行うスレッドは、前者のスレッドが待ち望んでいる状態であるかもしれないような状態へ変更を行ったときに notify() や notify_all() を呼び出します。例えば、以下のコードは無制限のバッファ容量のときの一般的な生産者-消費者問題です:
+
+# Consume one item
+with cv:
+    while not an_item_is_available():
+        cv.wait()
+    get_an_available_item()
+
+# Produce one item
+with cv:
+    make_an_item_available()
+    cv.notify()
+アプリケーションの条件をチェックする while ループは必須です。なぜなら、 wait() が任意の長時間の後で返り、 notify() 呼び出しを促した条件がもはや真でないことがありえるからです。これはマルチスレッドプログラミングに固有です。条件チェックを自動化するために wait_for() メソッドを使うことができ、それはタイムアウトの計算を簡略化します:
+
+# Consume an item
+with cv:
+    cv.wait_for(an_item_is_available)
+    get_an_available_item()
+notify() と notify_all() のどちらを使うかは、その状態の変化に興味を持っている待ちスレッドが一つだけなのか、あるいは複数なのかで考えます。例えば、典型的な生産者-消費者問題では、バッファに1つの要素を加えた場合には消費者スレッドを 1 つしか起こさなくてかまいません。
+
+class threading.Condition(lock=None)
+このクラスは条件変数 (condition variable) オブジェクトを実装します。条件変数を使うと、1つ以上のスレッドを別のスレッドの通知があるまで待機させておけます。
+
+lock に None でない値を指定した場合、その値は Lock または RLock オブジェクトでなければなりません。 この場合、 lock は根底にあるロックオブジェクトとして使われます。 それ以外の場合には、 RLock オブジェクトを新しく作成して使います。
+
+バージョン 3.3 で変更: ファクトリ関数からクラスに変更されました。
+
+acquire(*args)
+根底にあるロックを獲得します。このメソッドは根底にあるロックの対応するメソッドを呼び出します。そのメソッドの戻り値を返します。
+
+release()
+根底にあるロックを解放します。このメソッドは根底にあるロックの対応するメソッドを呼び出します。戻り値はありません。
+
+wait(timeout=None)
+通知 (notify) を受けるか、タイムアウトするまで待機します。呼び出し側のスレッドがロックを獲得していないときにこのメソッドを呼び出すと RuntimeError が送出されます。
+
+このメソッドは根底にあるロックを解放し、他のスレッドが同じ条件変数に対して notify() または notify_all() を呼び出して現在のスレッドを起こすか、オプションのタイムアウトが発生するまでブロックします。一度スレッドが起こされると、再度ロックを獲得して処理を戻します。
+
+timeout 引数を指定して、 None 以外の値にする場合、タイムアウトを秒 (または端数秒) を表す浮動小数点数でなければなりません。
+
+根底にあるロックが RLock である場合、 release() メソッドではロックは解放されません。というのも、ロックが再帰的に複数回獲得されている場合には、 release() によって実際にアンロックが行われないかもしれないからです。その代わり、ロックが再帰的に複数回獲得されていても確実にアンロックを行える RLock クラスの内部インタフェースを使います。その後ロックを再獲得する時に、もう一つの内部インタフェースを使ってロックの再帰レベルを復帰します。
+
+与えられた timeout が過ぎていなければ返り値は True です。タイムアウトした場合には False が返ります。
+
+バージョン 3.2 で変更: 以前は、このメソッドは常に None を返していました。
+
+wait_for(predicate, timeout=None)
+条件が真と判定されるまで待ちます。 predicate は呼び出し可能オブジェクトでなければならず、その結果はブール値として解釈されます。 最大の待ち時間を指定する timeout を与えることができます。
+
+このユーティリティメソッドは、述語が満たされるかタイムアウトが発生するまで wait() を繰り返し呼び出す場合があります。戻り値は述語の最後の戻り値で、もしメソッドがタイムアウトすれば、 False と評価されます。
+
+タイムアウト機能を無視すれば、このメソッドの呼び出しは以下のように書くのとほぼ等価です:
+
+while not predicate():
+    cv.wait()
+したがって、 wait() と同じルールが適用されます: 呼び出された時にロックを保持していなければならず、戻るときにロックが再度獲得されます。述語はロックを保持した状態で評価されます。
+
+バージョン 3.2 で追加.
+
+notify(n=1)
+デフォルトで、この条件変数を待っている1つのスレッドを起こします。 呼び出し側のスレッドがロックを獲得していないときにこのメソッドを呼び出すと RuntimeError が送出されます。
+
+何らかの待機中スレッドがある場合、そのうち n スレッドを起こします。待機中のスレッドがなければ何もしません。
+
+現在の実装では、少なくとも n スレッドが待機中であれば、ちょうど n スレッドを起こします。とはいえ、この挙動に依存するのは安全ではありません。将来、実装の最適化によって、複数のスレッドを起こすようになるかもしれないからです。
+
+注意: 起こされたスレッドは実際にロックを再獲得できるまで wait() 呼び出しから戻りません。 notify() はロックを解放しないので、 notify() 呼び出し側は明示的にロックを解放しなければなりません。
+
+notify_all()
+この条件を待っているすべてのスレッドを起こします。このメソッドは notify() のように動作しますが、 1 つではなくすべての待ちスレッドを起こします。呼び出し側のスレッドがロックを獲得していない場合、 RuntimeError が送出されます。
+
+Semaphore オブジェクト
+セマフォ (semaphore) は、計算機科学史上最も古い同期プリミティブの一つ で、草創期のオランダ計算機科学者 Edsger W. Dijkstra によって発明されました (彼は acquire() と release() の代わりに P() と V() を使いました)。
+
+セマフォは acquire() でデクリメントされ release() でインクリメントされるような内部カウンタを管理します。 カウンタは決してゼロより小さくはなりません; acquire() は、カウンタがゼロになっている場合、他のスレッドが release() を呼び出すまでブロックします。
+
+セマフォは コンテキストマネージメントプロトコル もサポートします。
+
+class threading.Semaphore(value=1)
+This class implements semaphore objects. A semaphore manages an atomic counter representing the number of release() calls minus the number of acquire() calls, plus an initial value. The acquire() method blocks if necessary until it can return without making the counter negative. If not given, value defaults to 1.
+
+オプションの引数には、内部カウンタの初期値を指定します。デフォルトは 1 です。与えられた value が 0 より小さい場合、 ValueError が送出されます。
+
+バージョン 3.3 で変更: ファクトリ関数からクラスに変更されました。
+
+acquire(blocking=True, timeout=None)
+セマフォを獲得します。
+
+When invoked without arguments:
+
+If the internal counter is larger than zero on entry, decrement it by one and return True immediately.
+
+If the internal counter is zero on entry, block until awoken by a call to release(). Once awoken (and the counter is greater than 0), decrement the counter by 1 and return True. Exactly one thread will be awoken by each call to release(). The order in which threads are awoken should not be relied on.
+
+When invoked with blocking set to false, do not block. If a call without an argument would block, return False immediately; otherwise, do the same thing as when called without arguments, and return True.
+
+When invoked with a timeout other than None, it will block for at most timeout seconds. If acquire does not complete successfully in that interval, return False. Return True otherwise.
+
+バージョン 3.2 で変更: 新しい timeout 引数。
+
+release(n=1)
+Release a semaphore, incrementing the internal counter by n. When it was zero on entry and other threads are waiting for it to become larger than zero again, wake up n of those threads.
+
+バージョン 3.9 で変更: Added the n parameter to release multiple waiting threads at once.
+
+class threading.BoundedSemaphore(value=1)
+有限セマフォ (bounded semaphore) オブジェクトを実装しているクラスです。有限セマフォは、現在の値が初期値を超過しないようチェックを行います。超過を起こした場合、 ValueError を送出します。たいていの場合、セマフォは限られた容量のリソースを保護するために使われるものです。従って、あまりにも頻繁なセマフォの解放はバグが生じているしるしです。 value を指定しない場合、デフォルトの値は 1 になります。
+
+バージョン 3.3 で変更: ファクトリ関数からクラスに変更されました。
+
+Semaphore の例
+セマフォはしばしば、容量に限りのある資源、例えばデータベースサーバなどを保護するために使われます。リソースが固定の状況では、常に有限セマフォを使わなければなりません。主スレッドは、作業スレッドを立ち上げる前にセマフォを初期化します:
+
+maxconnections = 5
+# ...
+pool_sema = BoundedSemaphore(value=maxconnections)
+作業スレッドは、ひとたび立ち上がると、サーバへ接続する必要が生じたときにセマフォの acquire() および release() メソッドを呼び出します:
+
+with pool_sema:
+    conn = connectdb()
+    try:
+        # ... use connection ...
+    finally:
+        conn.close()
+有限セマフォを使うと、セマフォを獲得回数以上に解放してしまうというプログラム上の間違いを見逃しにくくします。
+
+Event オブジェクト
+イベントは、あるスレッドがイベントを発信し、他のスレッドはそれを待つという、スレッド間で通信を行うための最も単純なメカニズムの一つです。
+
+イベントオブジェクトは内部フラグを管理します。このフラグは set() メソッドで値を true に、 clear() メソッドで値を false にリセットします。 wait() メソッドはフラグが true になるまでブロックします。
+
+class threading.Event
+イベントオブジェクトを実装しているクラスです。イベントは set() メソッドを使うと True に、 clear() メソッドを使うと False にセットされるようなフラグを管理します。 wait() メソッドは、全てのフラグが true になるまでブロックするようになっています。フラグの初期値は false です。
+
+バージョン 3.3 で変更: ファクトリ関数からクラスに変更されました。
+
+is_set()
+内部フラグが真のとき True を返します。
+
+set()
+内部フラグの値を true にセットします。フラグの値が true になるのを待っている全てのスレッドを起こします。一旦フラグが true になると、スレッドが wait() を呼び出しても全くブロックしなくなります。
+
+clear()
+内部フラグの値を false にリセットします。以降は、 set() を呼び出して再び内部フラグの値を true にセットするまで、 wait() を呼び出したスレッドはブロックするようになります。
+
+wait(timeout=None)
+内部フラグの値が true になるまでブロックします。 wait() 処理に入った時点で内部フラグの値が true であれば、直ちに処理を戻します。そうでない場合、他のスレッドが set() を呼び出してフラグの値を true にセットするか、オプションのタイムアウトが発生するまでブロックします。
+
+timeout 引数を指定して、 None 以外の値にする場合、タイムアウトを秒 (または端数秒) を表す浮動小数点数でなければなりません。
+
+This method returns True if and only if the internal flag has been set to true, either before the wait call or after the wait starts, so it will always return True except if a timeout is given and the operation times out.
+
+バージョン 3.1 で変更: 以前は、このメソッドは常に None を返していました。
+
+Timer オブジェクト
+このクラスは、一定時間経過後に実行される活動、すなわちタイマ活動を表現します。 Timer は Thread のサブクラスであり、自作のスレッドを構築した一例でもあります。
+
+タイマは start() メソッドを呼び出すとスレッドとして作動し始めします。 (活動を開始する前に) cancel() メソッドを呼び出すと、タイマを停止できます。タイマが活動を実行するまでの待ち時間は、ユーザが指定した待ち時間と必ずしも厳密には一致しません。
+
+例えば:
+
+def hello():
+    print("hello, world")
+
+t = Timer(30.0, hello)
+t.start()  # after 30 seconds, "hello, world" will be printed
+class threading.Timer(interval, function, args=None, kwargs=None)
+interval 秒後に引数 args キーワード引数 kwargs で function を実行するようなタイマを生成します。args*が ``None`` (デフォルト) なら空のリストが使用されます。*kwargs が None (デフォルト) なら空の辞書が使用されます。
+
+バージョン 3.3 で変更: ファクトリ関数からクラスに変更されました。
+
+cancel()
+タイマをストップして、その動作の実行をキャンセルします。このメソッドはタイマがまだ活動待ち状態にある場合にのみ動作します。
+
+バリアオブジェクト
+バージョン 3.2 で追加.
+
+This class provides a simple synchronization primitive for use by a fixed number of threads that need to wait for each other. Each of the threads tries to pass the barrier by calling the wait() method and will block until all of the threads have made their wait() calls. At this point, the threads are released simultaneously.
+
+バリアは同じ数のスレッドに対して何度でも再利用することができます。
+
+例として、クライアントとサーバの間でスレッドを同期させる単純な方法を紹介します:
+
+b = Barrier(2, timeout=5)
+
+def server():
+    start_server()
+    b.wait()
+    while True:
+        connection = accept_connection()
+        process_server_connection(connection)
+
+def client():
+    b.wait()
+    while True:
+        connection = make_connection()
+        process_client_connection(connection)
+class threading.Barrier(parties, action=None, timeout=None)
+parties 個のスレッドのためのバリアオブジェクトを作成します。 action は、もし提供されるなら呼び出し可能オブジェクトで、スレッドが解放される時にそのうちの1つによって呼ばれます。 timeout は、 wait() メソッドに対して none が指定された場合のデフォルトのタイムアウト値です。
+
+wait(timeout=None)
+バリアを通ります。バリアに対するすべてのスレッドがこの関数を呼んだ時に、それらは同時にすべて解放されます。timeout が提供される場合、それはクラスコンストラクタに渡された値に優先して使用されます。
+
+返り値は 0 から parties -- 1 の範囲の整数で、それぞれのスレッドに対して異なります。これは、特別な後始末 (housekeeping) を行うスレッドを選択するために使用することができます。例えば:
+
+i = barrier.wait()
+if i == 0:
+    # Only one thread needs to print this
+    print("passed the barrier")
+action がコンストラクタに渡されていれば、スレッドのうちの1つが解放される前にそれを呼び出します。万一この呼び出しでエラーが発生した場合、バリアは broken な状態に陥ります。
+
+この呼び出しがタイムアウトする場合、バリアは broken な状態に陥ります。
+
+スレッドが待っている間にバリアが broken になるかリセットされた場合、このメソッドは BrokenBarrierError 例外を送出するかもしれません。
+
+reset()
+バリアをデフォルトの空の状態に戻します。そのバリアの上で待っているすべてのスレッドは BrokenBarrierError 例外を受け取ります。
+
+Note that using this function may require some external synchronization if there are other threads whose state is unknown. If a barrier is broken it may be better to just leave it and create a new one.
+
+abort()
+Put the barrier into a broken state. This causes any active or future calls to wait() to fail with the BrokenBarrierError. Use this for example if one of the threads needs to abort, to avoid deadlocking the application.
+
+スレッドのうちの1つが返ってこないことに対して自動的に保護するように、単純に常識的な timeout 値でバリアを作成することは望ましいかもしれません。
+
+parties
+バリアを通るために要求されるスレッドの数。
+
+n_waiting
+現在バリアの中で待っているスレッドの数。
+
+broken
+バリアが broken な状態である場合に True となるブール値。
+
+exception threading.BrokenBarrierError
+Barrier オブジェクトがリセットされるか broken な場合に、この例外 (RuntimeError のサブクラス) が送出されます。
+
+Using locks, conditions, and semaphores in the with statement
+このモジュールのオブジェクトのうち acquire() メソッドと release() メソッドを備えているものは全て with 文のコンテキストマネージャ として使うことができます。 with 文のブロックに入るときに acquire() メソッドが 呼び出され、ブロック脱出時には release() メソッドが呼ばれます。したがって、次のコード:
+
+with some_lock:
+    # do something...
+は、以下と同じです
+
+some_lock.acquire()
+try:
+    # do something...
+finally:
+    some_lock.release()
+現在のところ、 Lock 、 RLock 、 Condition 、 Semaphore 、 BoundedSemaphore を with 文のコンテキストマネージャとして使うことができます。
+
+multiprocessing --- プロセスベースの並列処理
+ソースコード: Lib/multiprocessing/
+
+はじめに
+multiprocessing is a package that supports spawning processes using an API similar to the threading module. The multiprocessing package offers both local and remote concurrency, effectively side-stepping the Global Interpreter Lock by using subprocesses instead of threads. Due to this, the multiprocessing module allows the programmer to fully leverage multiple processors on a given machine. It runs on both Unix and Windows.
+
+multiprocessing モジュールでは、threading モジュールには似たものが存在しない API も導入されています。その最たるものが Pool オブジェクトです。これは複数の入力データに対して、サブプロセス群に入力データを分配 (データ並列) して関数を並列実行するのに便利な手段を提供します。以下の例では、モジュール内で関数を定義して、子プロセスがそのモジュールを正常にインポートできるようにする一般的な方法を示します。 Pool を用いたデータ並列の基礎的な例は次の通りです:
+
+from multiprocessing import Pool
+
+def f(x):
+    return x*x
+
+if __name__ == '__main__':
+    with Pool(5) as p:
+        print(p.map(f, [1, 2, 3]))
+標準出力に以下が出力されます:
+
+[1, 4, 9]
+Process クラス
+multiprocessing モジュールでは、プロセスは以下の手順によって生成されます。はじめに Process のオブジェクトを作成し、続いて start() メソッドを呼び出します。この Process クラスは threading.Thread クラスと同様の API を持っています。まずは、簡単な例をもとにマルチプロセスを使用したプログラムについてみていきましょう
+
+from multiprocessing import Process
+
+def f(name):
+    print('hello', name)
+
+if __name__ == '__main__':
+    p = Process(target=f, args=('bob',))
+    p.start()
+    p.join()
+実行された個々のプロセス ID を表示するために拡張したサンプルコードを以下に示します:
+
+from multiprocessing import Process
+import os
+
+def info(title):
+    print(title)
+    print('module name:', __name__)
+    print('parent process:', os.getppid())
+    print('process id:', os.getpid())
+
+def f(name):
+    info('function f')
+    print('hello', name)
+
+if __name__ == '__main__':
+    info('main line')
+    p = Process(target=f, args=('bob',))
+    p.start()
+    p.join()
+なぜ if __name__ == '__main__' という記述が必要かは プログラミングガイドライン を参照してください。
+
+コンテキストと開始方式
+プラットフォームにもよりますが、multiprocessing はプロセスを開始するために 3 つの方法をサポートしています。それら 開始方式 は以下のとおりです
+
+spawn
+The parent process starts a fresh python interpreter process. The child process will only inherit those resources necessary to run the process object's run() method. In particular, unnecessary file descriptors and handles from the parent process will not be inherited. Starting a process using this method is rather slow compared to using fork or forkserver.
+
+Unix と Windows で利用可能。Windows と macOS でのデフォルト。
+
+fork
+親プロセスは os.fork() を使用して Python インタープリターをフォークします。子プロセスはそれが開始されるとき、事実上親プロセスと同一になります。親プロセスのリソースはすべて子プロセスに継承されます。マルチスレッドプロセスのフォークは安全性に問題があることに注意してください。
+
+Unix でのみ利用可能。Unix でのデフォルト。
+
+forkserver
+プログラムを開始するとき forkserver 方式を選択した場合、サーバープロセスが開始されます。それ以降、新しいプロセスが必要になったときはいつでも、親プロセスはサーバーに接続し、新しいプロセスのフォークを要求します。フォークサーバープロセスはシングルスレッドなので os.fork() の使用に関しても安全です。不要なリソースは継承されません。
+
+Unix パイプを経由したファイル記述子の受け渡しをサポートする Unix で利用可能。
+
+バージョン 3.8 で変更: macOS では、 spawn 開始方式がデフォルトになりました。 fork 開始方法は、サブプロセスのクラッシュを引き起こす可能性があるため、安全ではありません。 bpo-33725 を参照。
+
+バージョン 3.4 で変更: すべての Unix プラットフォームで spawn が、一部のプラットフォームで forkserver が追加されました。Windows では親プロセスの継承可能な全ハンドルが子プロセスに継承されることがなくなりました。
+
+Unix で開始方式に spawn あるいは forkserver を使用した場合は、プログラムのプロセスによって作成されたリンクされていない名前付きシステムリソース (名前付きセマフォや、SharedMemory オブジェクト) を追跡する リソーストラッカー プロセスも開始されます。全プロセスが終了したときに、リソーストラッカーは残っているすべての追跡していたオブジェクトのリンクを解除します。通常そういったことはないのですが、プロセスがシグナルによって kill されたときに "漏れた" リソースが発生する場合があります。(この場合、名前付きセマフォと共有メモリセグメントは、システムが再起動されるまでリンク解除されません。名前付きセマフォの個数はシステムによって制限されており、共有メモリセグメントはメインメモリを占有するため、これらは問題になる可能性があります。)
+
+開始方式はメインモジュールの if __name__ == '__main__' 節内で、関数 set_start_method() によって指定します。以下に例を示します:
+
+import multiprocessing as mp
+
+def foo(q):
+    q.put('hello')
+
+if __name__ == '__main__':
+    mp.set_start_method('spawn')
+    q = mp.Queue()
+    p = mp.Process(target=foo, args=(q,))
+    p.start()
+    print(q.get())
+    p.join()
+関数 set_start_method() はプログラム内で複数回使用してはいけません。
+
+もうひとつの方法として、get_context() を使用してコンテキストオブジェクトを取得することができます。コンテキストオブジェクトは multiprocessing モジュールと同じ API を持ち、同じプログラム内で複数の開始方式を使用できます。
+
+import multiprocessing as mp
+
+def foo(q):
+    q.put('hello')
+
+if __name__ == '__main__':
+    ctx = mp.get_context('spawn')
+    q = ctx.Queue()
+    p = ctx.Process(target=foo, args=(q,))
+    p.start()
+    print(q.get())
+    p.join()
+あるコンテキストに関連したオブジェクトは、異なるコンテキストのプロセスとは互換性がない場合があることに注意してください。特に、fork コンテキストを使用して作成されたロックは、spawn あるいは forkserver を使用して開始されたプロセスに渡すことはできません。
+
+特定の開始方式の使用を要求するライブラリは get_context() を使用してライブラリ利用者の選択を阻害しないようにするべきです。
+
+警告 Unix において、'spawn' あるいは 'forkserver' で開始された場合、 "frozen" な実行可能形式 (PyInstaller や cx_Freeze で作成されたバイナリなど) は使用できません。'fork' で開始した場合は動作します。
+プロセス間でのオブジェクト交換
+multiprocessing モジュールでは、プロセス間通信の手段が2つ用意されています。それぞれ以下に詳細を示します:
+
+キュー (Queue)
+
+Queue クラスは queue.Queue クラスとほとんど同じように使うことができます。以下に例を示します:
+
+from multiprocessing import Process, Queue
+
+def f(q):
+    q.put([42, None, 'hello'])
+
+if __name__ == '__main__':
+    q = Queue()
+    p = Process(target=f, args=(q,))
+    p.start()
+    print(q.get())    # prints "[42, None, 'hello']"
+    p.join()
+キューはスレッドセーフであり、プロセスセーフです。
+
+パイプ (Pipe)
+
+Pipe() 関数はパイプで繋がれたコネクションオブジェクトのペアを返します。デフォルトでは双方向性パイプを返します。以下に例を示します:
+
+from multiprocessing import Process, Pipe
+
+def f(conn):
+    conn.send([42, None, 'hello'])
+    conn.close()
+
+if __name__ == '__main__':
+    parent_conn, child_conn = Pipe()
+    p = Process(target=f, args=(child_conn,))
+    p.start()
+    print(parent_conn.recv())   # prints "[42, None, 'hello']"
+    p.join()
+パイプのそれぞれの端を表す2つのコネクションオブジェクトが Pipe() 関数から返されます。各コネクションオブジェクトには、 send()、 recv()、その他のメソッドがあります。2つのプロセス (またはスレッド) がパイプの 同じ 端で同時に読み込みや書き込みを行うと、パイプ内のデータが破損してしまうかもしれないことに注意してください。もちろん、各プロセスがパイプの別々の端を同時に使用するならば、データが破壊される危険性はありません。
+
+プロセス間の同期
+multiprocessing は threading モジュールと等価な同期プリミティブを備えています。以下の例では、ロックを使用して、一度に1つのプロセスしか標準出力に書き込まないようにしています:
+
+from multiprocessing import Process, Lock
+
+def f(l, i):
+    l.acquire()
+    try:
+        print('hello world', i)
+    finally:
+        l.release()
+
+if __name__ == '__main__':
+    lock = Lock()
+
+    for num in range(10):
+        Process(target=f, args=(lock, num)).start()
+ロックを使用しないで標準出力に書き込んだ場合は、各プロセスからの出力がごちゃまぜになってしまいます。
+
+プロセス間での状態の共有
+これまでの話の流れで触れたとおり、並行プログラミングを行うときには、できるかぎり状態を共有しないのが定石です。複数のプロセスを使用するときは特にそうでしょう。
+
+しかし、どうしてもプロセス間のデータ共有が必要な場合のために multiprocessing モジュールには2つの方法が用意されています。
+
+共有メモリ (Shared memory)
+
+データを共有メモリ上に保持するために Value クラス、もしくは Array クラスを使用することができます。以下のサンプルコードを使って、この機能についてみていきましょう
+
+from multiprocessing import Process, Value, Array
+
+def f(n, a):
+    n.value = 3.1415927
+    for i in range(len(a)):
+        a[i] = -a[i]
+
+if __name__ == '__main__':
+    num = Value('d', 0.0)
+    arr = Array('i', range(10))
+
+    p = Process(target=f, args=(num, arr))
+    p.start()
+    p.join()
+
+    print(num.value)
+    print(arr[:])
+このサンプルコードを実行すると以下のように表示されます
+
+3.1415927
+[0, -1, -2, -3, -4, -5, -6, -7, -8, -9]
+num と arr を生成するときに使用されている、引数 'd' と 'i' は array モジュールにより使用される種別の型コードです。ここで使用されている 'd' は倍精度浮動小数、 'i' は符号付整数を表します。これらの共有オブジェクトは、プロセスセーフでありスレッドセーフです。
+
+共有メモリを使用して、さらに柔軟なプログラミングを行うには multiprocessing.sharedctypes モジュールを使用します。このモジュールは共有メモリから割り当てられた任意の ctypes オブジェクトの生成をサポートします。
+
+サーバープロセス (Server process)
+
+Manager() 関数により生成されたマネージャーオブジェクトはサーバープロセスを管理します。マネージャーオブジェクトは Python のオブジェクトを保持して、他のプロセスがプロキシ経由でその Python オブジェクトを操作することができます。
+
+Manager() 関数が返すマネージャは list, dict, Namespace, Lock, RLock, Semaphore, BoundedSemaphore, Condition, Event, Barrier, Queue, Value, Array をサポートします。 以下にサンプルコードを示します。
+
+from multiprocessing import Process, Manager
+
+def f(d, l):
+    d[1] = '1'
+    d['2'] = 2
+    d[0.25] = None
+    l.reverse()
+
+if __name__ == '__main__':
+    with Manager() as manager:
+        d = manager.dict()
+        l = manager.list(range(10))
+
+        p = Process(target=f, args=(d, l))
+        p.start()
+        p.join()
+
+        print(d)
+        print(l)
+このサンプルコードを実行すると以下のように表示されます
+
+{0.25: None, 1: '1', '2': 2}
+[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+サーバープロセスのマネージャーオブジェクトは共有メモリのオブジェクトよりも柔軟であるといえます。それは、どのような型のオブジェクトでも使えるからです。また、1つのマネージャーオブジェクトはネットワーク経由で他のコンピューター上のプロセスによって共有することもできます。しかし、共有メモリより動作が遅いという欠点があります。
+
+ワーカープロセスのプールを使用
+Pool クラスは、ワーカープロセスをプールする機能を備えています。このクラスには、異なる方法でワーカープロセスへタスクを割り当てるいくつかのメソッドがあります。
+
+例えば:
+
+from multiprocessing import Pool, TimeoutError
+import time
+import os
+
+def f(x):
+    return x*x
+
+if __name__ == '__main__':
+    # start 4 worker processes
+    with Pool(processes=4) as pool:
+
+        # print "[0, 1, 4,..., 81]"
+        print(pool.map(f, range(10)))
+
+        # print same numbers in arbitrary order
+        for i in pool.imap_unordered(f, range(10)):
+            print(i)
+
+        # evaluate "f(20)" asynchronously
+        res = pool.apply_async(f, (20,))      # runs in *only* one process
+        print(res.get(timeout=1))             # prints "400"
+
+        # evaluate "os.getpid()" asynchronously
+        res = pool.apply_async(os.getpid, ()) # runs in *only* one process
+        print(res.get(timeout=1))             # prints the PID of that process
+
+        # launching multiple evaluations asynchronously *may* use more processes
+        multiple_results = [pool.apply_async(os.getpid, ()) for i in range(4)]
+        print([res.get(timeout=1) for res in multiple_results])
+
+        # make a single worker sleep for 10 secs
+        res = pool.apply_async(time.sleep, (10,))
+        try:
+            print(res.get(timeout=1))
+        except TimeoutError:
+            print("We lacked patience and got a multiprocessing.TimeoutError")
+
+        print("For the moment, the pool remains available for more work")
+
+    # exiting the 'with'-block has stopped the pool
+    print("Now the pool is closed and no longer available")
+プールオブジェクトのメソッドは、そのプールを作成したプロセスのみが呼び出すべきです。
+
+注釈 このパッケージに含まれる機能を使用するためには、子プロセスから __main__ モジュールをインポートできる必要があります。このことについては プログラミングガイドライン で触れていますが、ここであらためて強調しておきます。なぜかというと、いくつかのサンプルコード、例えば multiprocessing.pool.Pool のサンプルはインタラクティブシェル上では動作しないからです。以下に例を示します:
+>>>
+>>> from multiprocessing import Pool
+>>> p = Pool(5)
+>>> def f(x):
+...     return x*x
+...
+>>> with p:
+...   p.map(f, [1,2,3])
+Process PoolWorker-1:
+Process PoolWorker-2:
+Process PoolWorker-3:
+Traceback (most recent call last):
+AttributeError: 'module' object has no attribute 'f'
+AttributeError: 'module' object has no attribute 'f'
+AttributeError: 'module' object has no attribute 'f'
+(もしこのコードを試すなら、実際には3つの完全なトレースバックがばらばらの順番で出力されますし、親プロセスを何らかの方法で止める必要があります。)
+
+リファレンス
+multiprocessing パッケージは threading モジュールの API とほとんど同じです。
+
+Process クラスと例外
+class multiprocessing.Process(group=None, target=None, name=None, args=(), kwargs={}, *, daemon=None)
+Process オブジェクトは各プロセスの処理を表します。 Process クラスは threading.Thread クラスのすべてのメソッドと同じインタフェースを提供します。
+
+コンストラクターは必ずキーワード引数で呼び出すべきです。引数 group には必ず None を渡してください。 この引数は threading.Thread クラスとの互換性のためだけに残されています。引数 target には、 run() メソッドから呼び出される callable オブジェクトを渡します。この引数はデフォルトで None となっており、何も呼び出されません。引数 name にはプロセス名を渡します (詳細は name を見てください)。 args は対象の呼び出しに対する引数のタプルを渡します。 kwargs は対象の呼び出しに対するキーワード引数の辞書を渡します。もし提供されれば、キーワード専用の daemon 引数はプロセスの daemon フラグを True または False にセットします。 None の場合 (デフォルト)、このフラグは作成するプロセスから継承されます。
+
+デフォルトでは、target には引数が渡されないようになっています。
+
+サブクラスがコンストラクターをオーバーライドする場合は、そのプロセスに対する処理を行う前に基底クラスのコンストラクター (Process.__init__()) を実行しなければなりません。
+
+バージョン 3.3 で変更: daemon 引数が追加されました。
+
+run()
+プロセスが実行する処理を表すメソッドです。
+
+このメソッドはサブクラスでオーバーライドすることができます。標準の run() メソッドは、コンストラクターの target 引数として渡された呼び出し可能オブジェクトを呼び出します。もしコンストラクターに args もしくは kwargs 引数が渡されていれば、呼び出すオブジェクトにこれらの引数を渡します。
+
+start()
+プロセスの処理を開始するためのメソッドです。
+
+各 Process オブジェクトに対し、このメソッドが2回以上呼び出されてはいけません。各プロセスでオブジェクトの run() メソッドを呼び出す準備を行います。
+
+join([timeout])
+オプションの引数 timeout が None (デフォルト) の場合、 join() メソッドが呼ばれたプロセスは処理が終了するまでブロックします。 timeout が正の数である場合、最大 timeout 秒ブロックします。 プロセスが終了あるいはタイムアウトした場合、メソッドは None を返すことに注意してください。 プロセスの exitcode を確認し終了したかどうかを判断してください。
+
+1つのプロセスは何回も join されることができます。
+
+プロセスは自分自身を join することはできません。それはデッドロックを引き起こすことがあるからです。プロセスが start される前に join しようとするとエラーが発生します。
+
+name
+プロセスの名前。名前は識別のためだけに使用される文字列です。それ自体には特別な意味はありません。複数のプロセスに同じ名前が与えられても構いません。
+
+最初の名前はコンストラクターによってセットされます。コンストラクターに明示的な名前が渡されない場合、 'Process-N1:N2:...:Nk' 形式の名前が構築されます。ここでそれぞれの Nk はその親のN番目の子供です。
+
+is_alive()
+プロセスが実行中かを判別します。
+
+おおまかに言って、プロセスオブジェクトは start() メソッドを呼び出してから子プロセス終了までの期間が実行中となります。
+
+daemon
+デーモンプロセスであるかのフラグであり、ブール値です。この属性は start() が呼び出される前に設定されている必要があります。
+
+初期値は作成するプロセスから継承します。
+
+あるプロセスが終了するとき、そのプロセスはその子プロセスであるデーモンプロセスすべてを終了させようとします。
+
+デーモンプロセスは子プロセスを作成できないことに注意してください。もし作成できてしまうと、そのデーモンプロセスの親プロセスが終了したときにデーモンプロセスの子プロセスが孤児になってしまう場合があるからです。さらに言えば、デーモンプロセスはUnix デーモンやサービスでは なく 通常のプロセスであり、非デーモンプロセスが終了すると終了されます (そして join されません)。
+
+threading.Thread クラスの API に加えて Process クラスのオブジェクトには以下の属性およびメソッドがあります:
+
+pid
+プロセスIDを返します。プロセスの生成前は None が設定されています。
+
+exitcode
+子プロセスの終了コードです。子プロセスがまだ終了していない場合は None が返されます。負の値 -N は子プロセスがシグナル N で終了したことを表します。
+
+authkey
+プロセスの認証キーです (バイト文字列です)。
+
+multiprocessing モジュールがメインプロセスにより初期化される場合には、 os.urandom() 関数を使用してランダムな値が設定されます。
+
+Process クラスのオブジェクトの作成時にその親プロセスから認証キーを継承します。もしくは authkey に別のバイト文字列を設定することもできます。
+
+詳細は 認証キー を参照してください。
+
+sentinel
+プロセスが終了するときに "ready" となるシステムオブジェクトの数値ハンドル。
+
+multiprocessing.connection.wait() を使用していくつかのイベントを同時に wait したい場合はこの値を使うことができます。それ以外の場合は join() を呼ぶ方がより単純です。
+
+Windows においては、これは WaitForSingleObject および WaitForMultipleObjects ファミリーの API 呼び出しで使用可能な OS ハンドルです。 Unix においては、これは select モジュールのプリミティブで使用可能なファイル記述子です。
+
+バージョン 3.3 で追加.
+
+terminate()
+プロセスを終了します。Unix 環境では SIGTERM シグナルを、 Windows 環境では TerminateProcess() を使用して終了させます。終了ハンドラーや finally 節などは、実行されないことに注意してください。
+
+このメソッドにより終了するプロセスの子孫プロセスは、終了 しません 。そういった子孫プロセスは単純に孤児になります。
+
+警告 このメソッドの使用時に、関連付けられたプロセスがパイプやキューを使用している場合には、使用中のパイプやキューが破損して他のプロセスから使用できなくなる可能性があります。同様に、プロセスがロックやセマフォなどを取得している場合には、このプロセスが終了してしまうと他のプロセスのデッドロックの原因になるでしょう。
+kill()
+meth:terminate() と同様の動作をしますが、Unix では``SIGKILL`` シグナルを使用します。
+
+バージョン 3.7 で追加.
+
+close()
+Process オブジェクトを閉じ、関連付けられていたすべてのリソースを開放します。中のプロセスが実行中であった場合、ValueError を送出します。close() が成功した場合、class:Process オブジェクトの他のメソッドや属性は、ほとんどが ValueError を送出します。
+
+バージョン 3.7 で追加.
+
+プロセスオブジェクトが作成したプロセスのみが start(), join(), is_alive(), terminate() と exitcode のメソッドを呼び出すべきです。
+
+以下の例では Process のメソッドの使い方を示しています:
+
+ >>> import multiprocessing, time, signal
+ >>> p = multiprocessing.Process(target=time.sleep, args=(1000,))
+ >>> print(p, p.is_alive())
+ <Process ... initial> False
+ >>> p.start()
+ >>> print(p, p.is_alive())
+ <Process ... started> True
+ >>> p.terminate()
+ >>> time.sleep(0.1)
+ >>> print(p, p.is_alive())
+ <Process ... stopped exitcode=-SIGTERM> False
+ >>> p.exitcode == -signal.SIGTERM
+ True
+exception multiprocessing.ProcessError
+すべての multiprocessing 例外の基底クラスです。
+
+exception multiprocessing.BufferTooShort
+この例外は Connection.recv_bytes_into() によって発生し、バッファーオブジェクトが小さすぎてメッセージが読み込めないことを示します。
+
+e が BufferTooShort のインスタンスであるとすると、 e.args[0] はそのメッセージをバイト文字列で与えるものです。
+
+exception multiprocessing.AuthenticationError
+認証エラーがあった場合に送出されます。
+
+exception multiprocessing.TimeoutError
+タイムアウトをサポートするメソッドでタイムアウトが過ぎたときに送出されます。
+
+パイプ (Pipe) とキュー (Queue)
+複数のプロセスを使う場合、一般的にはメッセージパッシングをプロセス間通信に使用し、ロックのような同期プリミティブを使用しないようにします。
+
+メッセージのやりとりのために Pipe() (2つのプロセス間の通信用)、もしくはキュー (複数のメッセージ生成プロセス (producer)、消費プロセス (consumer) の実現用) を使うことができます。
+
+Queue, SimpleQueue と JoinableQueue 型は複数プロセスから生成/消費を行う FIFO キューです。これらのキューは標準ライブラリの queue.Queue を模倣しています。 Queue には Python 2.5 の queue.Queue クラスで導入された task_done() と join() メソッドがないことが違う点です。
+
+もし JoinableQueue を使用するなら、キューから削除される各タスクのために JoinableQueue.task_done() を呼び出さなければ なりません 。さもないと、いつか完了していないタスクを数えるためのセマフォがオーバーフローし、例外を発生させるでしょう。
+
+管理オブジェクトを使用することで共有キューを作成できることも覚えておいてください。詳細は マネージャー を参照してください。
+
+注釈 multiprocessing は、タイムアウトを伝えるために、通常の queue.Empty と queue.Full 例外を使用します。それらは multiprocessing の名前空間では利用できないため、queue からインポートする必要があります。
+注釈 オブジェクトがキューに追加される際、そのオブジェクトは pickle 化されています。そのため、バックグラウンドのスレッドが後になって下位層のパイプに pickle 化されたデータをフラッシュすることがあります。これにより、少し驚くような結果になりますが、実際に問題になることはないはずです。これが問題になるような状況では、かわりに manager を使ってキューを作成することができるからです。
+空のキューの中にオブジェクトを追加した後、キューの empty() メソッドが False を返すまでの間にごくわずかな遅延が起きることがあり、get_nowait() が queue.Empty を発生させることなく制御が呼び出し元に返ってしまうことがあります。
+
+複数のプロセスがオブジェクトをキューに詰めている場合、キューの反対側ではオブジェクトが詰められたのとは違う順序で取得される可能性があります。ただし、同一のプロセスから詰め込まれたオブジェクトは、それらのオブジェクト間では、必ず期待どおりの順序になります。
+
+警告 Queue を利用しようとしている最中にプロセスを Process.terminate() や os.kill() で終了させる場合、キューにあるデータは破損し易くなります。終了した後で他のプロセスがキューを利用しようとすると、例外を発生させる可能性があります。
+警告 上述したように、もし子プロセスがキューへ要素を追加するなら (かつ JoinableQueue.cancel_join_thread を使用しないなら) そのプロセスはバッファーされたすべての要素がパイプへフラッシュされるまで終了しません。
+これは、そのプロセスを join しようとする場合、キューに追加されたすべての要素が消費されたことが確実でないかぎり、デッドロックを発生させる可能性があることを意味します。似たような現象で、子プロセスが非デーモンプロセスの場合、親プロセスは終了時に非デーモンのすべての子プロセスを join しようとしてハングアップする可能性があります。
+
+マネージャーを使用して作成されたキューではこの問題はありません。詳細は プログラミングガイドライン を参照してください。
+
+プロセス間通信におけるキューの使用例を知りたいなら 使用例 を参照してください。
+
+multiprocessing.Pipe([duplex])
+Returns a pair (conn1, conn2) of Connection objects representing the ends of a pipe.
+
+duplex が True (デフォルト) ならパイプは双方向性です。duplex が False ならパイプは一方向性で、conn1 はメッセージの受信専用、conn2 はメッセージの送信専用になります。
+
+class multiprocessing.Queue([maxsize])
+パイプや2～3個のロック/セマフォを使用して実装されたプロセス共有キューを返します。あるプロセスが最初に要素をキューへ追加するとき、バッファーからパイプの中へオブジェクトを転送する供給スレッドが開始されます。
+
+標準ライブラリの queue モジュールの通常の queue.Empty や queue.Full 例外がタイムアウトを伝えるために送出されます。
+
+Queue は task_done() や join() を除く queue.Queue のすべてのメソッドを実装します。
+
+qsize()
+おおよそのキューのサイズを返します。マルチスレッディング/マルチプロセスの特性上、この数値は信用できません。
+
+これは sem_getvalue() が実装されていない Mac OS X のような Unix プラットホーム上で NotImplementedError を発生させる可能性があることを覚えておいてください。
+
+empty()
+キューが空っぽなら True を、そうでなければ False を返します。マルチスレッディング/マルチプロセシングの特性上、これは信用できません。
+
+full()
+キューがいっぱいなら True を、そうでなければ False を返します。マルチスレッディング/マルチプロセシングの特性上、これは信用できません。
+
+put(obj[, block[, timeout]])
+キューの中へ obj を追加します。オプションの引数 block が True (デフォルト) 且つ timeout が None (デフォルト) なら、空きスロットが利用可能になるまで必要であればブロックします。 timeout が正の数なら、最大 timeout 秒ブロックして、その時間内に空きスロットが利用できなかったら queue.Full 例外を発生させます。それ以外 (block が False) で、空きスロットがすぐに利用可能な場合はキューに要素を追加します。そうでなければ queue.Full 例外が発生します(その場合 timeout は無視されます)。
+
+バージョン 3.8 で変更: If the queue is closed, ValueError is raised instead of AssertionError.
+
+put_nowait(obj)
+put(obj, False) と等価です。
+
+get([block[, timeout]])
+キューから要素を取り出して削除します。オプションの引数 block が True (デフォルト) 且つ timeout が None (デフォルト) なら、要素が取り出せるまで必要であればブロックします。 timeout が正の数なら、最大 timeout 秒ブロックして、その時間内に要素が取り出せなかったら queue.Empty 例外を発生させます。それ以外 (block が False) で、要素がすぐに取り出せる場合は要素を返します。そうでなければ queue.Empty 例外が発生します(その場合 timeout は無視されます)。
+
+バージョン 3.8 で変更: If the queue is closed, ValueError is raised instead of OSError.
+
+get_nowait()
+get(False) と等価です。
+
+multiprocessing.Queue は queue.Queue にはない追加メソッドがあります。 これらのメソッドは通常、ほとんどのコードに必要ありません:
+
+close()
+カレントプロセスからこのキューへそれ以上データが追加されないことを表します。バックグラウンドスレッドはパイプへバッファーされたすべてのデータをフラッシュするとすぐに終了します。これはキューがガベージコレクトされるときに自動的に呼び出されます。
+
+join_thread()
+バックグラウンドスレッドを join します。このメソッドは close() が呼び出された後でのみ使用されます。バッファーされたすべてのデータがパイプへフラッシュされるのを保証するため、バックグラウンドスレッドが終了するまでブロックします。
+
+デフォルトでは、あるプロセスがキューを作成していない場合、終了時にキューのバックグラウンドスレッドを join しようとします。そのプロセスは join_thread() が何もしないように cancel_join_thread() を呼び出すことができます。
+
+cancel_join_thread()
+join_thread() がブロッキングするのを防ぎます。特にこれはバックグラウンドスレッドがそのプロセスの終了時に自動的に join されるのを防ぎます。詳細は join_thread() を参照してください。
+
+このメソッドは allow_exit_without_flush() という名前のほうがよかったかもしれません。キューに追加されたデータが失われてしまいがちなため、このメソッドを使う必要はほぼ確実にないでしょう。本当にこれが必要になるのは、キューに追加されたデータを下位層のパイプにフラッシュすることなくカレントプロセスを直ちに終了する必要があり、かつ失われるデータに関心がない場合です。
+
+注釈 このクラスに含まれる機能には、ホストとなるオペレーティングシステム上で動作している共有セマフォ (shared semaphore) を使用しているものがあります。これが使用できない場合には、このクラスが無効になり、 Queue をインスタンス化する時に ImportError が発生します。詳細は bpo-3770 を参照してください。同様のことが、以下に列挙されている特殊なキューでも成り立ちます。
+class multiprocessing.SimpleQueue
+単純化された Queue 型です。ロックされた Pipe と非常に似ています。
+
+close()
+Close the queue: release internal resources.
+
+A queue must not be used anymore after it is closed. For example, get(), put() and empty() methods must no longer be called.
+
+バージョン 3.9 で追加.
+
+empty()
+キューが空ならば True を、そうでなければ False を返します。
+
+get()
+キューから要素を削除して返します。
+
+put(item)
+item をキューに追加します。
+
+class multiprocessing.JoinableQueue([maxsize])
+JoinableQueue は Queue のサブクラスであり、 task_done() や join() メソッドが追加されているキューです。
+
+task_done()
+以前にキューへ追加されたタスクが完了したことを表します。キューのコンシューマによって使用されます。 タスクをフェッチするために使用されるそれぞれの get() に対して、 後続の task_done() 呼び出しはタスクの処理が完了したことをキューへ伝えます。
+
+もし join() がブロッキング状態なら、 すべての要素が処理されたときに復帰します( task_done() 呼び出しが すべての要素からキュー内へ put() されたと受け取ったことを意味します)。
+
+キューにある要素より多く呼び出された場合 ValueError が発生します。
+
+join()
+キューにあるすべてのアイテムが取り出されて処理されるまでブロックします。
+
+キューに要素が追加されると未完了タスク数が増えます。コンシューマがキューの要素が取り出されてすべての処理が完了したことを表す task_done() を呼び出すと数が減ります。 未完了タスク数がゼロになると join() はブロッキングを解除します。
+
+その他
+multiprocessing.active_children()
+カレントプロセスのすべてのアクティブな子プロセスのリストを返します。
+
+これを呼び出すと "join" してすでに終了しているプロセスには副作用があります。
+
+multiprocessing.cpu_count()
+システムの CPU 数を返します。
+
+この数は現在のプロセスが使える CPU 数と同じものではありません。 使用可能な CPU 数は len(os.sched_getaffinity(0)) で取得できます。
+
+NotImplementedError を送出するかもしれません。
+
+参考 os.cpu_count()
+multiprocessing.current_process()
+カレントプロセスに対応する Process オブジェクトを返します。
+
+threading.current_thread() とよく似た関数です。
+
+multiprocessing.parent_process()
+Return the Process object corresponding to the parent process of the current_process(). For the main process, parent_process will be None.
+
+バージョン 3.8 で追加.
+
+multiprocessing.freeze_support()
+multiprocessing を使用しているプログラムをフリーズして Windows の実行可能形式を生成するためのサポートを追加します。(py2exe , PyInstaller や cx_Freeze でテストされています。)
+
+メインモジュールの if __name__ == '__main__' の直後にこの関数を呼び出す必要があります。以下に例を示します:
+
+from multiprocessing import Process, freeze_support
+
+def f():
+    print('hello world!')
+
+if __name__ == '__main__':
+    freeze_support()
+    Process(target=f).start()
+もし freeze_support() の行がない場合、フリーズされた実行可能形式を実行しようとすると RuntimeError を発生させます。
+
+freeze_support() の呼び出しは Windows 以外の OS では効果がありません。さらに、もしモジュールが Windows の通常の Python インタプリタによって実行されているならば（プログラムがフリーズされていなければ） freeze_support() は効果がありません。
+
+multiprocessing.get_all_start_methods()
+サポートしている開始方式のリストを返します。先頭の要素がデフォルトを意味します。利用可能な開始方式には 'fork'、'spawn' および 'forkserver' があります。Windows では 'spawn' のみが利用可能です。Unix では 'fork' および 'spawn' は常にサポートされており、'fork' がデフォルトになります。
+
+バージョン 3.4 で追加.
+
+multiprocessing.get_context(method=None)
+multiprocessing モジュールと同じ属性を持つコンテキストオブジェクトを返します。
+
+method が None の場合、デフォルトのコンテキストが返されます。その他の場合 method は 'fork'、'spawn' あるいは 'forkserver' でなければなりません。指定された開始方式が利用できない場合は ValueError が送出されます。
+
+バージョン 3.4 で追加.
+
+multiprocessing.get_start_method(allow_none=False)
+開始するプロセスで使用する開始方式名を返します。
+
+開始方式がまだ確定しておらず、allow_none の値が偽の場合、開始方式はデフォルトに確定され、その名前が返されます。開始方式が確定しておらず、allow_none の値が真の場合、 None が返されます。
+
+返り値は 'fork'、'spawn'、'forkserver' あるいは None になります。Unix では 'fork' が、Windows では 'spawn' がデフォルトになります。
+
+バージョン 3.4 で追加.
+
+multiprocessing.set_executable()
+子プロセスを開始するときに、使用する Python インタープリターのパスを設定します。(デフォルトでは sys.executable が使用されます)。コードに組み込むときは、おそらく次のようにする必要があります
+
+set_executable(os.path.join(sys.exec_prefix, 'pythonw.exe'))
+子プロセスを作成する前に行ってください。
+
+バージョン 3.4 で変更: Unix で開始方式に 'spawn' を使用している場合にサポートされました。
+
+multiprocessing.set_start_method(method)
+子プロセスの開始方式を指定します。method には 'fork'、'spawn' あるいは 'forkserver' を指定できます。
+
+これは一度しか呼び出すことができず、その場所もメインモジュールの if __name__ == '__main__' 節内で保護された状態でなければなりません。
+
+バージョン 3.4 で追加.
+
+注釈 multiprocessing には threading.active_count(), threading.enumerate(), threading.settrace(), threading.setprofile(), threading.Timer や threading.local のような関数はありません。
+Connection オブジェクト
+Connection オブジェクトは pickle でシリアライズ可能なオブジェクトか文字列を送ったり、受け取ったりします。そういったオブジェクトはメッセージ指向の接続ソケットと考えられます。
+
+Connection objects are usually created using Pipe -- see also リスナーとクライアント.
+
+class multiprocessing.connection.Connection
+send(obj)
+コネクションの相手側へ recv() を使用して読み込むオブジェクトを送ります。
+
+The object must be picklable. Very large pickles (approximately 32 MiB+, though it depends on the OS) may raise a ValueError exception.
+
+recv()
+コネクションの相手側から send() を使用して送られたオブジェクトを返します。 何か受け取るまでブロックします。何も受け取らずにコネクションの相手側でクローズされた場合 EOFError が発生します。
+
+fileno()
+コネクションが使用するハンドラーか、ファイル記述子を返します。
+
+close()
+コネクションをクローズします。
+
+コネクションがガベージコレクトされるときに自動的に呼び出されます。
+
+poll([timeout])
+読み込み可能なデータがあるかどうかを返します。
+
+timeout が指定されていなければすぐに返します。 timeout に数値を指定すると、最大指定した秒数をブロッキングします。 timeout に None を指定するとタイムアウトせずにずっとブロッキングします。
+
+multiprocessing.connection.wait() を使って複数のコネクションオブジェクトを同時にポーリングできることに注意してください。
+
+send_bytes(buffer[, offset[, size]])
+bytes-like object から完全なメッセージとしてバイトデータを送ります。
+
+If offset is given then data is read from that position in buffer. If size is given then that many bytes will be read from buffer. Very large buffers (approximately 32 MiB+, though it depends on the OS) may raise a ValueError exception
+
+recv_bytes([maxlength])
+コネクションの相手側から送られたバイトデータの完全なメッセージを文字列として返します。何か受け取るまでブロックします。受け取るデータが何も残っておらず、相手側がコネクションを閉じていた場合、 EOFError が送出されます。
+
+maxlength を指定していて、かつメッセージが maxlength より長い場合、 OSError が発生してコネクションからそれ以上読めなくなります。
+
+バージョン 3.3 で変更: この関数は以前は IOError を送出していました。今では OSError の別名です。
+
+recv_bytes_into(buffer[, offset])
+コネクションの相手側から送られたバイトデータを buffer に読み込み、メッセージのバイト数を返します。 何か受け取るまでブロックします。何も受け取らずにコネクションの相手側でクローズされた場合 EOFError が発生します。
+
+buffer は書き込み可能な bytes-like object でなければなりません。 offset が与えられたら、その位置からバッファーへメッセージが書き込まれます。 オフセットは buffer バイトよりも小さい正の数でなければなりません。
+
+バッファーがあまりに小さいと BufferTooShort 例外が発生します。 e が例外インスタンスとすると完全なメッセージは e.args[0] で確認できます。
+
+バージョン 3.3 で変更: Connection.send() と Connection.recv() を使用して Connection オブジェクト自体をプロセス間で転送できるようになりました。
+
+バージョン 3.3 で追加: Connection オブジェクトがコンテキストマネージメント・プロトコルをサポートするようになりました。 -- コンテキストマネージャ型 を参照してください。 __enter__() は Connection オブジェクトを返します。また __exit__() は close() を呼び出します。
+
+例えば:
+
+>>> from multiprocessing import Pipe
+>>> a, b = Pipe()
+>>> a.send([1, 'hello', None])
+>>> b.recv()
+[1, 'hello', None]
+>>> b.send_bytes(b'thank you')
+>>> a.recv_bytes()
+b'thank you'
+>>> import array
+>>> arr1 = array.array('i', range(5))
+>>> arr2 = array.array('i', [0] * 10)
+>>> a.send_bytes(arr1)
+>>> count = b.recv_bytes_into(arr2)
+>>> assert count == len(arr1) * arr1.itemsize
+>>> arr2
+array('i', [0, 1, 2, 3, 4, 0, 0, 0, 0, 0])
+警告 Connection.recv() メソッドは受信したデータを自動的に unpickle 化します。それはメッセージを送ったプロセスが信頼できる場合を除いてセキュリティリスクになります。
+そのため Pipe() を使用してコネクションオブジェクトを生成する場合を除いて、何らかの認証処理を実行した後で recv() や send() メソッドのみを使用すべきです。詳細は 認証キー を参照してください。
+
+警告 もしプロセスがパイプの読み込みまたは書き込み中に kill されると、メッセージの境界がどこなのか分からなくなってしまうので、そのパイプ内のデータは破損してしまいがちです。
+同期プリミティブ
+一般的にマルチプロセスプログラムは、マルチスレッドプログラムほどは同期プリミティブを必要としません。詳細は threading モジュールのドキュメントを参照してください。
+
+マネージャーオブジェクトを使用して同期プリミティブを作成できることも覚えておいてください。詳細は マネージャー を参照してください。
+
+class multiprocessing.Barrier(parties[, action[, timeout]])
+バリアーオブジェクト: threading.Barrier のクローンです。
+
+バージョン 3.3 で追加.
+
+class multiprocessing.BoundedSemaphore([value])
+有限セマフォオブジェクト: threading.BoundedSemaphore の類似物です。
+
+よく似た threading.BoundedSemaphore とは、次の一点だけ異なります。 acquire メソッドの第一引数名は block で、Lock.acquire() と一致しています。
+
+注釈 Mac OS X では sem_getvalue() が実装されていないので Semaphore と区別がつきません。
+class multiprocessing.Condition([lock])
+状態変数: threading.Condition の別名です。
+
+lock を指定するなら multiprocessing の Lock か RLock オブジェクトにすべきです。
+
+バージョン 3.3 で変更: wait_for() メソッドが追加されました。
+
+class multiprocessing.Event
+threading.Event のクローンです。
+
+class multiprocessing.Lock
+再帰しないロックオブジェクトで、 threading.Lock 相当のものです。プロセスやスレッドがロックをいったん獲得 (acquire) すると、それに続くほかのプロセスやスレッドが獲得しようとする際、それが解放 (release) されるまではブロックされます。解放はどのプロセス、スレッドからも行えます。スレッドに対して適用される threading.Lock のコンセプトと振る舞いは、特筆すべきものがない限り、プロセスとスレッドに適用される multiprocessing.Lock に引き継がれています。
+
+Lock は実際にはファクトリ関数で、デフォルトコンテキストで初期化された multiprocessing.synchronize.Lock のインスタンスを返すことに注意してください。
+
+Lock は context manager プロトコルをサポートしています。つまり with 文で使うことができます。
+
+acquire(block=True, timeout=None)
+ブロックあり、またはブロックなしでロックを獲得します。
+
+引数 block を True (デフォルト) に設定して呼び出した場合、ロックがアンロック状態になるまでブロックします。ブロックから抜けるとそれをロック状態にしてから True を返します。 threading.Lock.acquire() の最初の引数とは名前が違っているので注意してください。
+
+引数 block の値を False にして呼び出すとブロックしません。 現在ロック状態であれば、直ちに False を返します。それ以外の場合には、ロックをロック状態にして True を返します。
+
+timeout として正の浮動小数点数を与えて呼び出すと、ロックが獲得できない限り、指定された秒数だけブロックします。 timeout 値に負数を与えると、ゼロを与えた場合と同じになります。 timeout 値の None (デフォルト) を与えると、無限にブロックします。 timeout 引数の負数と None の扱いは、 threading.Lock.acquire() に実装された動作と異なるので注意してください。 block が False の場合、 timeout は実際的な意味を持たなくなるので無視されます。ロックを獲得した場合は True 、タイムアウトした場合は False で戻ります。
+
+release()
+ロックを解放します。これはロックを獲得したプロセスやスレッドだけでなく、任意のプロセスやスレッドから呼ぶことができます。
+
+threading.Lock.release() と同じように振舞いますが、ロックされていない場合に呼び出すと ValueError となる点だけが違います。
+
+class multiprocessing.RLock
+再帰ロックオブジェクトで、 threading.RLock 相当のものです。再帰ロックオブジェクトはそれを獲得 (acquire) したプロセスやスレッドが解放 (release) しなければなりません。プロセスやスレッドがロックをいったん獲得すると、同じプロセスやスレッドはブロックされずに再度獲得出来ます。そのプロセスやスレッドは獲得した回数ぶん解放しなければなりません。
+
+RLock は実際にはファクトリ関数で、デフォルトコンテキストで初期化された multiprocessing.synchronize.Lock のインスタンスを返すことに注意してください。
+
+RLock は context manager プロトコルをサポートしています。つまり with 文で使うことができます。
+
+acquire(block=True, timeout=None)
+ブロックあり、またはブロックなしでロックを獲得します。
+
+block 引数を True にして呼び出した場合、ロックが既にカレントプロセスもしくはカレントスレッドが既に所有していない限りは、アンロック状態 (どのプロセス、スレッドも所有していない状態) になるまでブロックします。ブロックから抜けるとカレントプロセスもしくはカレントスレッドが (既に持っていなければ) 所有権を得て、再帰レベルをインクリメントし、 True で戻ります。 threading.RLock.acquire() の実装とはこの最初の引数の振る舞いが、その名前自身を始めとしていくつか違うので注意してください。
+
+block 引数を False にして呼び出した場合、ブロックしません。ロックが他のプロセスもしくはスレッドにより獲得済み (つまり所有されている) であれば、カレントプロセスまたはカレントスレッドは所有権を得ず、再帰レベルも変更せずに、 False で戻ります。ロックがアンロック状態の場合、カレントプロセスもしくはカレントスレッドは所有権を得て再帰レベルがインクリメントされ、 True で戻ります。(---訳注: block の True/False 関係なくここでの説明では「所有権を持っている場合の2度目以降の aquire」の説明が欠けています。2度目以降の acquire では再帰レベルがインクリメントされて即座に返ります。全体読めばわかるとは思いますが一応。---)
+
+timeout 引数の使い方と振る舞いは Lock.acquire() と同じです。 timeout 引数の振る舞いがいくつかの点で threading.RLock.acquire() と異なるので注意してください。
+
+release()
+再帰レベルをデクリメントしてロックを解放します。デクリメント後に再帰レベルがゼロになった場合、ロックの状態をアンロック (いかなるプロセス、いかなるスレッドにも所有されていない状態) にリセットし、ロックの状態がアンロックになるのを待ってブロックしているプロセスもしくはスレッドがある場合にはその中のただ一つだけが処理を進行できるようにします。デクリメント後も再帰レベルがゼロでない場合、ロックの状態はロックのままで、呼び出し側のプロセスもしくはスレッドに所有されたままになります。
+
+このメソッドは呼び出しプロセスあるいはスレッドがロックを所有している場合に限り呼び出してください。所有者でないプロセスもしくはスレッドによって呼ばれるか、あるいはアンロック (未所有) 状態で呼ばれた場合、 AssertionError が送出されます。同じ状況での threading.RLock.release() 実装とは例外の型が異なるので注意してください。
+
+class multiprocessing.Semaphore([value])
+セマフォオブジェクト: threading.Semaphore のクローンです。
+
+よく似た threading.BoundedSemaphore とは、次の一点だけ異なります。 acquire メソッドの第一引数名は block で、Lock.acquire() と一致しています。
+
+注釈 Mac OS X では sem_timedwait がサポートされていないので、acquire() にタイムアウトを与えて呼ぶと、ループ内でスリープすることでこの関数がエミュレートされます。
+注釈 メインスレッドが BoundedSemaphore.acquire(), Lock.acquire(), RLock.acquire(), Semaphore.acquire(), Condition.acquire() 又は Condition.wait() を呼び出してブロッキング状態のときに Ctrl-C で生成される SIGINT シグナルを受け取ると、その呼び出しはすぐに中断されて KeyboardInterrupt が発生します。
+これは同等のブロッキング呼び出しが実行中のときに SIGINT が無視される threading の振る舞いとは違っています。
+
+注釈 このパッケージに含まれる機能には、ホストとなるオペレーティングシステム上で動作している共有セマフォを使用しているものがあります。これが使用できない場合には、multiprocessing.synchronize モジュールが無効になり、このモジュールのインポート時に ImportError が発生します。詳細は bpo-3770 を参照してください。
+共有 ctypes オブジェクト
+子プロセスにより継承される共有メモリを使用する共有オブジェクトを作成することができます。
+
+multiprocessing.Value(typecode_or_type, *args, lock=True)
+共有メモリから割り当てられた ctypes オブジェクトを返します。 デフォルトでは、返り値は実際のオブジェクトの同期ラッパーです。オブジェクトそれ自身は、 Value の value 属性によってアクセスできます。
+
+typecode_or_type は返されるオブジェクトの型を決めます。それは ctypes の型か array モジュールで使用されるような1文字の型コードかのどちらか一方です。 *args は型のコンストラクターへ渡されます。
+
+lock が True (デフォルト) なら、値へ同期アクセスするために新たに再帰的なロックオブジェクトが作成されます。 lock が Lock か RLock なら値への同期アクセスに使用されます。 lock が False なら、返されたオブジェクトへのアクセスはロックにより自動的に保護されません。そのため、必ずしも "プロセスセーフ" ではありません。
+
++= のような演算は、読み込みと書き込みを含むためアトミックでありません。このため、たとえば自動的に共有の値を増加させたい場合、以下のようにするのでは不十分です
+
+counter.value += 1
+関連するロックが再帰的 (それがデフォルトです) なら、かわりに次のようにします
+
+with counter.get_lock():
+    counter.value += 1
+lock はキーワード専用引数であることに注意してください。
+
+multiprocessing.Array(typecode_or_type, size_or_initializer, *, lock=True)
+共有メモリから割り当てられた ctypes 配列を返します。デフォルトでは、返り値は実際の配列の同期ラッパーです。
+
+typecode_or_type は返される配列の要素の型を決めます。それは ctypes の型か array モジュールで使用されるような1文字の型コードかのどちらか一方です。 size_or_initializer が整数なら、配列の長さを決定し、その配列はゼロで初期化されます。別の使用方法として size_or_initializer は配列の初期化に使用されるシーケンスになり、そのシーケンス長が配列の長さを決定します。
+
+lock が True (デフォルト) なら、値へ同期アクセスするために新たなロックオブジェクトが作成されます。 lock が Lock か RLock なら値への同期アクセスに使用されます。 lock が False なら、返されたオブジェクトへのアクセスはロックにより自動的に保護されません。そのため、必ずしも "プロセスセーフ" ではありません。
+
+lock はキーワード引数としてのみ利用可能なことに注意してください。
+
+ctypes.c_char の配列は文字列を格納して取り出せる value と raw 属性を持っていることを覚えておいてください。
+
+multiprocessing.sharedctypes モジュール
+multiprocessing.sharedctypes モジュールは子プロセスに継承される共有メモリの ctypes オブジェクトを割り当てる関数を提供します。
+
+注釈 共有メモリのポインターを格納することは可能ではありますが、特定プロセスのアドレス空間の位置を参照するということを覚えておいてください。しかし、そのポインターは別のプロセスのコンテキストにおいて無効になる確率が高いです。そして、別のプロセスからそのポインターを逆参照しようとするとクラッシュを引き起こす可能性があります。
+multiprocessing.sharedctypes.RawArray(typecode_or_type, size_or_initializer)
+共有メモリから割り当てられた ctypes 配列を返します。
+
+typecode_or_type は返される配列の要素の型を決めます。それは ctypes の型か array モジュールで使用されるような1文字の型コードのどちらか一方です。 size_or_initializer が整数なら、それが配列の長さになり、その配列はゼロで初期化されます。別の使用方法として size_or_initializer には配列の初期化に使用されるシーケンスを設定することもでき、その場合はシーケンスの長さが配列の長さになります。
+
+要素を取得したり設定したりすることは潜在的に非アトミックであることに注意してください。ロックを使用して自動的に同期化されたアクセスを保証するには Array() を使用してください。
+
+multiprocessing.sharedctypes.RawValue(typecode_or_type, *args)
+共有メモリから割り当てられた ctypes オブジェクトを返します。
+
+typecode_or_type は返されるオブジェクトの型を決めます。それは ctypes の型か array モジュールで使用されるような1文字の型コードかのどちらか一方です。 *args は型のコンストラクターへ渡されます。
+
+値を取得したり設定したりすることは潜在的に非アトミックであることに注意してください。ロックを使用して自動的に同期化されたアクセスを保証するには Value() を使用してください。
+
+ctypes.c_char の配列は文字列を格納して取り出せる value と raw 属性を持っていることを覚えておいてください。詳細は ctypes を参照してください。
+
+multiprocessing.sharedctypes.Array(typecode_or_type, size_or_initializer, *, lock=True)
+RawArray() と同様ですが、 lock の値によっては ctypes 配列をそのまま返す代わりに、プロセスセーフな同期ラッパーが返されます。
+
+lock が True (デフォルト) なら、値へ同期アクセスするために新たな ロックオブジェクトが作成されます。 lock が Lock か RLock なら値への同期アクセスに使用されます。 lock が False なら、返された オブジェクトへのアクセスはロックにより自動的に保護されません。 そのため、必ずしも "プロセスセーフ" ではありません。
+
+lock はキーワード専用引数であることに注意してください。
+
+multiprocessing.sharedctypes.Value(typecode_or_type, *args, lock=True)
+RawValue() と同様ですが、 lock の値によっては ctypes オブジェクトをそのまま返す代わりに、プロセスセーフな同期ラッパーが返されます。
+
+lock が True (デフォルト) なら、値へ同期アクセスするために新たな ロックオブジェクトが作成されます。 lock が Lock か RLock なら値への同期アクセスに使用されます。 lock が False なら、返された オブジェクトへのアクセスはロックにより自動的に保護されません。 そのため、必ずしも "プロセスセーフ" ではありません。
+
+lock はキーワード専用引数であることに注意してください。
+
+multiprocessing.sharedctypes.copy(obj)
+共有メモリから割り当てられた ctypes オブジェクト obj をコピーしたオブジェクトを返します。
+
+multiprocessing.sharedctypes.synchronized(obj[, lock])
+同期アクセスに lock を使用する ctypes オブジェクトのためにプロセスセーフなラッパーオブジェクトを返します。 lock が None (デフォルト) なら、 multiprocessing.RLock オブジェクトが自動的に作成されます。
+
+同期ラッパーがラップするオブジェクトに加えて2つのメソッドがあります。 get_obj() はラップされたオブジェクトを返します。 get_lock() は同期のために使用されるロックオブジェクトを返します。
+
+ラッパー経由で ctypes オブジェクトにアクセスすることは raw ctypes オブジェクトへアクセスするよりずっと遅くなることに注意してください。
+
+バージョン 3.5 で変更: synchronized オブジェクトは コンテキストマネージャ プロトコルをサポートしています。
+
+次の表は通常の ctypes 構文で共有メモリから共有 ctypes オブジェクトを作成するための構文を比較します。 (MyStruct テーブル内には ctypes.Structure のサブクラスがあります。)
+
+ctypes
+
+type を使用する sharedctypes
+
+typecode を使用する sharedctypes
+
+c_double(2.4)
+
+RawValue(c_double, 2.4)
+
+RawValue('d', 2.4)
+
+MyStruct(4, 6)
+
+RawValue(MyStruct, 4, 6)
+
+(c_short * 7)()
+
+RawArray(c_short, 7)
+
+RawArray('h', 7)
+
+(c_int * 3)(9, 2, 8)
+
+RawArray(c_int, (9, 2, 8))
+
+RawArray('i', (9, 2, 8))
+
+以下に子プロセスが多くの ctypes オブジェクトを変更する例を紹介します:
+
+from multiprocessing import Process, Lock
+from multiprocessing.sharedctypes import Value, Array
+from ctypes import Structure, c_double
+
+class Point(Structure):
+    _fields_ = [('x', c_double), ('y', c_double)]
+
+def modify(n, x, s, A):
+    n.value **= 2
+    x.value **= 2
+    s.value = s.value.upper()
+    for a in A:
+        a.x **= 2
+        a.y **= 2
+
+if __name__ == '__main__':
+    lock = Lock()
+
+    n = Value('i', 7)
+    x = Value(c_double, 1.0/3.0, lock=False)
+    s = Array('c', b'hello world', lock=lock)
+    A = Array(Point, [(1.875,-6.25), (-5.75,2.0), (2.375,9.5)], lock=lock)
+
+    p = Process(target=modify, args=(n, x, s, A))
+    p.start()
+    p.join()
+
+    print(n.value)
+    print(x.value)
+    print(s.value)
+    print([(a.x, a.y) for a in A])
+結果は以下のように表示されます
+
+49
+0.1111111111111111
+HELLO WORLD
+[(3.515625, 39.0625), (33.0625, 4.0), (5.640625, 90.25)]
+マネージャー
+マネージャーは異なるプロセス間で共有されるデータの作成方法を提供します。これには別のマシン上で走るプロセス間のネットワーク越しの共有も含まれます。マネージャーオブジェクトは 共有オブジェクト を管理するサーバープロセスを制御します。他のプロセスはプロキシ経由で共有オブジェクトへアクセスすることができます。
+
+multiprocessing.Manager()
+プロセス間でオブジェクトを共有するために使用される SyncManager オブジェクトを返します。返されたマネージャーオブジェクトは生成される子プロセスに対応付けられ、共有オブジェクトを作成するメソッドや、共有オブジェクトに対応するプロキシを返すメソッドを持ちます。
+
+マネージャープロセスは親プロセスが終了するか、ガベージコレクトされると停止します。マネージャークラスは multiprocessing.managers モジュールで定義されています:
+
+class multiprocessing.managers.BaseManager([address[, authkey]])
+BaseManager オブジェクトを作成します。
+
+作成後、start() または get_server().serve_forever() を呼び出して、マネージャーオブジェクトが、開始されたマネージャープロセスを確実に参照するようにしてください。
+
+address はマネージャープロセスが新たなコネクションを待ち受けるアドレスです。address が None の場合、任意のアドレスが設定されます。
+
+authkey はサーバープロセスへ接続しようとするコネクションの正当性を検証するために 使用される認証キーです。authkey が None の場合 current_process().authkey が使用されます。authkey を使用する場合はバイト文字列でなければなりません。
+
+start([initializer[, initargs]])
+マネージャーを開始するためにサブプロセスを開始します。initializer が None でなければ、サブプロセスは開始時に initializer(*initargs) を呼び出します。
+
+get_server()
+マネージャーの制御下にある実際のサーバーを表す Server オブジェクトを返します。 Server オブジェクトは serve_forever() メソッドをサポートします:
+
+>>>
+>>> from multiprocessing.managers import BaseManager
+>>> manager = BaseManager(address=('', 50000), authkey=b'abc')
+>>> server = manager.get_server()
+>>> server.serve_forever()
+Server はさらに address 属性も持っています。
+
+connect()
+ローカルからリモートのマネージャーオブジェクトへ接続します:
+
+>>>
+>>> from multiprocessing.managers import BaseManager
+>>> m = BaseManager(address=('127.0.0.1', 50000), authkey=b'abc')
+>>> m.connect()
+shutdown()
+マネージャーが使用するプロセスを停止します。これはサーバープロセスを開始するために start() が使用された場合のみ有効です。
+
+これは複数回呼び出すことができます。
+
+register(typeid[, callable[, proxytype[, exposed[, method_to_typeid[, create_method]]]]])
+マネージャークラスで呼び出し可能オブジェクト(callable)や型を登録するために使用されるクラスメソッドです。
+
+typeid は特に共有オブジェクトの型を識別するために使用される "型識別子" です。これは文字列でなければなりません。
+
+callable はこの型識別子のオブジェクトを作成するために使用される呼び出し可能オブジェクトです。マネージャーインスタンスが connect() メソッドを使ってサーバーに接続されているか、 create_method 引数が False の場合は、 None でも構いません。
+
+proxytype はこの typeid で共有オブジェクトのプロキシを作成するために使用される BaseProxy のサブクラスです。 None の場合、プロキシクラスは自動的に作成されます。
+
+exposed は BaseProxy._callmethod() を使用したアクセスが許されるべき typeid をプロキシするメソッド名のシーケンスを指定するために使用されます (exposed が None の場合 proxytype._exposed_ が存在すればそれが代わりに使用されます)。exposed リストが指定されない場合、共有オブジェクトのすべての "パブリックメソッド" がアクセス可能になります。 (ここでいう "パブリックメソッド" とは __call__() メソッドを持つものと名前が '_' で始まらないあらゆる属性を意味します。)
+
+method_to_typeid はプロキシが返す exposed メソッドの返り値の型を指定するために使用されるマッピングで、メソッド名を typeid 文字列にマップします。 (method_to_typeid が None の場合 proxytype._method_to_typeid_ が存在すれば、それが代わりに使用されます。) メソッド名がこのマッピングのキーではないか、マッピングが None の場合、そのメソッドによって返されるオブジェクトが値として (by value) コピーされます。
+
+create_method は、共有オブジェクトを作成し、それに対するプロキシを返すようサーバープロセスに伝える、名前 typeid のメソッドを作成するかを決定します。デフォルトでは True です。
+
+BaseManager インスタンスも読み出し専用属性を1つ持っています:
+
+address
+マネージャーが使用するアドレスです。
+
+バージョン 3.3 で変更: マネージャーオブジェクトはコンテキストマネージメント・プロトコルをサポートします -- コンテキストマネージャ型 を参照してください。 __enter__() は (まだ開始していない場合) サーバープロセスを開始してから、マネージャーオブジェクトを返します。 __exit__() は shutdown() を呼び出します。
+
+旧バージョンでは、 __enter__() はマネージャーのサーバープロセスがまだ開始していなかった場合でもプロセスを開始しませんでした。
+
+class multiprocessing.managers.SyncManager
+プロセス間の同期のために使用される BaseManager のサブクラスです。 multiprocessing.Manager() はこの型のオブジェクトを返します。
+
+Its methods create and return Proxy オブジェクト for a number of commonly used data types to be synchronized across processes. This notably includes shared lists and dictionaries.
+
+Barrier(parties[, action[, timeout]])
+共有 threading.Barrier オブジェクトを作成して、そのプロキシを返します。
+
+バージョン 3.3 で追加.
+
+BoundedSemaphore([value])
+共有 threading.BoundedSemaphore オブジェクトを作成して、そのプロキシを返します。
+
+Condition([lock])
+共有 threading.Condition オブジェクトを作成して、そのプロキシを返します。
+
+lock が提供される場合 threading.Lock か threading.RLock オブジェクトのためのプロキシになります。
+
+バージョン 3.3 で変更: wait_for() メソッドが追加されました。
+
+Event()
+共有 threading.Event オブジェクトを作成して、そのプロキシを返します。
+
+Lock()
+共有 threading.Lock オブジェクトを作成して、そのプロキシを返します。
+
+Namespace()
+共有 Namespace オブジェクトを作成して、そのプロキシを返します。
+
+Queue([maxsize])
+共有 queue.Queue オブジェクトを作成して、そのプロキシを返します。
+
+RLock()
+共有 threading.RLock オブジェクトを作成して、そのプロキシを返します。
+
+Semaphore([value])
+共有 threading.Semaphore オブジェクトを作成して、そのプロキシを返します。
+
+Array(typecode, sequence)
+配列を作成して、そのプロキシを返します。
+
+Value(typecode, value)
+書き込み可能な value 属性を作成して、そのプロキシを返します。
+
+dict()
+dict(mapping)
+dict(sequence)
+共有 dict オブジェクトを作成して、そのプロキシを返します。
+
+list()
+list(sequence)
+共有 list オブジェクトを作成して、そのプロキシを返します。
+
+バージョン 3.6 で変更: 共有オブジェクトは入れ子もできます。 例えば、共有リストのような共有コンテナオブジェクトは、 SyncManager がまとめて管理し同期を取っている他の共有オブジェクトを保持できます。
+
+class multiprocessing.managers.Namespace
+SyncManager に登録することのできる型です。
+
+Namespace オブジェクトにはパブリックなメソッドはありませんが、書き込み可能な属性を持ちます。そのオブジェクト表現はその属性の値を表示します。
+
+しかし、Namespace オブジェクトのためにプロキシを使用するとき '_' が先頭に付く属性はプロキシの属性になり、参照対象の属性にはなりません:
+
+>>> manager = multiprocessing.Manager()
+>>> Global = manager.Namespace()
+>>> Global.x = 10
+>>> Global.y = 'hello'
+>>> Global._z = 12.3    # this is an attribute of the proxy
+>>> print(Global)
+Namespace(x=10, y='hello')
+カスタマイズされたマネージャー
+独自のマネージャーを作成するには、BaseManager のサブクラスを作成して、 マネージャークラスで呼び出し可能なオブジェクトか新たな型を登録するために register() クラスメソッドを使用します。例えば:
+
+from multiprocessing.managers import BaseManager
+
+class MathsClass:
+    def add(self, x, y):
+        return x + y
+    def mul(self, x, y):
+        return x * y
+
+class MyManager(BaseManager):
+    pass
+
+MyManager.register('Maths', MathsClass)
+
+if __name__ == '__main__':
+    with MyManager() as manager:
+        maths = manager.Maths()
+        print(maths.add(4, 3))         # prints 7
+        print(maths.mul(7, 8))         # prints 56
+リモートマネージャーを使用する
+あるマシン上でマネージャーサーバーを実行して、他のマシンからそのサーバーを使用するクライアントを持つことができます(ファイアウォールを通過できることが前提)。
+
+次のコマンドを実行することでリモートクライアントからアクセスを受け付ける1つの共有キューのためにサーバーを作成します:
+
+>>>
+>>> from multiprocessing.managers import BaseManager
+>>> from queue import Queue
+>>> queue = Queue()
+>>> class QueueManager(BaseManager): pass
+>>> QueueManager.register('get_queue', callable=lambda:queue)
+>>> m = QueueManager(address=('', 50000), authkey=b'abracadabra')
+>>> s = m.get_server()
+>>> s.serve_forever()
+あるクライアントからサーバーへのアクセスは次のようになります:
+
+>>>
+>>> from multiprocessing.managers import BaseManager
+>>> class QueueManager(BaseManager): pass
+>>> QueueManager.register('get_queue')
+>>> m = QueueManager(address=('foo.bar.org', 50000), authkey=b'abracadabra')
+>>> m.connect()
+>>> queue = m.get_queue()
+>>> queue.put('hello')
+別のクライアントもそれを使用することができます:
+
+>>>
+>>> from multiprocessing.managers import BaseManager
+>>> class QueueManager(BaseManager): pass
+>>> QueueManager.register('get_queue')
+>>> m = QueueManager(address=('foo.bar.org', 50000), authkey=b'abracadabra')
+>>> m.connect()
+>>> queue = m.get_queue()
+>>> queue.get()
+'hello'
+ローカルプロセスもそのキューへアクセスすることができます。クライアント上で上述のコードを使用してアクセスします:
+
+>>>
+>>> from multiprocessing import Process, Queue
+>>> from multiprocessing.managers import BaseManager
+>>> class Worker(Process):
+...     def __init__(self, q):
+...         self.q = q
+...         super(Worker, self).__init__()
+...     def run(self):
+...         self.q.put('local hello')
+...
+>>> queue = Queue()
+>>> w = Worker(queue)
+>>> w.start()
+>>> class QueueManager(BaseManager): pass
+...
+>>> QueueManager.register('get_queue', callable=lambda: queue)
+>>> m = QueueManager(address=('', 50000), authkey=b'abracadabra')
+>>> s = m.get_server()
+>>> s.serve_forever()
+Proxy オブジェクト
+プロキシは別のプロセスで(おそらく)有効な共有オブジェクトを 参照する オブジェクトです。共有オブジェクトはプロキシの 参照対象 になるということができます。複数のプロキシオブジェクトが同じ参照対象を持つ可能性もあります。
+
+プロキシオブジェクトはその参照対象の対応するメソッドを呼び出すメソッドを持ちます (そうは言っても、参照対象のすべてのメソッドが必ずしもプロキシ経由で利用可能なわけではありません)。 この方法で、プロキシオブジェクトはまるでその参照先と同じように使えます:
+
+>>> from multiprocessing import Manager
+>>> manager = Manager()
+>>> l = manager.list([i*i for i in range(10)])
+>>> print(l)
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+>>> print(repr(l))
+<ListProxy object, typeid 'list' at 0x...>
+>>> l[4]
+16
+>>> l[2:5]
+[4, 9, 16]
+プロキシに str() を適用すると参照対象のオブジェクト表現を返すのに対して、 repr() を適用するとプロキシのオブジェクト表現を返すことに注意してください。
+
+プロキシオブジェクトの重要な機能は pickle 化ができることで、これによりプロセス間での受け渡しができます。 そのため、参照対象が Proxy オブジェクト を持てます。 これによって管理されたリスト、辞書、その他 Proxy オブジェクト をネストできます:
+
+>>> a = manager.list()
+>>> b = manager.list()
+>>> a.append(b)         # referent of a now contains referent of b
+>>> print(a, b)
+[<ListProxy object, typeid 'list' at ...>] []
+>>> b.append('hello')
+>>> print(a[0], b)
+['hello'] ['hello']
+同様に、辞書とリストのプロキシも他のプロキシの内部に入れてネストできます:
+
+>>>
+>>> l_outer = manager.list([ manager.dict() for i in range(2) ])
+>>> d_first_inner = l_outer[0]
+>>> d_first_inner['a'] = 1
+>>> d_first_inner['b'] = 2
+>>> l_outer[1]['c'] = 3
+>>> l_outer[1]['z'] = 26
+>>> print(l_outer[0])
+{'a': 1, 'b': 2}
+>>> print(l_outer[1])
+{'c': 3, 'z': 26}
+(プロキシでない) 標準の list オブジェクトや dict オブジェクトが参照対象に含まれていた場合、それらの可変な値の変更はマネージャーからは伝搬されません。 というのも、プロキシには参照対象の中に含まれる値がいつ変更されたかを知る術が無いのです。 しかし、コンテナプロキシに値を保存する (これはプロキシオブジェクトの __setitem__ を起動します) 場合はマネージャーを通して変更が伝搬され、その要素を実際に変更するために、コンテナプロキシに変更後の値が再代入されます:
+
+# create a list proxy and append a mutable object (a dictionary)
+lproxy = manager.list()
+lproxy.append({})
+# now mutate the dictionary
+d = lproxy[0]
+d['a'] = 1
+d['b'] = 2
+# at this point, the changes to d are not yet synced, but by
+# updating the dictionary, the proxy is notified of the change
+lproxy[0] = d
+This approach is perhaps less convenient than employing nested Proxy オブジェクト for most use cases but also demonstrates a level of control over the synchronization.
+
+注釈 multiprocessing のプロキシ型は値による比較に対して何もサポートしません。そのため、例えば以下のようになります:
+>>> manager.list([1,2,3]) == [1,2,3]
+False
+比較を行いたいときは参照対象のコピーを使用してください。
+
+class multiprocessing.managers.BaseProxy
+プロキシオブジェクトは BaseProxy のサブクラスのインスタンスです。
+
+_callmethod(methodname[, args[, kwds]])
+プロキシの参照対象のメソッドの実行結果を返します。
+
+proxy がプロキシで、プロキシ内の参照対象が obj ならこの式
+
+proxy._callmethod(methodname, args, kwds)
+はこの式を評価します
+
+getattr(obj, methodname)(*args, **kwds)
+(マネージャープロセス内の)。
+
+返される値はその呼び出し結果のコピーか、新たな共有オブジェクトに対するプロキシになります。詳細は BaseManager.register() の method_to_typeid 引数のドキュメントを参照してください。
+
+その呼び出しによって例外が発生した場合、_callmethod() によってその例外は再送出されます。他の例外がマネージャープロセスで発生したなら、RemoteError 例外に変換されたものが _callmethod() によって送出されます。
+
+特に methodname が 公開 されていない場合は例外が発生することに注意してください。
+
+_callmethod() の使用例になります:
+
+>>> l = manager.list(range(10))
+>>> l._callmethod('__len__')
+10
+>>> l._callmethod('__getitem__', (slice(2, 7),)) # equivalent to l[2:7]
+[2, 3, 4, 5, 6]
+>>> l._callmethod('__getitem__', (20,))          # equivalent to l[20]
+Traceback (most recent call last):
+...
+IndexError: list index out of range
+_getvalue()
+参照対象のコピーを返します。
+
+参照対象が unpickle 化できるなら例外を発生します。
+
+__repr__()
+プロキシオブジェクトのオブジェクト表現を返します。
+
+__str__()
+参照対象のオブジェクト表現を返します。
+
+クリーンアップ
+プロキシオブジェクトは弱参照(weakref)コールバックを使用します。プロキシオブジェクトがガベージコレクトされるときにその参照対象が所有するマネージャーからその登録を取り消せるようにするためです。
+
+共有オブジェクトはプロキシが参照しなくなったときにマネージャープロセスから削除されます。
+
+プロセスプール
+Pool クラスでタスクを実行するプロセスのプールを作成することができます。
+
+class multiprocessing.pool.Pool([processes[, initializer[, initargs[, maxtasksperchild[, context]]]]])
+プロセスプールオブジェクトは、ジョブを送り込めるワーカープロセスのプールを制御します。タイムアウトやコールバックのある非同期の実行をサポートし、並列 map 実装を持ちます。
+
+processes は使用するワーカープロセスの数です。processes が None の場合 os.cpu_count() が返す値を使用します。
+
+initializer が None ではない場合、各ワーカープロセスは開始時に initializer(*initargs) を呼び出します。
+
+maxtasksperchild は、ワーカープロセスが exit して新たなワーカープロセスと置き替えられるまでの間に、ワーカープロセスが完了することのできるタスクの数です。この設定により未利用のリソースが解放されるようなります。デフォルトの maxtasksperchild は None で、これはワーカープロセスがプールと同じ期間だけ生き続けるということを意味します。
+
+context はワーカープロセスを開始するために使用されるコンテキストの指定に使用できます。通常プールは関数 multiprocessing.Pool() かコンテキストオブジェクトの Pool() メソッドを使用して作成されます。どちらの場合でも context は適切に設定されます。
+
+プールオブジェクトのメソッドは、そのプールを作成したプロセスのみが呼び出すべきです。
+
+警告 multiprocessing.pool objects have internal resources that need to be properly managed (like any other resource) by using the pool as a context manager or by calling close() and terminate() manually. Failure to do this can lead to the process hanging on finalization.
+Note that is not correct to rely on the garbage colletor to destroy the pool as CPython does not assure that the finalizer of the pool will be called (see object.__del__() for more information).
+
+バージョン 3.2 で追加: maxtasksperchild
+
+バージョン 3.4 で追加: context
+
+注釈 Pool 中のワーカープロセスは、典型的にはプールのワークキューの存続期間とちょうど同じだけ生き続けます。ワーカーに確保されたリソースを解放するために (Apache, mod_wsgi, などのような) 他のシステムによく見られるパターンは、プール内のワーカーが設定された量だけの仕事を完了したら exit とクリーンアップを行い、古いプロセスを置き換えるために新しいプロセスを生成するというものです。 Pool の maxtasksperchild 引数は、この能力をエンドユーザーに提供します。
+apply(func[, args[, kwds]])
+引数 args とキーワード引数 kwds を伴って func を呼びます。結果が準備できるまでブロックします。このブロックがあるため、 apply_async() の方が並行作業により適しています。加えて、 func は、プール内の1つのワーカーだけで実行されます。
+
+apply_async(func[, args[, kwds[, callback[, error_callback]]]])
+A variant of the apply() method which returns a AsyncResult object.
+
+callback が指定された場合、それは単一の引数を受け取る呼び出し可能オブジェクトでなければなりません。結果を返せるようになったときに callback が結果オブジェクトに対して適用されます。ただし呼び出しが失敗した場合は、代わりに error_callback が適用されます。
+
+error_callback が指定された場合、それは単一の引数を受け取る呼び出し可能オブジェクトでなければなりません。対象の関数が失敗した場合、例外インスタンスを伴って error_callback が呼ばれます。
+
+コールバックは直ちに完了すべきです。なぜなら、そうしなければ、結果を扱うスレッドがブロックするからです。
+
+map(func, iterable[, chunksize])
+A parallel equivalent of the map() built-in function (it supports only one iterable argument though, for multiple iterables see starmap()). It blocks until the result is ready.
+
+このメソッドはイテラブルをいくつものチャンクに分割し、プロセスプールにそれぞれ独立したタスクとして送ります。(概算の) チャンクサイズは chunksize を正の整数に設定することで指定できます。
+
+Note that it may cause high memory usage for very long iterables. Consider using imap() or imap_unordered() with explicit chunksize option for better efficiency.
+
+map_async(func, iterable[, chunksize[, callback[, error_callback]]])
+A variant of the map() method which returns a AsyncResult object.
+
+callback が指定された場合、それは単一の引数を受け取る呼び出し可能オブジェクトでなければなりません。結果を返せるようになったときに callback が結果オブジェクトに対して適用されます。ただし呼び出しが失敗した場合は、代わりに error_callback が適用されます。
+
+error_callback が指定された場合、それは単一の引数を受け取る呼び出し可能オブジェクトでなければなりません。対象の関数が失敗した場合、例外インスタンスを伴って error_callback が呼ばれます。
+
+コールバックは直ちに完了すべきです。なぜなら、そうしなければ、結果を扱うスレッドがブロックするからです。
+
+imap(func, iterable[, chunksize])
+A lazier version of map().
+
+chunksize 引数は map() メソッドで使用されるものと同じです。 引数 iterable がとても長いなら chunksize に大きな値を指定して使用する方がデフォルト値の 1 を使用するよりもジョブの完了が かなり 速くなります。
+
+また chunksize が 1 の場合 imap() メソッドが返すイテレーターの next() メソッドはオプションで timeout パラメーターを持ちます。 next(timeout) は、その結果が timeout 秒以内に返されないときに multiprocessing.TimeoutError を発生させます。
+
+imap_unordered(func, iterable[, chunksize])
+イテレーターが返す結果の順番が任意の順番で良いと見なされることを除けば imap() と同じです。 (ワーカープロセスが1つしかない場合のみ "正しい" 順番になることが保証されます。)
+
+starmap(func, iterable[, chunksize])
+iterable の要素が、引数として unpack されるイテレート可能オブジェクトであると期待される以外は、 map() と似ています。
+
+そのため、iterable が [(1,2), (3, 4)] なら、結果は [func(1,2), func(3,4)] になります。
+
+バージョン 3.3 で追加.
+
+starmap_async(func, iterable[, chunksize[, callback[, error_callback]]])
+starmap() と map_async() の組み合わせです。 イテレート可能オブジェクトの iterable をイテレートして、 unpack したイテレート可能オブジェクトを伴って func を呼び出します。結果オブジェクトを返します。
+
+バージョン 3.3 で追加.
+
+close()
+これ以上プールでタスクが実行されないようにします。すべてのタスクが完了した後でワーカープロセスが終了します。
+
+terminate()
+実行中の処理を完了させずにワーカープロセスをすぐに停止します。プールオブジェクトがガベージコレクトされるときに terminate() が呼び出されます。
+
+join()
+ワーカープロセスが終了するのを待ちます。 join() を使用する前に close() か terminate() を呼び出さなければなりません。
+
+バージョン 3.3 で追加: Pool オブジェクトがコンテキストマネージメント・プロトコルをサポートするようになりました。 -- コンテキストマネージャ型 を参照してください。 __enter__() は Pool オブジェクトを返します。また __exit__() は terminate() を呼び出します。
+
+class multiprocessing.pool.AsyncResult
+Pool.apply_async() や Pool.map_async() で返される結果のクラスです。
+
+get([timeout])
+結果を受け取ったときに返します。 timeout が None ではなくて、その結果が timeout 秒以内に受け取れない場合 multiprocessing.TimeoutError が発生します。リモートの呼び出しが例外を発生させる場合、その例外は get() が再発生させます。
+
+wait([timeout])
+その結果が有効になるか timeout 秒経つまで待ちます。
+
+ready()
+その呼び出しが完了しているかどうかを返します。
+
+successful()
+Return whether the call completed without raising an exception. Will raise ValueError if the result is not ready.
+
+バージョン 3.7 で変更: If the result is not ready, ValueError is raised instead of AssertionError.
+
+次の例はプールの使用例を紹介します:
+
+from multiprocessing import Pool
+import time
+
+def f(x):
+    return x*x
+
+if __name__ == '__main__':
+    with Pool(processes=4) as pool:         # start 4 worker processes
+        result = pool.apply_async(f, (10,)) # evaluate "f(10)" asynchronously in a single process
+        print(result.get(timeout=1))        # prints "100" unless your computer is *very* slow
+
+        print(pool.map(f, range(10)))       # prints "[0, 1, 4,..., 81]"
+
+        it = pool.imap(f, range(10))
+        print(next(it))                     # prints "0"
+        print(next(it))                     # prints "1"
+        print(it.next(timeout=1))           # prints "4" unless your computer is *very* slow
+
+        result = pool.apply_async(time.sleep, (10,))
+        print(result.get(timeout=1))        # raises multiprocessing.TimeoutError
+リスナーとクライアント
+Usually message passing between processes is done using queues or by using Connection objects returned by Pipe().
+
+しかし multiprocessing.connection モジュールにはさらに柔軟な仕組みがあります。 このモジュールは、基本的にはソケットもしくは Windows の名前付きパイプを扱う高レベルのメッセージ指向 API を提供します。また、 hmac モジュールを使用した ダイジェスト認証 や同時の複数接続のポーリングもサポートします。
+
+multiprocessing.connection.deliver_challenge(connection, authkey)
+ランダム生成したメッセージをコネクションの相手側へ送信して応答を待ちます。
+
+その応答がキーとして authkey を使用するメッセージのダイジェストと一致する場合、 コネクションの相手側へ歓迎メッセージを送信します。 そうでなければ AuthenticationError を発生させます。
+
+multiprocessing.connection.answer_challenge(connection, authkey)
+メッセージを受信して、そのキーとして authkey を使用するメッセージのダイジェストを計算し、ダイジェストを送り返します。
+
+歓迎メッセージを受け取れない場合 AuthenticationError が発生します。
+
+multiprocessing.connection.Client(address[, family[, authkey]])
+Attempt to set up a connection to the listener which is using address address, returning a Connection.
+
+コネクション種別は family 引数で決定しますが、一般的には address のフォーマットから推測できるので、これは指定されません。 (アドレスフォーマット を参照してください)
+
+If authkey is given and not None, it should be a byte string and will be used as the secret key for an HMAC-based authentication challenge. No authentication is done if authkey is None. AuthenticationError is raised if authentication fails. See 認証キー.
+
+class multiprocessing.connection.Listener([address[, family[, backlog[, authkey]]]])
+コネクションを '待ち受ける' 束縛されたソケットか Windows の名前付きパイプのラッパーです。
+
+address はリスナーオブジェクトの束縛されたソケットか名前付きパイプが使用するアドレスです。
+
+注釈 '0.0.0.0' のアドレスを使用する場合、Windows 上の終点へ接続することができません。終点へ接続したい場合は '127.0.0.1' を使用すべきです。
+family は使用するソケット(名前付きパイプ)の種別です。これは 'AF_INET' (TCP ソケット), 'AF_UNIX' (Unix ドメインソケット) または 'AF_PIPE' (Windows 名前付きパイプ) という文字列のどれか1つになります。これらのうち 'AF_INET' のみが利用可能であることが保証されています。 family が None の場合 address のフォーマットから推測されたものが使用されます。 address も None の場合はデフォルトが選択されます。詳細は アドレスフォーマット を参照してください。 family が 'AF_UNIX' で address が None の場合 tempfile.mkstemp() を使用して作成されたプライベートな一時ディレクトリにソケットが作成されます。
+
+リスナーオブジェクトがソケットを使用する場合、ソケットに束縛されるときに backlog (デフォルトでは1つ) がソケットの listen() メソッドに対して渡されます。
+
+If authkey is given and not None, it should be a byte string and will be used as the secret key for an HMAC-based authentication challenge. No authentication is done if authkey is None. AuthenticationError is raised if authentication fails. See 認証キー.
+
+accept()
+Accept a connection on the bound socket or named pipe of the listener object and return a Connection object. If authentication is attempted and fails, then AuthenticationError is raised.
+
+close()
+リスナーオブジェクトの名前付きパイプか束縛されたソケットをクローズします。これはリスナーがガベージコレクトされるときに自動的に呼ばれます。そうは言っても、明示的に close() を呼び出す方が望ましいです。
+
+リスナーオブジェクトは次の読み出し専用属性を持っています:
+
+address
+リスナーオブジェクトが使用中のアドレスです。
+
+last_accepted
+最後にコネクションを受け付けたアドレスです。有効なアドレスがない場合は None になります。
+
+バージョン 3.3 で追加: Listener オブジェクトがコンテキストマネージメント・プロトコルをサポートするようになりました。 -- コンテキストマネージャ型 を参照してください。 __enter__() はリスナーオブジェクトを返します。また __exit__() は close() を呼び出します。
+
+multiprocessing.connection.wait(object_list, timeout=None)
+object_list 中のオブジェクトが準備ができるまで待機します。準備ができた object_list 中のオブジェクトのリストを返します。timeout が浮動小数点なら、最大でその秒数だけ呼び出しがブロックします。timeout が None の場合、無制限の期間ブロックします。負のタイムアウトは0と等価です。
+
+Unix と Windows の両方で、 object_list には以下のオブジェクトを含めることが出来ます
+
+a readable Connection object;
+
+接続された読み取り可能な socket.socket オブジェクト; または
+
+Process オブジェクトの sentinel 属性。
+
+読み取ることのできるデータがある場合、あるいは相手側の端が閉じられている場合、コネクションまたはソケットオブジェクトは準備ができています。
+
+Unix: wait(object_list, timeout) は select.select(object_list, [], [], timeout) とほとんど等価です。違いは、 select.select() がシグナルによって中断される場合、 EINTR のエラー番号付きで OSError を上げるということです。 wait() はそのようなことは行いません。
+
+Windows: object_list の要素は、 (Win32 関数 WaitForMultipleObjects() のドキュメントで使われている定義から) wait 可能な整数ハンドルか、ソケットハンドルまたはパイプハンドルを返す fileno() メソッドを持つオブジェクトのどちらかでなければなりません。 (パイプハンドルとソケットハンドラーは wait 可能なハンドルでは ない ことに注意してください。)
+
+バージョン 3.3 で追加.
+
+例
+
+次のサーバーコードは認証キーとして 'secret password' を使用するリスナーを作成します。このサーバーはコネクションを待ってクライアントへデータを送信します:
+
+from multiprocessing.connection import Listener
+from array import array
+
+address = ('localhost', 6000)     # family is deduced to be 'AF_INET'
+
+with Listener(address, authkey=b'secret password') as listener:
+    with listener.accept() as conn:
+        print('connection accepted from', listener.last_accepted)
+
+        conn.send([2.25, None, 'junk', float])
+
+        conn.send_bytes(b'hello')
+
+        conn.send_bytes(array('i', [42, 1729]))
+次のコードはサーバーへ接続して、サーバーからデータを受信します:
+
+from multiprocessing.connection import Client
+from array import array
+
+address = ('localhost', 6000)
+
+with Client(address, authkey=b'secret password') as conn:
+    print(conn.recv())                  # => [2.25, None, 'junk', float]
+
+    print(conn.recv_bytes())            # => 'hello'
+
+    arr = array('i', [0, 0, 0, 0, 0])
+    print(conn.recv_bytes_into(arr))    # => 8
+    print(arr)                          # => array('i', [42, 1729, 0, 0, 0])
+次のコードは wait() を使って複数のプロセスからのメッセージを同時に待ちます:
+
+import time, random
+from multiprocessing import Process, Pipe, current_process
+from multiprocessing.connection import wait
+
+def foo(w):
+    for i in range(10):
+        w.send((i, current_process().name))
+    w.close()
+
+if __name__ == '__main__':
+    readers = []
+
+    for i in range(4):
+        r, w = Pipe(duplex=False)
+        readers.append(r)
+        p = Process(target=foo, args=(w,))
+        p.start()
+        # We close the writable end of the pipe now to be sure that
+        # p is the only process which owns a handle for it.  This
+        # ensures that when p closes its handle for the writable end,
+        # wait() will promptly report the readable end as being ready.
+        w.close()
+
+    while readers:
+        for r in wait(readers):
+            try:
+                msg = r.recv()
+            except EOFError:
+                readers.remove(r)
+            else:
+                print(msg)
+アドレスフォーマット
+'AF_INET' アドレスは (hostname, port) のタプルになります。 hostname は文字列で port は整数です。
+
+'AF_UNIX' アドレスはファイルシステム上のファイル名の文字列です。
+
+An 'AF_PIPE' address is a string of the form r'\.\pipe{PipeName}'. To use Client() to connect to a named pipe on a remote computer called ServerName one should use an address of the form r'\ServerName\pipe{PipeName}' instead.
+
+デフォルトでは、2つのバックスラッシュで始まる文字列は 'AF_UNIX' よりも 'AF_PIPE' として推測されることに注意してください。
+
+認証キー
+When one uses Connection.recv, the data received is automatically unpickled. Unfortunately unpickling data from an untrusted source is a security risk. Therefore Listener and Client() use the hmac module to provide digest authentication.
+
+認証キーはパスワードとして見なされるバイト文字列です。コネクションが確立すると、双方の終点で正しい接続先であることを証明するために 知っているお互いの認証キーを要求します。(双方の終点が同じキーを使用して通信しようとしても、コネクション上でそのキーを送信することは できません。)
+
+認証が要求されているにもかかわらず認証キーが指定されていない場合 current_process().authkey の返す値が使用されます。 (詳細は Process を参照してください。) この値はカレントプロセスを作成する Process オブジェクトによって自動的に継承されます。 これは(デフォルトでは)複数プロセスのプログラムの全プロセスが相互にコネクションを 確立するときに使用される1つの認証キーを共有することを意味します。
+
+適当な認証キーを os.urandom() を使用して生成することもできます。
+
+ログ記録
+ロギングのためにいくつかの機能が利用可能です。しかし logging パッケージは、 (ハンドラー種別に依存して)違うプロセスからのメッセージがごちゃ混ぜになるので、プロセスの共有ロックを使用しないことに注意してください。
+
+multiprocessing.get_logger()
+multiprocessing が使用するロガーを返します。必要に応じて新たなロガーを作成します。
+
+最初に作成するとき、ロガーはレベルに logging.NOTSET が設定されていてデフォルトハンドラーがありません。このロガーへ送られるメッセージはデフォルトではルートロガーへ伝播されません。
+
+Windows 上では子プロセスが親プロセスのロガーレベルを継承しないことに注意してください。さらにその他のロガーのカスタマイズ内容もすべて継承されません。
+
+multiprocessing.log_to_stderr()
+この関数は get_logger() に対する呼び出しを実行しますが、 get_logger によって作成されるロガーを返すことに加えて、 '[%(levelname)s/%(processName)s] %(message)s' のフォーマットを使用して sys.stderr へ出力を送るハンドラーを追加します。
+
+以下にロギングを有効にした例を紹介します:
+
+>>>
+>>> import multiprocessing, logging
+>>> logger = multiprocessing.log_to_stderr()
+>>> logger.setLevel(logging.INFO)
+>>> logger.warning('doomed')
+[WARNING/MainProcess] doomed
+>>> m = multiprocessing.Manager()
+[INFO/SyncManager-...] child process calling self.run()
+[INFO/SyncManager-...] created temp directory /.../pymp-...
+[INFO/SyncManager-...] manager serving at '/.../listener-...'
+>>> del m
+[INFO/MainProcess] sending shutdown message to manager
+[INFO/SyncManager-...] manager exiting with exitcode 0
+完全なロギングレベルの表については logging モジュールを参照してください。
+
+multiprocessing.dummy モジュール
+multiprocessing.dummy は multiprocessing の API を複製しますが threading モジュールのラッパーでしかありません。
+
+In particular, the Pool function provided by multiprocessing.dummy returns an instance of ThreadPool, which is a subclass of Pool that supports all the same method calls but uses a pool of worker threads rather than worker processes.
+
+class multiprocessing.pool.ThreadPool([processes[, initializer[, initargs]]])
+A thread pool object which controls a pool of worker threads to which jobs can be submitted. ThreadPool instances are fully interface compatible with Pool instances, and their resources must also be properly managed, either by using the pool as a context manager or by calling close() and terminate() manually.
+
+processes is the number of worker threads to use. If processes is None then the number returned by os.cpu_count() is used.
+
+initializer が None ではない場合、各ワーカープロセスは開始時に initializer(*initargs) を呼び出します。
+
+Unlike Pool, maxtasksperchild and context cannot be provided.
+
+注釈 A ThreadPool shares the same interface as Pool, which is designed around a pool of processes and predates the introduction of the concurrent.futures module. As such, it inherits some operations that don't make sense for a pool backed by threads, and it has its own type for representing the status of asynchronous jobs, AsyncResult, that is not understood by any other libraries.
+Users should generally prefer to use concurrent.futures.ThreadPoolExecutor, which has a simpler interface that was designed around threads from the start, and which returns concurrent.futures.Future instances that are compatible with many other libraries, including asyncio.
+
+プログラミングガイドライン
+multiprocessing を使用するときに守るべき一定のガイドラインとイディオムを挙げます。
+
+すべての開始方式について
+以下はすべての開始方式に当てはまります。
+
+共有状態を避ける
+
+できるだけプロセス間で巨大なデータを移動することは避けるようにすべきです。
+
+プロセス間の通信には、threading モジュールの低レベルな同期プリミティブを使うのではなく、キューやパイプを使うのが良いでしょう。
+
+pickle 化の可能性
+
+プロキシのメソッドへの引数は、 pickle 化できるものにしてください。
+
+プロキシのスレッドセーフ性
+
+1 つのプロキシオブジェクトは、ロックで保護しないかぎり、2 つ以上のスレッドから使用してはいけません。
+
+(異なるプロセスで 同じ プロキシを使用することは問題ではありません。)
+
+ゾンビプロセスを join する
+
+Unix 上ではプロセスが終了したときに join しないと、そのプロセスはゾンビになります。新たなプロセスが開始する (または active_children() が呼ばれる) ときに、join されていないすべての完了プロセスが join されるので、あまり多くにはならないでしょう。また、終了したプロセスの Process.is_alive はそのプロセスを join します。そうは言っても、自分で開始したすべてのプロセスを明示的に join することはおそらく良いプラクティスです。
+
+pickle/unpickle より継承する方が良い
+
+開始方式に spawn あるいは forkserver を使用している場合、multiprocessing から多くの型を pickle 化する必要があるため子プロセスはそれらを使うことができます。しかし、一般にパイプやキューを使用して共有オブジェクトを他のプロセスに送信することは避けるべきです。代わりに、共有リソースにアクセスする必要のあるプロセスは上位プロセスからそれらを継承するようにすべきです。
+
+プロセスの強制終了を避ける
+
+あるプロセスを停止するために Process.terminate メソッドを使用すると、そのプロセスが現在使用されている (ロック、セマフォ、パイプやキューのような) 共有リソースを破壊したり他のプロセスから利用できない状態を引き起こし易いです。
+
+そのため、共有リソースを使用しないプロセスでのみ Process.terminate を使用することを考慮することがおそらく最善の方法です。
+
+キューを使用するプロセスを join する
+
+キューに要素を追加するプロセスは、すべてのバッファーされた要素が "feeder" スレッドによって下位層のパイプに対してフィードされるまで終了を待つということを覚えておいてください。 (子プロセスはこの動作を避けるためにキューの Queue.cancel_join_thread メソッドを呼ぶことができます。)
+
+これはキューを使用するときに、キューに追加されたすべての要素が最終的にそのプロセスが join される前に削除されていることを確認する必要があることを意味します。そうしないと、そのキューに要素が追加したプロセスの終了を保証できません。デーモンではないプロセスは自動的に join されることも覚えておいてください。
+
+次の例はデッドロックを引き起こします:
+
+from multiprocessing import Process, Queue
+
+def f(q):
+    q.put('X' * 1000000)
+
+if __name__ == '__main__':
+    queue = Queue()
+    p = Process(target=f, args=(queue,))
+    p.start()
+    p.join()                    # this deadlocks
+    obj = queue.get()
+修正するには最後の2行を入れ替えます(または単純に p.join() の行を削除します)。
+
+明示的に子プロセスへリソースを渡す
+
+Unix で開始方式に fork を使用している場合、子プロセスはグローバルリソースを使用した親プロセス内で作成された共有リソースを使用できます。しかし、オブジェクトを子プロセスのコンストラクターに引数として渡すべきです。
+
+Windows や他の開始方式と (将来的にでも) 互換性のあるコードを書く場合は別として、これは子プロセスが実行中である限りは親プロセス内でオブジェクトがガベージコレクトされないことも保証します。これは親プロセス内でオブジェクトがガベージコレクトされたときに一部のリソースが開放されてしまう場合に重要かもしれません。
+
+そのため、例えば
+
+from multiprocessing import Process, Lock
+
+def f():
+    ... do something using "lock" ...
+
+if __name__ == '__main__':
+    lock = Lock()
+    for i in range(10):
+        Process(target=f).start()
+は、次のように書き直すべきです
+
+from multiprocessing import Process, Lock
+
+def f(l):
+    ... do something using "l" ...
+
+if __name__ == '__main__':
+    lock = Lock()
+    for i in range(10):
+        Process(target=f, args=(lock,)).start()
+sys.stdin を file-like オブジェクトに置き換えることに注意する
+
+multiprocessing は元々無条件に:
+
+os.close(sys.stdin.fileno())
+を multiprocessing.Process._bootstrap() メソッドの中で呼び出していました --- これはプロセス内プロセス (processes-in-processes) で問題が起こしてしまいます。そこで、これは以下のように変更されました:
+
+sys.stdin.close()
+sys.stdin = open(os.open(os.devnull, os.O_RDONLY), closefd=False)
+これによってプロセス同士が衝突して bad file descripter エラーを起こすという根本的な問題は解決しましたが、アプリケーションの出力バッファーを sys.stdin() から "file-like オブジェクト" に置き換えるという潜在的危険を持ち込んでしまいました。危険というのは、複数のプロセスが file-like オブジェクトの close() を呼び出すと、オブジェクトに同じデータが何度もフラッシュされ、破損してしまう可能性がある、というものです。
+
+もし file-like オブジェクトを書いて独自のキャッシュを実装するなら、キャッシュするときに常に pid を記録しておき、pid が変わったらキュッシュを捨てることで、フォークセーフにできます。例:
+
+@property
+def cache(self):
+    pid = os.getpid()
+    if pid != self._pid:
+        self._pid = pid
+        self._cache = []
+    return self._cache
+より詳しい情報は bpo-5155 、 bpo-5313 、 bpo-5331 を見てください
+
+開始方式が spawn および forkserver の場合
+開始方式に fork を適用しない場合にいくつかの追加の制限事項があります。
+
+さらなる pickle 化の可能性
+
+Process.__init__() へのすべての引数は pickle 化できることを確認してください。また Process をサブクラス化する場合、そのインスタンスが Process.start メソッドが呼ばれたときに pickle 化できるようにしてください。
+
+グローバル変数
+
+子プロセスで実行されるコードがグローバル変数にアクセスしようとする場合、子プロセスが見るその値は Process.start が呼ばれたときの親プロセスの値と同じではない可能性があります。
+
+しかし、単にモジュールレベルの定数であるグローバル変数なら問題にはなりません。
+
+メインモジュールの安全なインポート
+
+新たな Python インタプリタによるメインモジュールのインポートが、意図しない副作用 (新たなプロセスを開始する等) を起こさずできるようにしてください。
+
+例えば、開始方式に spawn あるいは forkserver を使用した場合に以下のモジュールを実行すると RuntimeError で失敗します:
+
+from multiprocessing import Process
+
+def foo():
+    print('hello')
+
+p = Process(target=foo)
+p.start()
+代わりに、次のように if __name__ == '__main__': を使用してプログラムの "エントリポイント" を保護すべきです:
+
+from multiprocessing import Process, freeze_support, set_start_method
+
+def foo():
+    print('hello')
+
+if __name__ == '__main__':
+    freeze_support()
+    set_start_method('spawn')
+    p = Process(target=foo)
+    p.start()
+(プログラムをフリーズせずに通常通り実行するなら freeze_support() 行は取り除けます。)
+
+これは新たに生成された Python インタープリターがそのモジュールを安全にインポートして、モジュールの foo() 関数を実行します。
+
+プールまたはマネージャーがメインモジュールで作成される場合に似たような制限が適用されます。
+
+使用例
+カスタマイズされたマネージャーやプロキシの作成方法と使用方法を紹介します:
+
+from multiprocessing import freeze_support
+from multiprocessing.managers import BaseManager, BaseProxy
+import operator
+
+##
+
+class Foo:
+    def f(self):
+        print('you called Foo.f()')
+    def g(self):
+        print('you called Foo.g()')
+    def _h(self):
+        print('you called Foo._h()')
+
+# A simple generator function
+def baz():
+    for i in range(10):
+        yield i*i
+
+# Proxy type for generator objects
+class GeneratorProxy(BaseProxy):
+    _exposed_ = ['__next__']
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return self._callmethod('__next__')
+
+# Function to return the operator module
+def get_operator_module():
+    return operator
+
+##
+
+class MyManager(BaseManager):
+    pass
+
+# register the Foo class; make `f()` and `g()` accessible via proxy
+MyManager.register('Foo1', Foo)
+
+# register the Foo class; make `g()` and `_h()` accessible via proxy
+MyManager.register('Foo2', Foo, exposed=('g', '_h'))
+
+# register the generator function baz; use `GeneratorProxy` to make proxies
+MyManager.register('baz', baz, proxytype=GeneratorProxy)
+
+# register get_operator_module(); make public functions accessible via proxy
+MyManager.register('operator', get_operator_module)
+
+##
+
+def test():
+    manager = MyManager()
+    manager.start()
+
+    print('-' * 20)
+
+    f1 = manager.Foo1()
+    f1.f()
+    f1.g()
+    assert not hasattr(f1, '_h')
+    assert sorted(f1._exposed_) == sorted(['f', 'g'])
+
+    print('-' * 20)
+
+    f2 = manager.Foo2()
+    f2.g()
+    f2._h()
+    assert not hasattr(f2, 'f')
+    assert sorted(f2._exposed_) == sorted(['g', '_h'])
+
+    print('-' * 20)
+
+    it = manager.baz()
+    for i in it:
+        print('<%d>' % i, end=' ')
+    print()
+
+    print('-' * 20)
+
+    op = manager.operator()
+    print('op.add(23, 45) =', op.add(23, 45))
+    print('op.pow(2, 94) =', op.pow(2, 94))
+    print('op._exposed_ =', op._exposed_)
+
+##
+
+if __name__ == '__main__':
+    freeze_support()
+    test()
+Pool を使用する例です:
+
+import multiprocessing
+import time
+import random
+import sys
+
+#
+# Functions used by test code
+#
+
+def calculate(func, args):
+    result = func(*args)
+    return '%s says that %s%s = %s' % (
+        multiprocessing.current_process().name,
+        func.__name__, args, result
+        )
+
+def calculatestar(args):
+    return calculate(*args)
+
+def mul(a, b):
+    time.sleep(0.5 * random.random())
+    return a * b
+
+def plus(a, b):
+    time.sleep(0.5 * random.random())
+    return a + b
+
+def f(x):
+    return 1.0 / (x - 5.0)
+
+def pow3(x):
+    return x ** 3
+
+def noop(x):
+    pass
+
+#
+# Test code
+#
+
+def test():
+    PROCESSES = 4
+    print('Creating pool with %d processes\n' % PROCESSES)
+
+    with multiprocessing.Pool(PROCESSES) as pool:
+        #
+        # Tests
+        #
+
+        TASKS = [(mul, (i, 7)) for i in range(10)] + \
+                [(plus, (i, 8)) for i in range(10)]
+
+        results = [pool.apply_async(calculate, t) for t in TASKS]
+        imap_it = pool.imap(calculatestar, TASKS)
+        imap_unordered_it = pool.imap_unordered(calculatestar, TASKS)
+
+        print('Ordered results using pool.apply_async():')
+        for r in results:
+            print('\t', r.get())
+        print()
+
+        print('Ordered results using pool.imap():')
+        for x in imap_it:
+            print('\t', x)
+        print()
+
+        print('Unordered results using pool.imap_unordered():')
+        for x in imap_unordered_it:
+            print('\t', x)
+        print()
+
+        print('Ordered results using pool.map() --- will block till complete:')
+        for x in pool.map(calculatestar, TASKS):
+            print('\t', x)
+        print()
+
+        #
+        # Test error handling
+        #
+
+        print('Testing error handling:')
+
+        try:
+            print(pool.apply(f, (5,)))
+        except ZeroDivisionError:
+            print('\tGot ZeroDivisionError as expected from pool.apply()')
+        else:
+            raise AssertionError('expected ZeroDivisionError')
+
+        try:
+            print(pool.map(f, list(range(10))))
+        except ZeroDivisionError:
+            print('\tGot ZeroDivisionError as expected from pool.map()')
+        else:
+            raise AssertionError('expected ZeroDivisionError')
+
+        try:
+            print(list(pool.imap(f, list(range(10)))))
+        except ZeroDivisionError:
+            print('\tGot ZeroDivisionError as expected from list(pool.imap())')
+        else:
+            raise AssertionError('expected ZeroDivisionError')
+
+        it = pool.imap(f, list(range(10)))
+        for i in range(10):
+            try:
+                x = next(it)
+            except ZeroDivisionError:
+                if i == 5:
+                    pass
+            except StopIteration:
+                break
+            else:
+                if i == 5:
+                    raise AssertionError('expected ZeroDivisionError')
+
+        assert i == 9
+        print('\tGot ZeroDivisionError as expected from IMapIterator.next()')
+        print()
+
+        #
+        # Testing timeouts
+        #
+
+        print('Testing ApplyResult.get() with timeout:', end=' ')
+        res = pool.apply_async(calculate, TASKS[0])
+        while 1:
+            sys.stdout.flush()
+            try:
+                sys.stdout.write('\n\t%s' % res.get(0.02))
+                break
+            except multiprocessing.TimeoutError:
+                sys.stdout.write('.')
+        print()
+        print()
+
+        print('Testing IMapIterator.next() with timeout:', end=' ')
+        it = pool.imap(calculatestar, TASKS)
+        while 1:
+            sys.stdout.flush()
+            try:
+                sys.stdout.write('\n\t%s' % it.next(0.02))
+            except StopIteration:
+                break
+            except multiprocessing.TimeoutError:
+                sys.stdout.write('.')
+        print()
+        print()
+
+
+if __name__ == '__main__':
+    multiprocessing.freeze_support()
+    test()
+ワーカープロセスのコレクションに対してタスクをフィードしてその結果をまとめるキューの使い方の例を紹介します:
+
+import time
+import random
+
+from multiprocessing import Process, Queue, current_process, freeze_support
+
+#
+# Function run by worker processes
+#
+
+def worker(input, output):
+    for func, args in iter(input.get, 'STOP'):
+        result = calculate(func, args)
+        output.put(result)
+
+#
+# Function used to calculate result
+#
+
+def calculate(func, args):
+    result = func(*args)
+    return '%s says that %s%s = %s' % \
+        (current_process().name, func.__name__, args, result)
+
+#
+# Functions referenced by tasks
+#
+
+def mul(a, b):
+    time.sleep(0.5*random.random())
+    return a * b
+
+def plus(a, b):
+    time.sleep(0.5*random.random())
+    return a + b
+
+#
+#
+#
+
+def test():
+    NUMBER_OF_PROCESSES = 4
+    TASKS1 = [(mul, (i, 7)) for i in range(20)]
+    TASKS2 = [(plus, (i, 8)) for i in range(10)]
+
+    # Create queues
+    task_queue = Queue()
+    done_queue = Queue()
+
+    # Submit tasks
+    for task in TASKS1:
+        task_queue.put(task)
+
+    # Start worker processes
+    for i in range(NUMBER_OF_PROCESSES):
+        Process(target=worker, args=(task_queue, done_queue)).start()
+
+    # Get and print results
+    print('Unordered results:')
+    for i in range(len(TASKS1)):
+        print('\t', done_queue.get())
+
+    # Add more tasks using `put()`
+    for task in TASKS2:
+        task_queue.put(task)
+
+    # Get and print some more results
+    for i in range(len(TASKS2)):
+        print('\t', done_queue.get())
+
+    # Tell child processes to stop
+    for i in range(NUMBER_OF_PROCESSES):
+        task_queue.put('STOP')
+
+
+if __name__ == '__main__':
+    freeze_support()
+    test()
+
+multiprocessing.shared_memory --- 異なるプロセスから参照可能な共有メモリ
+ソースコード Lib/multiprocessing/shared_memory.py
+
+バージョン 3.8 で追加.
+
+このモジュールは、マルチコアもしくは対称型マルチプロセッサ(SMP) を持つマシン上で実行される、ひとつ以上のプロセスから参照される共有メモリの確保、管理を行うための:class:SharedMemory クラスを提供します。共有メモリのライフサイクル管理、とりわけ複数のプロセスにわたる場合のために、multiprocessing.managers モジュールで、BaseManager サブクラスと:class:SharedMemoryManager が提供されます。
+
+In this module, shared memory refers to "System V style" shared memory blocks (though is not necessarily implemented explicitly as such) and does not refer to "distributed shared memory". This style of shared memory permits distinct processes to potentially read and write to a common (or shared) region of volatile memory. Processes are conventionally limited to only have access to their own process memory space but shared memory permits the sharing of data between processes, avoiding the need to instead send messages between processes containing that data. Sharing data directly via memory can provide significant performance benefits compared to sharing data via disk or socket or other communications requiring the serialization/deserialization and copying of data.
+
+class multiprocessing.shared_memory.SharedMemory(name=None, create=False, size=0)
+Creates a new shared memory block or attaches to an existing shared memory block. Each shared memory block is assigned a unique name. In this way, one process can create a shared memory block with a particular name and a different process can attach to that same shared memory block using that same name.
+
+As a resource for sharing data across processes, shared memory blocks may outlive the original process that created them. When one process no longer needs access to a shared memory block that might still be needed by other processes, the close() method should be called. When a shared memory block is no longer needed by any process, the unlink() method should be called to ensure proper cleanup.
+
+name is the unique name for the requested shared memory, specified as a string. When creating a new shared memory block, if None (the default) is supplied for the name, a novel name will be generated.
+
+create controls whether a new shared memory block is created (True) or an existing shared memory block is attached (False).
+
+size specifies the requested number of bytes when creating a new shared memory block. Because some platforms choose to allocate chunks of memory based upon that platform's memory page size, the exact size of the shared memory block may be larger or equal to the size requested. When attaching to an existing shared memory block, the size parameter is ignored.
+
+close()
+Closes access to the shared memory from this instance. In order to ensure proper cleanup of resources, all instances should call close() once the instance is no longer needed. Note that calling close() does not cause the shared memory block itself to be destroyed.
+
+unlink()
+Requests that the underlying shared memory block be destroyed. In order to ensure proper cleanup of resources, unlink() should be called once (and only once) across all processes which have need for the shared memory block. After requesting its destruction, a shared memory block may or may not be immediately destroyed and this behavior may differ across platforms. Attempts to access data inside the shared memory block after unlink() has been called may result in memory access errors. Note: the last process relinquishing its hold on a shared memory block may call unlink() and close() in either order.
+
+buf
+A memoryview of contents of the shared memory block.
+
+name
+Read-only access to the unique name of the shared memory block.
+
+size
+Read-only access to size in bytes of the shared memory block.
+
+The following example demonstrates low-level use of SharedMemory instances:
+
+>>>
+>>> from multiprocessing import shared_memory
+>>> shm_a = shared_memory.SharedMemory(create=True, size=10)
+>>> type(shm_a.buf)
+<class 'memoryview'>
+>>> buffer = shm_a.buf
+>>> len(buffer)
+10
+>>> buffer[:4] = bytearray([22, 33, 44, 55])  # Modify multiple at once
+>>> buffer[4] = 100                           # Modify single byte at a time
+>>> # Attach to an existing shared memory block
+>>> shm_b = shared_memory.SharedMemory(shm_a.name)
+>>> import array
+>>> array.array('b', shm_b.buf[:5])  # Copy the data into a new array.array
+array('b', [22, 33, 44, 55, 100])
+>>> shm_b.buf[:5] = b'howdy'  # Modify via shm_b using bytes
+>>> bytes(shm_a.buf[:5])      # Access via shm_a
+b'howdy'
+>>> shm_b.close()   # Close each SharedMemory instance
+>>> shm_a.close()
+>>> shm_a.unlink()  # Call unlink only once to release the shared memory
+The following example demonstrates a practical use of the SharedMemory class with NumPy arrays, accessing the same numpy.ndarray from two distinct Python shells:
+
+>>> # In the first Python interactive shell
+>>> import numpy as np
+>>> a = np.array([1, 1, 2, 3, 5, 8])  # Start with an existing NumPy array
+>>> from multiprocessing import shared_memory
+>>> shm = shared_memory.SharedMemory(create=True, size=a.nbytes)
+>>> # Now create a NumPy array backed by shared memory
+>>> b = np.ndarray(a.shape, dtype=a.dtype, buffer=shm.buf)
+>>> b[:] = a[:]  # Copy the original data into shared memory
+>>> b
+array([1, 1, 2, 3, 5, 8])
+>>> type(b)
+<class 'numpy.ndarray'>
+>>> type(a)
+<class 'numpy.ndarray'>
+>>> shm.name  # We did not specify a name so one was chosen for us
+'psm_21467_46075'
+
+>>> # In either the same shell or a new Python shell on the same machine
+>>> import numpy as np
+>>> from multiprocessing import shared_memory
+>>> # Attach to the existing shared memory block
+>>> existing_shm = shared_memory.SharedMemory(name='psm_21467_46075')
+>>> # Note that a.shape is (6,) and a.dtype is np.int64 in this example
+>>> c = np.ndarray((6,), dtype=np.int64, buffer=existing_shm.buf)
+>>> c
+array([1, 1, 2, 3, 5, 8])
+>>> c[-1] = 888
+>>> c
+array([  1,   1,   2,   3,   5, 888])
+
+>>> # Back in the first Python interactive shell, b reflects this change
+>>> b
+array([  1,   1,   2,   3,   5, 888])
+
+>>> # Clean up from within the second Python shell
+>>> del c  # Unnecessary; merely emphasizing the array is no longer used
+>>> existing_shm.close()
+
+>>> # Clean up from within the first Python shell
+>>> del b  # Unnecessary; merely emphasizing the array is no longer used
+>>> shm.close()
+>>> shm.unlink()  # Free and release the shared memory block at the very end
+class multiprocessing.managers.SharedMemoryManager([address[, authkey]])
+A subclass of BaseManager which can be used for the management of shared memory blocks across processes.
+
+A call to start() on a SharedMemoryManager instance causes a new process to be started. This new process's sole purpose is to manage the life cycle of all shared memory blocks created through it. To trigger the release of all shared memory blocks managed by that process, call shutdown() on the instance. This triggers a SharedMemory.unlink() call on all of the SharedMemory objects managed by that process and then stops the process itself. By creating SharedMemory instances through a SharedMemoryManager, we avoid the need to manually track and trigger the freeing of shared memory resources.
+
+This class provides methods for creating and returning SharedMemory instances and for creating a list-like object (ShareableList) backed by shared memory.
+
+Refer to multiprocessing.managers.BaseManager for a description of the inherited address and authkey optional input arguments and how they may be used to connect to an existing SharedMemoryManager service from other processes.
+
+SharedMemory(size)
+Create and return a new SharedMemory object with the specified size in bytes.
+
+ShareableList(sequence)
+Create and return a new ShareableList object, initialized by the values from the input sequence.
+
+The following example demonstrates the basic mechanisms of a SharedMemoryManager:
+
+>>> from multiprocessing.managers import SharedMemoryManager
+>>> smm = SharedMemoryManager()
+>>> smm.start()  # Start the process that manages the shared memory blocks
+>>> sl = smm.ShareableList(range(4))
+>>> sl
+ShareableList([0, 1, 2, 3], name='psm_6572_7512')
+>>> raw_shm = smm.SharedMemory(size=128)
+>>> another_sl = smm.ShareableList('alpha')
+>>> another_sl
+ShareableList(['a', 'l', 'p', 'h', 'a'], name='psm_6572_12221')
+>>> smm.shutdown()  # Calls unlink() on sl, raw_shm, and another_sl
+The following example depicts a potentially more convenient pattern for using SharedMemoryManager objects via the with statement to ensure that all shared memory blocks are released after they are no longer needed:
+
+>>> with SharedMemoryManager() as smm:
+...     sl = smm.ShareableList(range(2000))
+...     # Divide the work among two processes, storing partial results in sl
+...     p1 = Process(target=do_work, args=(sl, 0, 1000))
+...     p2 = Process(target=do_work, args=(sl, 1000, 2000))
+...     p1.start()
+...     p2.start()  # A multiprocessing.Pool might be more efficient
+...     p1.join()
+...     p2.join()   # Wait for all work to complete in both processes
+...     total_result = sum(sl)  # Consolidate the partial results now in sl
+When using a SharedMemoryManager in a with statement, the shared memory blocks created using that manager are all released when the with statement's code block finishes execution.
+
+class multiprocessing.shared_memory.ShareableList(sequence=None, *, name=None)
+Provides a mutable list-like object where all values stored within are stored in a shared memory block. This constrains storable values to only the int, float, bool, str (less than 10M bytes each), bytes (less than 10M bytes each), and None built-in data types. It also notably differs from the built-in list type in that these lists can not change their overall length (i.e. no append, insert, etc.) and do not support the dynamic creation of new ShareableList instances via slicing.
+
+sequence is used in populating a new ShareableList full of values. Set to None to instead attach to an already existing ShareableList by its unique shared memory name.
+
+name is the unique name for the requested shared memory, as described in the definition for SharedMemory. When attaching to an existing ShareableList, specify its shared memory block's unique name while leaving sequence set to None.
+
+count(value)
+Returns the number of occurrences of value.
+
+index(value)
+Returns first index position of value. Raises ValueError if value is not present.
+
+format
+Read-only attribute containing the struct packing format used by all currently stored values.
+
+shm
+The SharedMemory instance where the values are stored.
+
+The following example demonstrates basic use of a ShareableList instance:
+
+>>>
+from multiprocessing import shared_memory
+a = shared_memory.ShareableList(['howdy', b'HoWdY', -273.154, 100, None, True, 42])
+[ type(entry) for entry in a ]
+[<class 'str'>, <class 'bytes'>, <class 'float'>, <class 'int'>, <class 'NoneType'>, <class 'bool'>, <class 'int'>]
+a[2]
+-273.154
+a[2] = -78.5
+a[2]
+-78.5
+a[2] = 'dry ice'  # Changing data types is supported as well
+a[2]
+'dry ice'
+a[2] = 'larger than previously allocated storage space'
+Traceback (most recent call last):
+  ...
+ValueError: exceeds available storage for existing str
+a[2]
+'dry ice'
+len(a)
+7
+a.index(42)
+6
+a.count(b'howdy')
+0
+a.count(b'HoWdY')
+1
+a.shm.close()
+a.shm.unlink()
+del a  # Use of a ShareableList after call to unlink() is unsupported
+The following example depicts how one, two, or many processes may access the same ShareableList by supplying the name of the shared memory block behind it:
+
+>>>
+b = shared_memory.ShareableList(range(5))         # In a first process
+c = shared_memory.ShareableList(name=b.shm.name)  # In a second process
+c
+ShareableList([0, 1, 2, 3, 4], name='...')
+c[-1] = -999
+b[-1]
+-999
+b.shm.close()
+c.shm.close()
+c.shm.unlink()
+
+concurrent.futures -- 並列タスク実行
+バージョン 3.2 で追加.
+
+ソースコード: Lib/concurrent/futures/thread.py および Lib/concurrent/futures/process.py
+
+concurrent.futures モジュールは、非同期に実行できる呼び出し可能オブジェクトの高水準のインターフェースを提供します。
+
+非同期実行は ThreadPoolExecutor を用いてスレッドで実行することも、 ProcessPoolExecutor を用いて別々のプロセスで実行することもできます. どちらも Executor 抽象クラスで定義された同じインターフェースを実装します。
+
+Executor オブジェクト
+class concurrent.futures.Executor
+非同期呼び出しを実行するためのメソッドを提供する抽象クラスです。このクラスを直接使ってはならず、具象サブクラスを介して使います。
+
+submit(fn, /, *args, **kwargs)
+呼び出し可能オブジェクト fn を、 fn(*args **kwargs) として実行するようにスケジュールし、呼び出し可能オブジェクトの実行を表現する Future オブジェクトを返します。
+
+with ThreadPoolExecutor(max_workers=1) as executor:
+    future = executor.submit(pow, 323, 1235)
+    print(future.result())
+map(func, *iterables, timeout=None, chunksize=1)
+Similar to map(func, *iterables) except:
+
+the iterables are collected immediately rather than lazily;
+
+func is executed asynchronously and several calls to func may be made concurrently.
+
+The returned iterator raises a concurrent.futures.TimeoutError if __next__() is called and the result isn't available after timeout seconds from the original call to Executor.map(). timeout can be an int or a float. If timeout is not specified or None, there is no limit to the wait time.
+
+If a func call raises an exception, then that exception will be raised when its value is retrieved from the iterator.
+
+When using ProcessPoolExecutor, this method chops iterables into a number of chunks which it submits to the pool as separate tasks. The (approximate) size of these chunks can be specified by setting chunksize to a positive integer. For very long iterables, using a large value for chunksize can significantly improve performance compared to the default size of 1. With ThreadPoolExecutor, chunksize has no effect.
+
+バージョン 3.5 で変更: chunksize 引数が追加されました。
+
+shutdown(wait=True, *, cancel_futures=False)
+executor に対して、現在保留中のフューチャーが実行された後で、使用中のすべての資源を解放するように伝えます。シャットダウンにより後に Executor.submit() と Executor.map() を呼び出すと RuntimeError が送出されます。
+
+wait が True の場合、すべての未完了のフューチャの実行が完了して Executor に関連付けられたリソースが解放されるまで、このメソッドは返りません。 wait が False の場合、このメソッドはすぐに返り、すべての未完了のフューチャの実行が完了したときに、 Executor に関連付けられたリソースが解放されます。 wait の値に関係なく、すべての未完了のフューチャの実行が完了するまで Python プログラム全体は終了しません。
+
+If cancel_futures is True, this method will cancel all pending futures that the executor has not started running. Any futures that are completed or running won't be cancelled, regardless of the value of cancel_futures.
+
+If both cancel_futures and wait are True, all futures that the executor has started running will be completed prior to this method returning. The remaining futures are cancelled.
+
+with 文を使用することで、このメソッドを明示的に呼ばないようにできます。 with 文は Executor をシャットダウンします (wait を True にセットして Executor.shutdown() が呼ばれたかのように待ちます)。
+
+import shutil
+with ThreadPoolExecutor(max_workers=4) as e:
+    e.submit(shutil.copy, 'src1.txt', 'dest1.txt')
+    e.submit(shutil.copy, 'src2.txt', 'dest2.txt')
+    e.submit(shutil.copy, 'src3.txt', 'dest3.txt')
+    e.submit(shutil.copy, 'src4.txt', 'dest4.txt')
+バージョン 3.9 で変更: Added cancel_futures.
+
+ThreadPoolExecutor
+ThreadPoolExecutor はスレッドのプールを使用して非同期に呼び出しを行う、 Executor のサブクラスです。
+
+Future に関連づけられた呼び出し可能オブジェクトが、別の Future の結果を待つ時にデッドロックすることがあります。例:
+
+import time
+def wait_on_b():
+    time.sleep(5)
+    print(b.result())  # b will never complete because it is waiting on a.
+    return 5
+
+def wait_on_a():
+    time.sleep(5)
+    print(a.result())  # a will never complete because it is waiting on b.
+    return 6
+
+
+executor = ThreadPoolExecutor(max_workers=2)
+a = executor.submit(wait_on_b)
+b = executor.submit(wait_on_a)
+以下でも同様です:
+
+def wait_on_future():
+    f = executor.submit(pow, 5, 2)
+    # This will never complete because there is only one worker thread and
+    # it is executing this function.
+    print(f.result())
+
+executor = ThreadPoolExecutor(max_workers=1)
+executor.submit(wait_on_future)
+class concurrent.futures.ThreadPoolExecutor(max_workers=None, thread_name_prefix='', initializer=None, initargs=())
+最大で max_workers 個のスレッドを非同期実行に使う Executor のサブクラスです。
+
+initializer is an optional callable that is called at the start of each worker thread; initargs is a tuple of arguments passed to the initializer. Should initializer raise an exception, all currently pending jobs will raise a BrokenThreadPool, as well as any attempt to submit more jobs to the pool.
+
+バージョン 3.5 で変更: max_workers が None か指定されない場合のデフォルト値はマシンのプロセッサの数に 5 を掛けたものになります。これは、 ThreadPoolExecutor は CPU の処理ではなく I/O をオーバーラップするのによく使用されるため、 ProcessPoolExecutor のワーカーの数よりもこのワーカーの数を増やすべきであるという想定に基づいています。
+
+バージョン 3.6 で追加: The thread_name_prefix argument was added to allow users to control the threading.Thread names for worker threads created by the pool for easier debugging.
+
+バージョン 3.7 で変更: Added the initializer and initargs arguments.
+
+バージョン 3.8 で変更: Default value of max_workers is changed to min(32, os.cpu_count() + 4). This default value preserves at least 5 workers for I/O bound tasks. It utilizes at most 32 CPU cores for CPU bound tasks which release the GIL. And it avoids using very large resources implicitly on many-core machines.
+
+ThreadPoolExecutor now reuses idle worker threads before starting max_workers worker threads too.
+
+ThreadPoolExecutor の例
+import concurrent.futures
+import urllib.request
+
+URLS = ['http://www.foxnews.com/',
+        'http://www.cnn.com/',
+        'http://europe.wsj.com/',
+        'http://www.bbc.co.uk/',
+        'http://some-made-up-domain.com/']
+
+# Retrieve a single page and report the URL and contents
+def load_url(url, timeout):
+    with urllib.request.urlopen(url, timeout=timeout) as conn:
+        return conn.read()
+
+# We can use a with statement to ensure threads are cleaned up promptly
+with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    # Start the load operations and mark each future with its URL
+    future_to_url = {executor.submit(load_url, url, 60): url for url in URLS}
+    for future in concurrent.futures.as_completed(future_to_url):
+        url = future_to_url[future]
+        try:
+            data = future.result()
+        except Exception as exc:
+            print('%r generated an exception: %s' % (url, exc))
+        else:
+            print('%r page is %d bytes' % (url, len(data)))
+ProcessPoolExecutor
+The ProcessPoolExecutor class is an Executor subclass that uses a pool of processes to execute calls asynchronously. ProcessPoolExecutor uses the multiprocessing module, which allows it to side-step the Global Interpreter Lock but also means that only picklable objects can be executed and returned.
+
+__main__ モジュールはワーカサブプロセスでインポート可能でなければなりません。 すなわち、 ProcessPoolExecutor は対話的インタープリタでは動きません。
+
+ProcessPoolExecutor に渡された呼び出し可能オブジェクトから Executor や Future メソッドを呼ぶとデッドロックに陥ります。
+
+class concurrent.futures.ProcessPoolExecutor(max_workers=None, mp_context=None, initializer=None, initargs=())
+An Executor subclass that executes calls asynchronously using a pool of at most max_workers processes. If max_workers is None or not given, it will default to the number of processors on the machine. If max_workers is less than or equal to 0, then a ValueError will be raised. On Windows, max_workers must be less than or equal to 61. If it is not then ValueError will be raised. If max_workers is None, then the default chosen will be at most 61, even if more processors are available. mp_context can be a multiprocessing context or None. It will be used to launch the workers. If mp_context is None or not given, the default multiprocessing context is used.
+
+initializer is an optional callable that is called at the start of each worker process; initargs is a tuple of arguments passed to the initializer. Should initializer raise an exception, all currently pending jobs will raise a BrokenProcessPool, as well as any attempt to submit more jobs to the pool.
+
+バージョン 3.3 で変更: ワーカプロセスの1つが突然終了した場合、BrokenProcessPool エラーが送出されるようになりました。 以前は挙動は未定義でしたが、 executor や futures がフリーズしたりデッドロックを起こすことがしばしばでした。
+
+バージョン 3.7 で変更: The mp_context argument was added to allow users to control the start_method for worker processes created by the pool.
+
+Added the initializer and initargs arguments.
+
+ProcessPoolExecutor の例
+import concurrent.futures
+import math
+
+PRIMES = [
+    112272535095293,
+    112582705942171,
+    112272535095293,
+    115280095190773,
+    115797848077099,
+    1099726899285419]
+
+def is_prime(n):
+    if n < 2:
+        return False
+    if n == 2:
+        return True
+    if n % 2 == 0:
+        return False
+
+    sqrt_n = int(math.floor(math.sqrt(n)))
+    for i in range(3, sqrt_n + 1, 2):
+        if n % i == 0:
+            return False
+    return True
+
+def main():
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for number, prime in zip(PRIMES, executor.map(is_prime, PRIMES)):
+            print('%d is prime: %s' % (number, prime))
+
+if __name__ == '__main__':
+    main()
+Future オブジェクト
+Future クラスは呼び出し可能オブジェクトの非同期実行をカプセル化します。 Future のインスタンスは Executor.submit() によって生成されます。
+
+class concurrent.futures.Future
+呼び出し可能オブジェクトの非同期実行をカプセル化します。 Future インスタンスは Executor.submit() で生成され、テストを除いて直接生成すべきではありません。
+
+cancel()
+Attempt to cancel the call. If the call is currently being executed or finished running and cannot be cancelled then the method will return False, otherwise the call will be cancelled and the method will return True.
+
+cancelled()
+呼び出しが正常にキャンセルされた場合 True を返します。
+
+running()
+現在呼び出しが実行中でキャンセルできない場合 True を返します。
+
+done()
+呼び出しが正常にキャンセルされたか終了した場合 True を返します。
+
+result(timeout=None)
+呼び出しによって返された値を返します。呼び出しがまだ完了していない場合、このメソッドは timeout 秒の間待機します。呼び出しが timeout 秒間の間に完了しない場合、 concurrent.futures.TimeoutError が送出されます。 timeout にはintかfloatを指定できます。timeout が指定されていないか、 None である場合、待機時間に制限はありません。
+
+future が完了する前にキャンセルされた場合 CancelledError が送出されます。
+
+呼び出しが例外を送出した場合、このメソッドは同じ例外を送出します。
+
+exception(timeout=None)
+呼び出しによって送出された例外を返します。呼び出しがまだ完了していない場合、このメソッドは timeout 秒だけ待機します。呼び出しが timeout 秒の間に完了しない場合、 concurrent.futures.TimeoutError が送出されます。 timeout にはintかfloatを指定できます。 timeout が指定されていないか、 None である場合、待機時間に制限はありません。
+
+future が完了する前にキャンセルされた場合 CancelledError が送出されます。
+
+呼び出しが例外を送出することなく完了した場合、None を返します。
+
+add_done_callback(fn)
+呼び出し可能な fn オブジェクトを future にアタッチします。futureがキャンセルされたか、実行を終了した際に、future をそのただ一つの引数として fn が呼び出されます。
+
+追加された呼び出し可能オブジェクトは、追加された順番で呼びだされ、追加を行ったプロセスに属するスレッド中で呼び出されます。もし呼び出し可能オブジェクトが Exception のサブクラスを送出した場合、それはログに記録され無視されます。呼び出し可能オブジェクトが BaseException のサブクラスを送出した場合の動作は未定義です。
+
+もしfutureがすでに完了しているか、キャンセル済みであれば、fn は即座に実行されます。
+
+以下の Future メソッドは、ユニットテストでの使用と Executor を実装することを意図しています。
+
+set_running_or_notify_cancel()
+このメソッドは、Future に関連付けられたワークやユニットテストによるワークの実行前に、 Executor の実装によってのみ呼び出してください。
+
+このメソッドが False を返す場合、 Future はキャンセルされています。つまり、 Future.cancel() が呼び出されて True が返っています。Future の完了を (as_completed() または wait() により) 待機するすべてのスレッドが起動します。
+
+このメソッドが True を返す場合、 Future はキャンセルされて、実行状態に移行されています。つまり、 Future.running() を呼び出すと True が返ります。
+
+このメソッドは、一度だけ呼び出すことができ、Future.set_result() または Future.set_exception() がキャンセルされた後には呼び出すことができません。
+
+set_result(result)
+Future に関連付けられたワークの結果を result に設定します。
+
+このメソッドは、 Executor の実装またはユニットテストによってのみ使用してください。
+
+バージョン 3.8 で変更: This method raises concurrent.futures.InvalidStateError if the Future is already done.
+
+set_exception(exception)
+Future に関連付けられたワークの結果を Exception exception に設定します。
+
+このメソッドは、 Executor の実装またはユニットテストによってのみ使用してください。
+
+バージョン 3.8 で変更: This method raises concurrent.futures.InvalidStateError if the Future is already done.
+
+モジュール関数
+concurrent.futures.wait(fs, timeout=None, return_when=ALL_COMPLETED)
+Wait for the Future instances (possibly created by different Executor instances) given by fs to complete. Returns a named 2-tuple of sets. The first set, named done, contains the futures that completed (finished or cancelled futures) before the wait completed. The second set, named not_done, contains the futures that did not complete (pending or running futures).
+
+timeout で結果を返すまで待機する最大秒数を指定できます。timeout は整数か浮動小数点数をとります。timeout が指定されないか None の場合、無期限に待機します。
+
+return_when でこの関数がいつ結果を返すか指定します。指定できる値は以下の 定数のどれか一つです:
+
+定数
+
+説明
+
+FIRST_COMPLETED
+
+いずれかのフューチャが終了したかキャンセルされたときに返します。
+
+FIRST_EXCEPTION
+
+いずれかのフューチャが例外の送出で終了した場合に返します。例外を送出したフューチャがない場合は、ALL_COMPLETED と等価になります。
+
+ALL_COMPLETED
+
+すべてのフューチャが終了したかキャンセルされたときに返します。
+
+concurrent.futures.as_completed(fs, timeout=None)
+Returns an iterator over the Future instances (possibly created by different Executor instances) given by fs that yields futures as they complete (finished or cancelled futures). Any futures given by fs that are duplicated will be returned once. Any futures that completed before as_completed() is called will be yielded first. The returned iterator raises a concurrent.futures.TimeoutError if __next__() is called and the result isn't available after timeout seconds from the original call to as_completed(). timeout can be an int or float. If timeout is not specified or None, there is no limit to the wait time.
+
+参考
+PEP 3148 -- futures - execute computations asynchronously
+この機能を Python 標準ライブラリに含めることを述べた提案です。
+
+例外クラス
+exception concurrent.futures.CancelledError
+future がキャンセルされたときに送出されます。
+
+exception concurrent.futures.TimeoutError
+future の操作が与えられたタイムアウトを超過したときに送出されます。
+
+exception concurrent.futures.BrokenExecutor
+Derived from RuntimeError, this exception class is raised when an executor is broken for some reason, and cannot be used to submit or execute new tasks.
+
+バージョン 3.7 で追加.
+
+exception concurrent.futures.InvalidStateError
+Raised when an operation is performed on a future that is not allowed in the current state.
+
+バージョン 3.8 で追加.
+
+exception concurrent.futures.thread.BrokenThreadPool
+Derived from BrokenExecutor, this exception class is raised when one of the workers of a ThreadPoolExecutor has failed initializing.
+
+バージョン 3.7 で追加.
+
+exception concurrent.futures.process.BrokenProcessPool
+Derived from BrokenExecutor (formerly RuntimeError), this exception class is raised when one of the workers of a ProcessPoolExecutor has terminated in a non-clean fashion (for example, if it was killed from the outside).
+
+バージョン 3.3 で追加.
+
+subprocess --- サブプロセス管理
+ソースコード: Lib/subprocess.py
+
+subprocess モジュールは新しいプロセスの開始、入力/出力/エラーパイプの接続、リターンコードの取得を可能とします。このモジュールは以下の古いモジュールや関数を置き換えることを目的としています：
+
+os.system
+os.spawn*
+これらのモジュールや関数の代わりに、subprocess モジュールをどのように使うかについてを以下の節で説明します。
+
+参考 PEP 324 -- subprocess モジュールを提案している PEP
+subprocess モジュールを使う
+サブプロセスを起動するために推奨される方法は、すべての用法を扱える run() 関数を使用することです。より高度な用法では下層の Popen インターフェースを直接使用することもできます。
+
+run() 関数は Python 3.5 で追加されました; 過去のバージョンとの互換性の維持が必要な場合は、古い高水準 API 節をご覧ください。
+
+subprocess.run(args, *, stdin=None, input=None, stdout=None, stderr=None, capture_output=False, shell=False, cwd=None, timeout=None, check=False, encoding=None, errors=None, text=None, env=None, universal_newlines=None, **other_popen_kwargs)
+args で指定されたコマンドを実行します。コマンドの完了を待って、CompletedProcess インスタンスを返します。
+
+上記の引数は、もっともよく使われるものだけ示しており、後述の よく使われる引数 で説明されています (そのためここではキーワード専用引数の表記に省略されています)。関数の完全な使用法を説明しても大部分が Popen コンストラクターの内容と同じになります - この関数のほとんどの引数は Popen インターフェイスに渡されます。(timeout、input および check は除く。)
+
+If capture_output is true, stdout and stderr will be captured. When used, the internal Popen object is automatically created with stdout=PIPE and stderr=PIPE. The stdout and stderr arguments may not be supplied at the same time as capture_output. If you wish to capture and combine both streams into one, use stdout=PIPE and stderr=STDOUT instead of capture_output.
+
+引数 timeout は Popen.communicate() に渡されます。タイムアウトが発生すると、子プロセスは kill され、待機されます。子プロセスが中断されたあと TimeoutExpired が再び送出されます。
+
+The input argument is passed to Popen.communicate() and thus to the subprocess's stdin. If used it must be a byte sequence, or a string if encoding or errors is specified or text is true. When used, the internal Popen object is automatically created with stdin=PIPE, and the stdin argument may not be used as well.
+
+check に真を指定した場合、プロセスが非ゼロの終了コードで終了すると CalledProcessError 例外が送出されます。 この例外の属性には、引数、終了コード、標準出力および標準エラー出力が捕捉できた場合に格納されます。
+
+If encoding or errors are specified, or text is true, file objects for stdin, stdout and stderr are opened in text mode using the specified encoding and errors or the io.TextIOWrapper default. The universal_newlines argument is equivalent to text and is provided for backwards compatibility. By default, file objects are opened in binary mode.
+
+env が None 以外の場合、これは新しいプロセスでの環境変数を定義します。デフォルトでは、子プロセスは現在のプロセスの環境変数を引き継ぎます。 Popen に直接渡されます。
+
+例:
+
+>>>
+>>> subprocess.run(["ls", "-l"])  # doesn't capture output
+CompletedProcess(args=['ls', '-l'], returncode=0)
+
+>>> subprocess.run("exit 1", shell=True, check=True)
+Traceback (most recent call last):
+  ...
+subprocess.CalledProcessError: Command 'exit 1' returned non-zero exit status 1
+
+>>> subprocess.run(["ls", "-l", "/dev/null"], capture_output=True)
+CompletedProcess(args=['ls', '-l', '/dev/null'], returncode=0,
+stdout=b'crw-rw-rw- 1 root root 1, 3 Jan 23 16:23 /dev/null\n', stderr=b'')
+バージョン 3.5 で追加.
+
+バージョン 3.6 で変更: encoding と error が引数に追加されました。
+
+バージョン 3.7 で変更: Added the text parameter, as a more understandable alias of universal_newlines. Added the capture_output parameter.
+
+class subprocess.CompletedProcess
+run() の戻り値。プロセスが終了したことを表します。
+
+args
+プロセスを起動するときに使用された引数。1 個のリストか 1 個の文字列になります。
+
+returncode
+子プロセスの終了コード。一般に、終了ステータス 0 はプロセスが正常に終了したことを示します。
+
+負の値 -N は子プロセスがシグナル N により中止させられたことを示します (POSIX のみ)。
+
+stdout
+子プロセスから補足された標準出力です。バイト列、もしくは run() でエンコーディングが指定された場合、エラーの場合、text=True が指定された場合は文字列です。標準出力が補足できなかったら None になります。
+
+プロセスが stderr=subprocess.STDOUT で実行された場合、標準出力と標準エラー出力が混合されたものがこの属性に格納され、stderr は None になります。
+
+stderr
+子プロセスから補足された標準エラー出力です。バイト列、もしくは run() でエンコーディングが指定された場合、エラーの場合、text=True が指定された場合は文字列です。標準エラー出力が補足できなかったら None になります。
+
+check_returncode()
+returncode が非ゼロの場合、CalledProcessError が送出されます。
+
+バージョン 3.5 で追加.
+
+subprocess.DEVNULL
+Popen の stdin, stdout, stderr 引数に渡して、標準入出力を os.devnull から入出力するように指定するための特殊値です。
+
+バージョン 3.3 で追加.
+
+subprocess.PIPE
+Popen の stdin, stdout, stderr 引数に渡して、標準ストリームに対するパイプを開くことを指定するための特殊値です。Popen.communicate() に非常に有用です。
+
+subprocess.STDOUT
+Popen の stderr 引数に渡して、標準エラー出力が標準出力と同じハンドルに出力されるように指定するための特殊値です。
+
+exception subprocess.SubprocessError
+このモジュールの他のすべての例外のための基底クラスです。
+
+バージョン 3.3 で追加.
+
+exception subprocess.TimeoutExpired
+SubprocessError のサブクラスです。子プロセスの終了を待機している間にタイムアウトが発生した場合に送出されます。
+
+cmd
+子プロセスの生成に使用されるコマンド本文。
+
+timeout
+タイムアウト秒数。
+
+output
+run() または check_output() によって捕捉された子プロセスの出力。捕捉されなかったら None になります。
+
+stdout
+output の別名。stderr と対になります。
+
+stderr
+run() によって捕捉された子プロセスの標準エラー出力。捕捉されなかったら None になります。
+
+バージョン 3.3 で追加.
+
+バージョン 3.5 で変更: 属性 stdout および stderr が追加されました。
+
+exception subprocess.CalledProcessError
+SubprocessError のサブクラスです。check_call() または check_output() によって実行されたプロセスが非ゼロの終了ステータスを返した場合に送出されます。
+
+returncode
+子プロセスの終了ステータスです。もしプロセスがシグナルによって終了したなら、これは負のシグナル番号になります。
+
+cmd
+子プロセスの生成に使用されるコマンド本文。
+
+output
+run() または check_output() によって捕捉された子プロセスの出力。捕捉されなかったら None になります。
+
+stdout
+output の別名。stderr と対になります。
+
+stderr
+run() によって捕捉された子プロセスの標準エラー出力。捕捉されなかったら None になります。
+
+バージョン 3.5 で変更: 属性 stdout および stderr が追加されました。
+
+よく使われる引数
+幅広い使用例をサポートするために、Popen コンストラクター (とその他の簡易関数) は、多くのオプション引数を受け付けます。一般的な用法については、これらの引数の多くはデフォルト値のままで問題ありません。通常必要とされる引数は以下の通りです:
+
+args はすべての呼び出しに必要で、文字列あるいはプログラム引数のシーケンスでなければなりません。一般に、引数のシーケンスを渡す方が望ましいです。なぜなら、モジュールが必要な引数のエスケープやクオート (例えばファイル名中のスペースを許すこと) の面倒を見ることができるためです。単一の文字列を渡す場合、shell は True でなければなりません (以下を参照)。もしくは、その文字列は引数を指定せずに実行される単なるプログラムの名前でなければなりません。
+
+stdin, stdout および stderr には、実行するプログラムの標準入力、標準出力、および標準エラー出力のファイルハンドルをそれぞれ指定します。有効な値は PIPE、DEVNULL、既存のファイル記述子 (正の整数)、既存のファイルオブジェクトおよび None です。PIPE を指定すると新しいパイプが子プロセスに向けて作られます。DEVNULL を指定すると特殊ファイル os.devnull が使用されます。デフォルト設定の None を指定するとリダイレクトは起こりません。子プロセスのファイルハンドルはすべて親から受け継がれます。加えて、stderr を STDOUT にすると、子プロセスの stderr からの出力は stdout と同じファイルハンドルに出力されます。
+
+If encoding or errors are specified, or text (also known as universal_newlines) is true, the file objects stdin, stdout and stderr will be opened in text mode using the encoding and errors specified in the call or the defaults for io.TextIOWrapper.
+
+For stdin, line ending characters '\n' in the input will be converted to the default line separator os.linesep. For stdout and stderr, all line endings in the output will be converted to '\n'. For more information see the documentation of the io.TextIOWrapper class when the newline argument to its constructor is None.
+
+If text mode is not used, stdin, stdout and stderr will be opened as binary streams. No encoding or line ending conversion is performed.
+
+バージョン 3.6 で追加: encoding と error がパラメータに追加されました。
+
+バージョン 3.7 で追加: Added the text parameter as an alias for universal_newlines.
+
+注釈 ファイルオブジェクト Popen.stdin、Popen.stdout ならびに Popen.stderr の改行属性は Popen.communicate() メソッドで更新されません。
+shell が True なら、指定されたコマンドはシェルによって実行されます。あなたが Python を主として (ほとんどのシステムシェル以上の) 強化された制御フローのために使用していて、さらにシェルパイプ、ファイル名ワイルドカード、環境変数展開、~ のユーザーホームディレクトリへの展開のような他のシェル機能への簡単なアクセスを望むなら、これは有用かもしれません。しかしながら、Python 自身が多くのシェル的な機能の実装を提供していることに注意してください (特に glob, fnmatch, os.walk(), os.path.expandvars(), os.path.expanduser(), shutil)。
+
+バージョン 3.3 で変更: universal_newlines が True の場合、クラスはエンコーディング locale.getpreferredencoding() の代わりに locale.getpreferredencoding(False) を使用します。この変更についての詳細は、 io.TextIOWrapper クラスを参照してください。
+
+注釈 shell=True を使う前に セキュリティで考慮すべき点 を読んでください。
+これらのオプションは、他のすべてのオプションとともに Popen コンストラクターのドキュメントの中でより詳細に説明されています。
+
+Popen コンストラクター
+このモジュールの中で、根底のプロセス生成と管理は Popen クラスによって扱われます。簡易関数によってカバーされないあまり一般的でないケースを開発者が扱えるように、Popen クラスは多くの柔軟性を提供しています。
+
+class subprocess.Popen(args, bufsize=-1, executable=None, stdin=None, stdout=None, stderr=None, preexec_fn=None, close_fds=True, shell=False, cwd=None, env=None, universal_newlines=None, startupinfo=None, creationflags=0, restore_signals=True, start_new_session=False, pass_fds=(), *, group=None, extra_groups=None, user=None, umask=-1, encoding=None, errors=None, text=None)
+新しいプロセスで子のプログラムを実行します。POSIX においては、子のプログラムを実行するために、このクラスは os.execvp() のような挙動を使用します。Windows においては、このクラスは Windows の CreateProcess() 関数を使用します。Popen への引数は以下の通りです。
+
+args should be a sequence of program arguments or else a single string or path-like object. By default, the program to execute is the first item in args if args is a sequence. If args is a string, the interpretation is platform-dependent and described below. See the shell and executable arguments for additional differences from the default behavior. Unless otherwise stated, it is recommended to pass args as a sequence.
+
+An example of passing some arguments to an external program as a sequence is:
+
+Popen(["/usr/bin/git", "commit", "-m", "Fixes a bug."])
+POSIX 上では、args が文字列の場合、その文字列は実行すべきプログラムの名前またはパスとして解釈されます。しかし、これはプログラムに引数を渡さない場合にのみ可能です。
+
+注釈 It may not be obvious how to break a shell command into a sequence of arguments, especially in complex cases. shlex.split() can illustrate how to determine the correct tokenization for args:
+>>>
+>>> import shlex, subprocess
+>>> command_line = input()
+/bin/vikings -input eggs.txt -output "spam spam.txt" -cmd "echo '$MONEY'"
+>>> args = shlex.split(command_line)
+>>> print(args)
+['/bin/vikings', '-input', 'eggs.txt', '-output', 'spam spam.txt', '-cmd', "echo '$MONEY'"]
+>>> p = subprocess.Popen(args) # Success!
+特に注意すべき点は、シェル内でスペースで区切られたオプション (-input など) と引数 (eggs.txt など) はリストの別々の要素になるのに対し、シェル内で (上記のスペースを含むファイル名や echo コマンドのように) クォーティングやバックスラッシュエスケープが必要なものは単一のリスト要素であることです。
+
+Windows 上では、args がシーケンスなら Windows における引数シーケンスから文字列への変換 に記述された方法で文字列に変換されます。これは根底の CreateProcess() が文字列上で動作するからです。
+
+バージョン 3.6 で変更: args parameter accepts a path-like object if shell is False and a sequence containing path-like objects on POSIX.
+
+バージョン 3.8 で変更: args parameter accepts a path-like object if shell is False and a sequence containing bytes and path-like objects on Windows.
+
+shell 引数 (デフォルトでは False) は、実行するプログラムとしてシェルを使用するかどうかを指定します。 shell が True の場合、 args をシーケンスとしてではなく文字列として渡すことが推奨されます。
+
+POSIX で shell=True の場合、シェルのデフォルトは /bin/sh になります。args が文字列の場合、この文字列はシェルを介して実行されるコマンドを指定します。したがって、文字列は厳密にシェルプロンプトで打つ形式と一致しなければなりません。例えば、文字列の中にスペースを含むファイル名がある場合は、クォーティングやバックスラッシュエスケープが必要です。args がシーケンスの場合には、最初の要素はコマンド名を表わす文字列として、残りの要素は追加の引数としてシェルに渡されます。つまり、以下の Popen と等価ということです:
+
+Popen(['/bin/sh', '-c', args[0], args[1], ...])
+Windows で shell=True とすると、COMSPEC 環境変数がデフォルトシェルを指定します。Windows で shell=True を指定する必要があるのは、実行したいコマンドがシェルに組み込みの場合だけです (例えば dir や copy)。バッチファイルやコンソールベースの実行ファイルを実行するために shell=True は必要ありません。
+
+注釈 shell=True を使う前に セキュリティで考慮すべき点 を読んでください。
+bufsize は標準入力/標準出力/標準エラー出力パイプファイルオブジェクトを生成するときに open() 関数の対応する引数に渡されます:
+
+0 はバッファーされないことを意味します (読み込みおよび書き出しのたびにシステムコールが行われ、すぐに復帰します)。
+
+1 はラインバッファーを意味します (universal_newlines=True、すなわちテキストモードの場合のみ使用可能)。
+
+それ以外の正の整数はバッファーのおよそのサイズになることを意味します。
+
+負のサイズ (デフォルト) は io.DEFAULT_BUFFER_SIZE のシステムデフォルトが使用されることを意味します。
+
+バージョン 3.3.1 で変更: ほとんどのコードが期待する振る舞いに合わせてデフォルトでバッファリングが有効となるよう bufsize のデフォルト値が -1 になりました。Python 3.2.4 および 3.3.1 より前のバージョンでは、誤ってバッファーされず短い読み込みを許可する 0 がデフォルトになっていました。これは意図したものではなく、ほとんどのコードが期待する Python 2 での振る舞いとも一致していませんでした。
+
+executable 引数は、実行する置換プログラムを指定します。これが必要になるのは極めて稀です。shell=False のときは、executable は args で指定されている実行プログラムを置換します。しかし、オリジナルの args は依然としてプログラムに渡されます。ほとんどのプログラムは、args で指定されたプログラムをコマンド名として扱います。そして、それは実際に実行されたプログラムとは異なる可能性があります。POSIX において、ps のようなユーティリティの中では、args 名が実行ファイルの表示名になります。shell=True の場合、POSIX において executable 引数はデフォルトの /bin/sh に対する置換シェルを指定します。
+
+バージョン 3.6 で変更: executable parameter accepts a path-like object on POSIX.
+
+バージョン 3.8 で変更: executable parameter accepts a bytes and path-like object on Windows.
+
+stdin、stdout および stderr には、実行するプログラムの標準入力、標準出力、および標準エラー出力のファイルハンドルをそれぞれ指定します。有効な値は PIPE, DEVNULL, 既存のファイル記述子 (正の整数)、既存の ファイルオブジェクト 、そして None です。PIPE を指定すると新しいパイプが子プロセスに向けて作られます。DEVNULL を指定すると特殊ファイル os.devnull が使用されます。デフォルト設定の None を指定するとリダイレクトは起こりません。子プロセスのファイルハンドルはすべて親から受け継がれます。加えて、stderr を STDOUT にすると、子プロセスの標準エラー出力からの出力は標準出力と同じファイルハンドルに出力されます。
+
+preexec_fn に呼び出し可能オブジェクトが指定されている場合、このオブジェクトは子プロセスが実行される直前 (fork されたあと、exec される直前) に子プロセス内で呼ばれます。(POSIXのみ)
+
+警告 アプリケーション中に複数のスレッドが存在する状態で preexec_fn 引数を使用するのは安全ではありません。exec が呼ばれる前に子プロセスがデッドロックを起こすことがあります。それを使用しなければならない場合、プログラムを自明なものにしておいてください! 呼び出すライブラリの数を最小にしてください。
+注釈 子プロセスのために環境を変更する必要がある場合は、preexec_fn の中でそれをするのではなく env 引数を使用します。start_new_session 引数は、子プロセスの中で os.setsid() を呼ぶ過去の一般的な preexec_fn の使用方法の代わりになります。
+バージョン 3.8 で変更: The preexec_fn parameter is no longer supported in subinterpreters. The use of the parameter in a subinterpreter raises RuntimeError. The new restriction may affect applications that are deployed in mod_wsgi, uWSGI, and other embedded environments.
+
+If close_fds is true, all file descriptors except 0, 1 and 2 will be closed before the child process is executed. Otherwise when close_fds is false, file descriptors obey their inheritable flag as described in ファイル記述子の継承.
+
+On Windows, if close_fds is true then no handles will be inherited by the child process unless explicitly passed in the handle_list element of STARTUPINFO.lpAttributeList, or by standard handle redirection.
+
+バージョン 3.2 で変更: close_fds のデフォルトは、False から上記のものに変更されました。
+
+バージョン 3.7 で変更: On Windows the default for close_fds was changed from False to True when redirecting the standard handles. It's now possible to set close_fds to True when redirecting the standard handles.
+
+pass_fds はオプションで、親と子の間で開いたままにしておくファイル記述子のシーケンスを指定します。何らかの pass_fds を渡した場合、close_fds は強制的に True になります。(POSIXのみ)
+
+バージョン 3.2 で変更: pass_fds 引数が追加されました。
+
+If cwd is not None, the function changes the working directory to cwd before executing the child. cwd can be a string, bytes or path-like object. In particular, the function looks for executable (or for the first item in args) relative to cwd if the executable path is a relative path.
+
+バージョン 3.6 で変更: cwd parameter accepts a path-like object on POSIX.
+
+バージョン 3.7 で変更: cwd parameter accepts a path-like object on Windows.
+
+バージョン 3.8 で変更: cwd parameter accepts a bytes object on Windows.
+
+restore_signals が真の場合 (デフォルト)、Python が SIG_IGN に設定したすべてのシグナルは子プロセスが exec される前に子プロセスの SIG_DFL に格納されます。現在これには SIGPIPE, SIGXFZ および SIGXFSZ シグナルが含まれています。(POSIX のみ)
+
+バージョン 3.2 で変更: restore_signals が追加されました。
+
+start_new_session が真の場合、サブプロセスの実行前に子プロセス内で setsid() システムコールが作成されます。(POSIX のみ)
+
+バージョン 3.2 で変更: start_new_session が追加されました。
+
+If group is not None, the setregid() system call will be made in the child process prior to the execution of the subprocess. If the provided value is a string, it will be looked up via grp.getgrnam() and the value in gr_gid will be used. If the value is an integer, it will be passed verbatim. (POSIX only)
+
+Availability: POSIX
+
+バージョン 3.9 で追加.
+
+If extra_groups is not None, the setgroups() system call will be made in the child process prior to the execution of the subprocess. Strings provided in extra_groups will be looked up via grp.getgrnam() and the values in gr_gid will be used. Integer values will be passed verbatim. (POSIX only)
+
+Availability: POSIX
+
+バージョン 3.9 で追加.
+
+If user is not None, the setreuid() system call will be made in the child process prior to the execution of the subprocess. If the provided value is a string, it will be looked up via pwd.getpwnam() and the value in pw_uid will be used. If the value is an integer, it will be passed verbatim. (POSIX only)
+
+Availability: POSIX
+
+バージョン 3.9 で追加.
+
+If umask is not negative, the umask() system call will be made in the child process prior to the execution of the subprocess.
+
+Availability: POSIX
+
+バージョン 3.9 で追加.
+
+env が None 以外の場合、これは新しいプロセスでの環境変数を定義します。デフォルトでは、子プロセスは現在のプロセスの環境変数を引き継ぎます。
+
+注釈 env を指定する場合、プログラムを実行するのに必要な変数すべてを与えなければなりません。Windows で Side-by-Side アセンブリ を実行するためには、env は正しい SystemRoot を 含まなければなりません 。
+If encoding or errors are specified, or text is true, the file objects stdin, stdout and stderr are opened in text mode with the specified encoding and errors, as described above in よく使われる引数. The universal_newlines argument is equivalent to text and is provided for backwards compatibility. By default, file objects are opened in binary mode.
+
+バージョン 3.6 で追加: encoding と errors が追加されました。
+
+バージョン 3.7 で追加: text が、universal_newlines のより読みやすい別名として追加されました。
+
+If given, startupinfo will be a STARTUPINFO object, which is passed to the underlying CreateProcess function. creationflags, if given, can be one or more of the following flags:
+
+CREATE_NEW_CONSOLE
+
+CREATE_NEW_PROCESS_GROUP
+
+ABOVE_NORMAL_PRIORITY_CLASS
+
+BELOW_NORMAL_PRIORITY_CLASS
+
+HIGH_PRIORITY_CLASS
+
+IDLE_PRIORITY_CLASS
+
+NORMAL_PRIORITY_CLASS
+
+REALTIME_PRIORITY_CLASS
+
+CREATE_NO_WINDOW
+
+DETACHED_PROCESS
+
+CREATE_DEFAULT_ERROR_MODE
+
+CREATE_BREAKAWAY_FROM_JOB
+
+Popen オブジェクトは with 文によってコンテキストマネージャーとしてサポートされます: 終了時には標準ファイル記述子が閉じられ、プロセスを待機します:
+
+with Popen(["ifconfig"], stdout=PIPE) as proc:
+    log.write(proc.stdout.read())
+Popen and the other functions in this module that use it raise an auditing event subprocess.Popen with arguments executable, args, cwd, and env. The value for args may be a single string or a list of strings, depending on platform.
+
+バージョン 3.2 で変更: コンテキストマネージャーサポートが追加されました。
+
+バージョン 3.6 で変更: Popen destructor now emits a ResourceWarning warning if the child process is still running.
+
+バージョン 3.8 で変更: Popen can use os.posix_spawn() in some cases for better performance. On Windows Subsystem for Linux and QEMU User Emulation, Popen constructor using os.posix_spawn() no longer raise an exception on errors like missing program, but the child process fails with a non-zero returncode.
+
+例外
+Exceptions raised in the child process, before the new program has started to execute, will be re-raised in the parent.
+
+もっとも一般的に起こる例外は OSError です。これは、たとえば存在しないファイルを実行しようとしたときなどに発生します。アプリケーションは OSError 例外に備えておかなければなりません。
+
+不正な引数で Popen が呼ばれた場合は ValueError が発生します。
+
+呼び出されたプロセスが非ゼロのリターンコードを返した場合 check_call() や check_output() は CalledProcessError を送出します。
+
+call() や Popen.communicate() のような timeout 引数を受け取るすべての関数とメソッドは、プロセスが終了する前にタイムアウトが発生した場合に TimeoutExpired を送出します。
+
+このモジュールで定義されたすべての例外は SubprocessError を継承しています。
+
+バージョン 3.3 で追加: SubprocessError 基底クラスが追加されました。
+
+セキュリティで考慮すべき点
+その他一部の popen 関数と異なり、この実装は暗黙的にシステムシェルを呼び出すことはありません。これはシェルのメタ文字を含むすべての文字が子プロセスに安全に渡されることを意味します。shell=True でシェルを明示的に呼びだした場合、シェルインジェクション の脆弱性に対処するための、すべての空白やメタ文字の適切なクオートの保証はアプリケーションの責任になります。
+
+shell=True を使用するときは、シェルコマンドで使用される文字列の空白やメタ文字は shlex.quote() 関数を使うと正しくエスケープできます。
+
+Popen オブジェクト
+Popen クラスのインスタンスには、以下のようなメソッドがあります:
+
+Popen.poll()
+Check if child process has terminated. Set and return returncode attribute. Otherwise, returns None.
+
+Popen.wait(timeout=None)
+子プロセスが終了するまで待ちます。returncode 属性を設定して返します。
+
+プロセスが timeout 秒後に終了してない場合、TimeoutExpired 例外を送出します。この例外を捕捉して wait を再試行するのは安全です。
+
+注釈 stdout=PIPE や stderr=PIPE を使っていて、より多くのデータを受け入れるために OS のパイプバッファーをブロックしているパイプに子プロセスが十分な出力を生成した場合、デッドロックが発生します。これを避けるには Popen.communicate() を使用してください。
+注釈 この関数はビジーループ (非ブロック化呼び出しと短いスリープ) を使用して実装されています。非同期の待機には asyncio モジュールを使用してください (asyncio.create_subprocess_exec を参照)。
+バージョン 3.3 で変更: timeout が追加されました
+
+Popen.communicate(input=None, timeout=None)
+Interact with process: Send data to stdin. Read data from stdout and stderr, until end-of-file is reached. Wait for process to terminate and set the returncode attribute. The optional input argument should be data to be sent to the child process, or None, if no data should be sent to the child. If streams were opened in text mode, input must be a string. Otherwise, it must be bytes.
+
+communicate() returns a tuple (stdout_data, stderr_data). The data will be strings if streams were opened in text mode; otherwise, bytes.
+
+子プロセスの標準入力にデータを送りたい場合は、 Popen オブジェクトを stdin=PIPE と指定して作成しなければなりません。同じく、戻り値のタプルから None ではない値を取得するためには、 stdout=PIPE かつ/または stderr=PIPE を指定しなければなりません。
+
+プロセスが timeout 秒後に終了してない場合、TimeoutExpired 例外が送出されます。この例外を捕捉して通信を再試行しても出力データは失われません。
+
+タイムアウトが発生した場合子プロセスは kill されません。したがって、適切にクリーンアップを行うために、正常に動作するアプリケーションは子プロセスを kill して通信を終了すべきです:
+
+proc = subprocess.Popen(...)
+try:
+    outs, errs = proc.communicate(timeout=15)
+except TimeoutExpired:
+    proc.kill()
+    outs, errs = proc.communicate()
+注釈 受信したデータはメモリにバッファーされます。そのため、返されるデータが大きいかあるいは制限がないような場合はこのメソッドを使うべきではありません。
+バージョン 3.3 で変更: timeout が追加されました
+
+Popen.send_signal(signal)
+signal シグナルを子プロセスに送ります。
+
+Do nothing if the process completed.
+
+注釈 Windows では、SIGTERM は terminate() の別名です。CTRL_C_EVENT と CTRL_BREAK_EVENT を、CREATE_NEW_PROCESS_GROUP を含む creationflags で始まった、プロセスに送れます。
+Popen.terminate()
+Stop the child. On POSIX OSs the method sends SIGTERM to the child. On Windows the Win32 API function TerminateProcess() is called to stop the child.
+
+Popen.kill()
+Kills the child. On POSIX OSs the function sends SIGKILL to the child. On Windows kill() is an alias for terminate().
+
+以下の属性も利用可能です:
+
+Popen.args
+Popen に渡された引数 args です -- プログラム引数のシーケンスまたは 1 個の文字列になります。
+
+バージョン 3.3 で追加.
+
+Popen.stdin
+If the stdin argument was PIPE, this attribute is a writeable stream object as returned by open(). If the encoding or errors arguments were specified or the universal_newlines argument was True, the stream is a text stream, otherwise it is a byte stream. If the stdin argument was not PIPE, this attribute is None.
+
+Popen.stdout
+If the stdout argument was PIPE, this attribute is a readable stream object as returned by open(). Reading from the stream provides output from the child process. If the encoding or errors arguments were specified or the universal_newlines argument was True, the stream is a text stream, otherwise it is a byte stream. If the stdout argument was not PIPE, this attribute is None.
+
+Popen.stderr
+If the stderr argument was PIPE, this attribute is a readable stream object as returned by open(). Reading from the stream provides error output from the child process. If the encoding or errors arguments were specified or the universal_newlines argument was True, the stream is a text stream, otherwise it is a byte stream. If the stderr argument was not PIPE, this attribute is None.
+
+警告 .stdin.write, .stdout.read, .stderr.read を利用すると、別のパイプの OS パイプバッファーがいっぱいになってデッドロックが発生する恐れがあります。これを避けるためには communicate() を利用してください。
+Popen.pid
+子プロセスのプロセス ID が入ります。
+
+shell 引数を True に設定した場合は、生成されたシェルのプロセス ID になります。
+
+Popen.returncode
+poll() か wait() (か、間接的に communicate()) から設定された、子プロセスの終了ステータスが入ります。None はまだその子プロセスが終了していないことを示します。
+
+負の値 -N は子プロセスがシグナル N により中止させられたことを示します (POSIX のみ)。
+
+Windows Popen ヘルパー
+STARTUPINFO クラスと以下の定数は、Windows のみで利用できます。
+
+class subprocess.STARTUPINFO(*, dwFlags=0, hStdInput=None, hStdOutput=None, hStdError=None, wShowWindow=0, lpAttributeList=None)
+Partial support of the Windows STARTUPINFO structure is used for Popen creation. The following attributes can be set by passing them as keyword-only arguments.
+
+バージョン 3.7 で変更: Keyword-only argument support was added.
+
+dwFlags
+特定の STARTUPINFO の属性が、プロセスがウィンドウを生成するときに使われるかを決定するビットフィールドです:
+
+si = subprocess.STARTUPINFO()
+si.dwFlags = subprocess.STARTF_USESTDHANDLES | subprocess.STARTF_USESHOWWINDOW
+hStdInput
+dwFlags が STARTF_USESTDHANDLES を指定すれば、この属性がプロセスの標準入力処理です。STARTF_USESTDHANDLES が指定されなければ、標準入力のデフォルトはキーボードバッファーです。
+
+hStdOutput
+dwFlags が STARTF_USESTDHANDLES を指定すれば、この属性がプロセスの標準出力処理です。そうでなければ、この属性は無視され、標準出力のデフォルトはコンソールウィンドウのバッファーです。
+
+hStdError
+dwFlags が STARTF_USESTDHANDLES を指定すれば、この属性がプロセスの標準エラー処理です。そうでなければ、この属性は無視され、標準エラー出力のデフォルトはコンソールウィンドウのバッファーです。
+
+wShowWindow
+dwFlags が STARTF_USESHOWWINDOW を指定すれば、この属性は ShowWindow 関数の nCmdShow 引数で指定された値なら、 SW_SHOWDEFAULT 以外の任意のものにできます。しかし、この属性は無視されます。
+
+この属性には SW_HIDE が提供されています。これは、Popen が shell=True として呼び出されたときに使われます。
+
+lpAttributeList
+A dictionary of additional attributes for process creation as given in STARTUPINFOEX, see UpdateProcThreadAttribute.
+
+Supported attributes:
+
+handle_list
+Sequence of handles that will be inherited. close_fds must be true if non-empty.
+
+The handles must be temporarily made inheritable by os.set_handle_inheritable() when passed to the Popen constructor, else OSError will be raised with Windows error ERROR_INVALID_PARAMETER (87).
+
+警告 In a multithreaded process, use caution to avoid leaking handles that are marked inheritable when combining this feature with concurrent calls to other process creation functions that inherit all handles such as os.system(). This also applies to standard handle redirection, which temporarily creates inheritable handles.
+バージョン 3.7 で追加.
+
+Windows Constants
+subprocess モジュールは、以下の定数を公開しています。
+
+subprocess.STD_INPUT_HANDLE
+標準入力デバイスです。この初期値は、コンソール入力バッファ、 CONIN$ です。
+
+subprocess.STD_OUTPUT_HANDLE
+標準出力デバイスです。この初期値は、アクティブコンソールスクリーン、 CONOUT$ です。
+
+subprocess.STD_ERROR_HANDLE
+標準エラーデバイスです。この初期値は、アクティブコンソールスクリーン、 CONOUT$ です。
+
+subprocess.SW_HIDE
+ウィンドウを隠します。別のウィンドウがアクティブになります。
+
+subprocess.STARTF_USESTDHANDLES
+追加情報を保持する、STARTUPINFO.hStdInput, STARTUPINFO.hStdOutput, および STARTUPINFO.hStdError 属性を指定します。
+
+subprocess.STARTF_USESHOWWINDOW
+追加情報を保持する、 STARTUPINFO.wShowWindow 属性を指定します。
+
+subprocess.CREATE_NEW_CONSOLE
+新しいプロセスが、親プロセスのコンソールを継承する (デフォルト) のではなく、新しいコンソールを持ちます。
+
+subprocess.CREATE_NEW_PROCESS_GROUP
+新しいプロセスグループが生成されることを指定する Popen creationflags パラメーターです。このフラグは、サブプロセスで os.kill() を使うのに必要です。
+
+CREATE_NEW_CONSOLE が指定されていたら、このフラグは無視されます。
+
+subprocess.ABOVE_NORMAL_PRIORITY_CLASS
+A Popen creationflags parameter to specify that a new process will have an above average priority.
+
+バージョン 3.7 で追加.
+
+subprocess.BELOW_NORMAL_PRIORITY_CLASS
+A Popen creationflags parameter to specify that a new process will have a below average priority.
+
+バージョン 3.7 で追加.
+
+subprocess.HIGH_PRIORITY_CLASS
+A Popen creationflags parameter to specify that a new process will have a high priority.
+
+バージョン 3.7 で追加.
+
+subprocess.IDLE_PRIORITY_CLASS
+A Popen creationflags parameter to specify that a new process will have an idle (lowest) priority.
+
+バージョン 3.7 で追加.
+
+subprocess.NORMAL_PRIORITY_CLASS
+A Popen creationflags parameter to specify that a new process will have an normal priority. (default)
+
+バージョン 3.7 で追加.
+
+subprocess.REALTIME_PRIORITY_CLASS
+A Popen creationflags parameter to specify that a new process will have realtime priority. You should almost never use REALTIME_PRIORITY_CLASS, because this interrupts system threads that manage mouse input, keyboard input, and background disk flushing. This class can be appropriate for applications that "talk" directly to hardware or that perform brief tasks that should have limited interruptions.
+
+バージョン 3.7 で追加.
+
+subprocess.CREATE_NO_WINDOW
+A Popen creationflags parameter to specify that a new process will not create a window.
+
+バージョン 3.7 で追加.
+
+subprocess.DETACHED_PROCESS
+A Popen creationflags parameter to specify that a new process will not inherit its parent's console. This value cannot be used with CREATE_NEW_CONSOLE.
+
+バージョン 3.7 で追加.
+
+subprocess.CREATE_DEFAULT_ERROR_MODE
+A Popen creationflags parameter to specify that a new process does not inherit the error mode of the calling process. Instead, the new process gets the default error mode. This feature is particularly useful for multithreaded shell applications that run with hard errors disabled.
+
+バージョン 3.7 で追加.
+
+subprocess.CREATE_BREAKAWAY_FROM_JOB
+A Popen creationflags parameter to specify that a new process is not associated with the job.
+
+バージョン 3.7 で追加.
+
+古い高水準 API
+Python 3.5 より前のバージョンでは、サブプロセスに対して以下の 3 つの関数からなる高水準 API が用意されていました。現在多くの場合 run() の使用で済みますが、既存の多くのコードではこれらの関数が使用されています。
+
+subprocess.call(args, *, stdin=None, stdout=None, stderr=None, shell=False, cwd=None, timeout=None, **other_popen_kwargs)
+args で指定されたコマンドを実行します。コマンドの終了を待ち、returncode 属性を返します。
+
+Code needing to capture stdout or stderr should use run() instead:
+
+run(...).returncode
+To suppress stdout or stderr, supply a value of DEVNULL.
+
+The arguments shown above are merely some common ones. The full function signature is the same as that of the Popen constructor - this function passes all supplied arguments other than timeout directly through to that interface.
+
+注釈 この関数を使用する際は stdout=PIPE および stderr=PIPE を使用しないでください。子プロセスが OS のパイプバッファーを埋めてしまうほどの出力データを生成した場合、パイプからは読み込まれないので、子プロセスがブロックされることがあります。
+バージョン 3.3 で変更: timeout が追加されました
+
+subprocess.check_call(args, *, stdin=None, stdout=None, stderr=None, shell=False, cwd=None, timeout=None, **other_popen_kwargs)
+指定された引数でコマンドを実行し、完了を待ちます。コマンドのリターンコードがゼロならば返りますが、非ゼロなら CalledProcessError 例外が送出されます。CalledProcessError オブジェクトにはリターンコードが returncode 属性として格納されています。
+
+Code needing to capture stdout or stderr should use run() instead:
+
+run(..., check=True)
+To suppress stdout or stderr, supply a value of DEVNULL.
+
+The arguments shown above are merely some common ones. The full function signature is the same as that of the Popen constructor - this function passes all supplied arguments other than timeout directly through to that interface.
+
+注釈 この関数を使用する際は stdout=PIPE および stderr=PIPE を使用しないでください。子プロセスが OS のパイプバッファーを埋めてしまうほどの出力データを生成した場合、パイプからは読み込まれないので、子プロセスがブロックされることがあります。
+バージョン 3.3 で変更: timeout が追加されました
+
+subprocess.check_output(args, *, stdin=None, stderr=None, shell=False, cwd=None, encoding=None, errors=None, universal_newlines=None, timeout=None, text=None, **other_popen_kwargs)
+引数でコマンドを実行し、その出力を返します。
+
+コマンドのリターンコードが非ゼロならば CalledProcessError 例外が送出されます。CalledProcessError オブジェクトには、リターンコードが returncode 属性に、コマンドからの出力が output 属性に、それぞれ格納されています。
+
+これは次と等価です:
+
+run(..., check=True, stdout=PIPE).stdout
+The arguments shown above are merely some common ones. The full function signature is largely the same as that of run() - most arguments are passed directly through to that interface. One API deviation from run() behavior exists: passing input=None will behave the same as input=b'' (or input='', depending on other arguments) rather than using the parent's standard input file handle.
+
+デフォルトで、この関数はデータをエンコードされたバイトとして返します。出力されたデータの実際のエンコードは起動されているコマンドに依存するため、テキストへのデコードは通常アプリケーションレベルで扱う必要があります。
+
+This behaviour may be overridden by setting text, encoding, errors, or universal_newlines to True as described in よく使われる引数 and run().
+
+標準エラー出力も結果に含めるには、stderr=subprocess.STDOUT を使います:
+
+>>>
+>>> subprocess.check_output(
+...     "ls non_existent_file; exit 0",
+...     stderr=subprocess.STDOUT,
+...     shell=True)
+'ls: non_existent_file: No such file or directory\n'
+バージョン 3.1 で追加.
+
+バージョン 3.3 で変更: timeout が追加されました
+
+バージョン 3.4 で変更: キーワード引数 input が追加されました。
+
+バージョン 3.6 で変更: encoding and errors were added. See run() for details.
+
+バージョン 3.7 で追加: text が、universal_newlines のより読みやすい別名として追加されました。
+
+古い関数を subprocess モジュールで置き換える
+この節では、 "a becomes b" と書かれているものは a の代替として b が使えるということを表します。
+
+注釈 この節で紹介されている "a" 関数は全て、実行するプログラムが見つからないときは (おおむね) 静かに終了します。それに対して "b" 代替手段は OSError 例外を送出します。
+また、要求された操作が非ゼロの終了コードを返した場合、check_output() を使用した置き換えは CalledProcessError で失敗します。その出力は、送出された例外の output 属性として利用可能です。
+
+以下の例では、適切な関数が subprocess モジュールからすでにインポートされていることを前提としています。
+
+Replacing /bin/sh shell command substitution
+output=$(mycmd myarg)
+これは以下のようになります:
+
+output = check_output(["mycmd", "myarg"])
+シェルのパイプラインを置き換える
+output=$(dmesg | grep hda)
+これは以下のようになります:
+
+p1 = Popen(["dmesg"], stdout=PIPE)
+p2 = Popen(["grep", "hda"], stdin=p1.stdout, stdout=PIPE)
+p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
+output = p2.communicate()[0]
+The p1.stdout.close() call after starting the p2 is important in order for p1 to receive a SIGPIPE if p2 exits before p1.
+
+あるいは、信頼された入力に対しては、シェル自身のパイプラインサポートを直接使用することもできます:
+
+output=$(dmesg | grep hda)
+これは以下のようになります:
+
+output=check_output("dmesg | grep hda", shell=True)
+os.system() を置き換える
+sts = os.system("mycmd" + " myarg")
+# becomes
+sts = call("mycmd" + " myarg", shell=True)
+注釈:
+
+このプログラムは普通シェル経由で呼び出す必要はありません。
+
+より現実的な例ではこうなるでしょう:
+
+try:
+    retcode = call("mycmd" + " myarg", shell=True)
+    if retcode < 0:
+        print("Child was terminated by signal", -retcode, file=sys.stderr)
+    else:
+        print("Child returned", retcode, file=sys.stderr)
+except OSError as e:
+    print("Execution failed:", e, file=sys.stderr)
+os.spawn 関数群を置き換える
+P_NOWAIT の例:
+
+pid = os.spawnlp(os.P_NOWAIT, "/bin/mycmd", "mycmd", "myarg")
+==>
+pid = Popen(["/bin/mycmd", "myarg"]).pid
+P_WAIT の例:
+
+retcode = os.spawnlp(os.P_WAIT, "/bin/mycmd", "mycmd", "myarg")
+==>
+retcode = call(["/bin/mycmd", "myarg"])
+シーケンスを使った例:
+
+os.spawnvp(os.P_NOWAIT, path, args)
+==>
+Popen([path] + args[1:])
+環境変数を使った例:
+
+os.spawnlpe(os.P_NOWAIT, "/bin/mycmd", "mycmd", "myarg", env)
+==>
+Popen(["/bin/mycmd", "myarg"], env={"PATH": "/usr/bin"})
+os.popen(), os.popen2(), os.popen3() を置き換える
+(child_stdin, child_stdout) = os.popen2(cmd, mode, bufsize)
+==>
+p = Popen(cmd, shell=True, bufsize=bufsize,
+          stdin=PIPE, stdout=PIPE, close_fds=True)
+(child_stdin, child_stdout) = (p.stdin, p.stdout)
+(child_stdin,
+ child_stdout,
+ child_stderr) = os.popen3(cmd, mode, bufsize)
+==>
+p = Popen(cmd, shell=True, bufsize=bufsize,
+          stdin=PIPE, stdout=PIPE, stderr=PIPE, close_fds=True)
+(child_stdin,
+ child_stdout,
+ child_stderr) = (p.stdin, p.stdout, p.stderr)
+(child_stdin, child_stdout_and_stderr) = os.popen4(cmd, mode, bufsize)
+==>
+p = Popen(cmd, shell=True, bufsize=bufsize,
+          stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
+(child_stdin, child_stdout_and_stderr) = (p.stdin, p.stdout)
+終了コードハンドリングは以下のように解釈します:
+
+pipe = os.popen(cmd, 'w')
+...
+rc = pipe.close()
+if rc is not None and rc >> 8:
+    print("There were some errors")
+==>
+process = Popen(cmd, stdin=PIPE)
+...
+process.stdin.close()
+if process.wait() != 0:
+    print("There were some errors")
+popen2 モジュールの関数群を置き換える
+注釈 popen2 関数の cmd 引数が文字列の場合、コマンドは /bin/sh によって実行されます。リストの場合、コマンドは直接実行されます。
+(child_stdout, child_stdin) = popen2.popen2("somestring", bufsize, mode)
+==>
+p = Popen("somestring", shell=True, bufsize=bufsize,
+          stdin=PIPE, stdout=PIPE, close_fds=True)
+(child_stdout, child_stdin) = (p.stdout, p.stdin)
+(child_stdout, child_stdin) = popen2.popen2(["mycmd", "myarg"], bufsize, mode)
+==>
+p = Popen(["mycmd", "myarg"], bufsize=bufsize,
+          stdin=PIPE, stdout=PIPE, close_fds=True)
+(child_stdout, child_stdin) = (p.stdout, p.stdin)
+popen2.Popen3 および popen2.Popen4 は以下の点を除けば、基本的に subprocess.Popen と同じです:
+
+Popen は実行が失敗した場合に例外を送出します。
+
+The capturestderr argument is replaced with the stderr argument.
+
+stdin=PIPE および stdout=PIPE を指定する必要があります。
+
+popen2 はデフォルトですべてのファイル記述子を閉じます。しかし、全てのプラットフォーム上で、あるいは過去の Python バージョンでこの挙動を保証するためには、 Popen に対して close_fds=True を指定しなければなりません。
+
+レガシーなシェル呼び出し関数
+このモジュールでは、以下のような 2.x commands モジュールからのレガシー関数も提供しています。これらの操作は、暗黙的にシステムシェルを起動します。また、セキュリティに関して上述した保証や例外処理一貫性は、これらの関数では有効ではありません。
+
+subprocess.getstatusoutput(cmd)
+Return (exitcode, output) of executing cmd in a shell.
+
+Execute the string cmd in a shell with Popen.check_output() and return a 2-tuple (exitcode, output). The locale encoding is used; see the notes on よく使われる引数 for more details.
+
+A trailing newline is stripped from the output. The exit code for the command can be interpreted as the return code of subprocess. Example:
+
+>>>
+>>> subprocess.getstatusoutput('ls /bin/ls')
+(0, '/bin/ls')
+>>> subprocess.getstatusoutput('cat /bin/junk')
+(1, 'cat: /bin/junk: No such file or directory')
+>>> subprocess.getstatusoutput('/bin/junk')
+(127, 'sh: /bin/junk: not found')
+>>> subprocess.getstatusoutput('/bin/kill $$')
+(-15, '')
+Availability: POSIX & Windows.
+
+バージョン 3.3.4 で変更: Windows support was added.
+
+The function now returns (exitcode, output) instead of (status, output) as it did in Python 3.3.3 and earlier. exitcode has the same value as returncode.
+
+subprocess.getoutput(cmd)
+シェル中の cmd を実行して出力 (stdout と stderr) を返します。
+
+Like getstatusoutput(), except the exit code is ignored and the return value is a string containing the command's output. Example:
+
+>>>
+>>> subprocess.getoutput('ls /bin/ls')
+'/bin/ls'
+Availability: POSIX & Windows.
+
+バージョン 3.3.4 で変更: Windowsで利用可能になりました
+
+注釈
+Windows における引数シーケンスから文字列への変換
+Windows では、 args シーケンスは以下の (MS C ランタイムで使われる規則に対応する) 規則を使って解析できる文字列に変換されます:
+
+引数は、スペースかタブのどちらかの空白で分けられます。
+
+ダブルクオーテーションマークで囲まれた文字列は、空白が含まれていたとしても 1 つの引数として解釈されます。クオートされた文字列は引数に埋め込めます。
+
+バックスラッシュに続くダブルクオーテーションマークは、リテラルのダブルクオーテーションマークと解釈されます。
+
+バックスラッシュは、ダブルクオーテーションが続かない限り、リテラルとして解釈されます。
+
+複数のバックスラッシュにダブルクオーテーションマークが続くなら、バックスラッシュ 2 つで 1 つのバックスラッシュ文字と解釈されます。バックスラッシュの数が奇数なら、最後のバックスラッシュは規則 3 に従って続くダブルクオーテーションマークをエスケープします。
+
+参考
+shlex
+コマンドラインを解析したりエスケープしたりする関数を提供するモジュール。
+
+sched --- イベントスケジューラ
+ソースコード: Lib/sched.py
+
+sched モジュールは一般的な目的のためのイベントスケジューラを実装するクラスを定義します:
+
+class sched.scheduler(timefunc=time.monotonic, delayfunc=time.sleep)
+scheduler クラスはイベントをスケジュールするための一般的なインタフェースを定義します。それは "外の世界" を実際に扱うための2つの関数を必要とします --- timefunc は引数なしで呼ばれて 1 つの数値を返す callable オブジェクトでなければなりません (戻り値は任意の単位で「時間」を表します)。 delayfunc は 1 つの引数を持つ callable オブジェクトでなければならず、その時間だけ遅延する必要があります (引数は timefunc の出力と互換)。 delayfunc は、各々のイベントが実行された後に引数 0 で呼ばれることがあります。これは、マルチスレッドアプリケーションの中で他のスレッドが実行する機会を与えるためです。
+
+バージョン 3.3 で変更: timefunc と delayfunc がオプション引数になりました。
+
+バージョン 3.3 で変更: scheduler クラスをマルチスレッド環境で安全に使用出来るようになりました。
+
+以下はプログラム例です:
+
+>>>
+>>> import sched, time
+>>> s = sched.scheduler(time.time, time.sleep)
+>>> def print_time(a='default'):
+...     print("From print_time", time.time(), a)
+...
+>>> def print_some_times():
+...     print(time.time())
+...     s.enter(10, 1, print_time)
+...     s.enter(5, 2, print_time, argument=('positional',))
+...     s.enter(5, 1, print_time, kwargs={'a': 'keyword'})
+...     s.run()
+...     print(time.time())
+...
+>>> print_some_times()
+930343690.257
+From print_time 930343695.274 positional
+From print_time 930343695.275 keyword
+From print_time 930343700.273 default
+930343700.276
+スケジューラオブジェクト
+scheduler インスタンスは以下のメソッドと属性を持っています:
+
+scheduler.enterabs(time, priority, action, argument=(), kwargs={})
+新しいイベントをスケジュールします。 引数 time は、コンストラクタへ渡された timefunc の戻り値と互換な数値型でなければいけません。 同じ time によってスケジュールされたイベントは、それらの priority によって実行されます。 数値の小さい方が高い優先度となります。
+
+イベントを実行することは、 action(*argument, **kwargs) を実行することを意味します。 argument は action のための位置引数を保持するシーケンスでなければいけません。 kwargs は action のためのキーワード引数を保持する辞書でなければいけません。
+
+戻り値は、後にイベントをキャンセルする時に使われる可能性のあるイベントです (cancel() を参照)。
+
+バージョン 3.3 で変更: argument 引数が任意になりました。
+
+バージョン 3.3 で変更: kwargs 引数が追加されました。
+
+scheduler.enter(delay, priority, action, argument=(), kwargs={})
+時間単位以上の delay でイベントをスケジュールします。相対的時間以外の、引数、効果、戻り値は、 enterabs() に対するものと同じです。
+
+バージョン 3.3 で変更: argument 引数が任意になりました。
+
+バージョン 3.3 で変更: kwargs 引数が追加されました。
+
+scheduler.cancel(event)
+キューからイベントを消去します。もし event がキューにある現在のイベントでないならば、このメソッドは ValueError を送出します。
+
+scheduler.empty()
+もしイベントキューが空ならば、 True を返します。
+
+scheduler.run(blocking=True)
+すべてのスケジュールされたイベントを実行します。このメソッドは次のイベントを待ち、それを実行し、スケジュールされたイベントがなくなるまで同じことを繰り返します。(イベントの待機は、 コンストラクタへ渡された関数 delayfunc() を使うことで行います。)
+
+blocking が False の場合、最も早く期限が来るスケジュールされたイベントを (存在する場合) 実行し、スケジューラ内で次にスケジュールされた呼び出しの期限を (存在する場合) 返します。
+
+action あるいは delayfunc は例外を投げることができます。いずれの場合も、スケジューラは一貫した状態を維持し、例外を伝播するでしょう。例外が action によって投げられる場合、イベントは run() への呼出しを未来に行なわないでしょう。
+
+イベントのシーケンスが、次イベントの前に、利用可能時間より実行時間が長いと、スケジューラは単に遅れることになるでしょう。イベントが落ちることはありません; 呼出しコードはもはや適切でないキャンセルイベントに対して責任があります。
+
+バージョン 3.3 で変更: blocking 引数が追加されました。
+
+scheduler.queue
+読み出し専用の属性で、これから起こるイベントが実行される順序で格納されたリストを返します。各イベントは、次の属性 time, priority, action, argument, kwargs を持った named tuple の形式になります。
+
+queue --- 同期キュークラス
+ソースコード: Lib/queue.py
+
+The queue module implements multi-producer, multi-consumer queues. It is especially useful in threaded programming when information must be exchanged safely between multiple threads. The Queue class in this module implements all the required locking semantics.
+
+このモジュールでは3種類のキューが実装されています。それらはキューから取り出されるエントリの順番だけが違います。 FIFO キューでは、最初に追加されたエントリが最初に取り出されます。 LIFO キューでは、最後に追加されたエントリが最初に取り出されます(スタックのように振る舞います)。 優先順位付きキュー(priority queue)では、エントリは(heapq モジュールを利用して)ソートされ、 最も低い値のエントリが最初に取り出されます。
+
+内部的には、これらの3種類のキューは競争スレッドを一時的にブロックするためにロックを使っています; しかし、スレッド内での再入を扱うようには設計されていません。
+
+In addition, the module implements a "simple" FIFO queue type, SimpleQueue, whose specific implementation provides additional guarantees in exchange for the smaller functionality.
+
+queue モジュールは以下のクラスと例外を定義します:
+
+class queue.Queue(maxsize=0)
+FIFO キューのコンストラクタです。 maxsize はキューに入れられる要素数の上限を設定する整数です。 いったんこの大きさに達したら、挿入処理はキューの要素が消費されるまでブロックされます。 maxsize が0以下の場合は、キューの大きさは無限です。
+
+class queue.LifoQueue(maxsize=0)
+LIFO キューのコンストラクタです。 maxsize はキューに入れられる要素数の上限を設定する整数です。 いったんこの大きさに達したら、挿入処理はキューの要素が消費されるまでブロックされます。 maxsize が0以下の場合は、キューの大きさは無限です。
+
+class queue.PriorityQueue(maxsize=0)
+優先順位付きキューのコンストラクタです。maxsize はキューに置くことのできる要素数の上限を設定する整数です。いったんこの大きさに達したら、挿入はキューの要素が消費されるまでブロックされます。もし maxsize が0以下であるならば、キューの大きさは無限です。
+
+最小の値を持つ要素が最初に検索されます (最小の値を持つ値は、sorted(list(entries))[0] によって返されるものです)。典型的な要素のパターンは、(priority_number, data) 形式のタプルです。
+
+If the data elements are not comparable, the data can be wrapped in a class that ignores the data item and only compares the priority number:
+
+from dataclasses import dataclass, field
+from typing import Any
+
+@dataclass(order=True)
+class PrioritizedItem:
+    priority: int
+    item: Any=field(compare=False)
+class queue.SimpleQueue
+Constructor for an unbounded FIFO queue. Simple queues lack advanced functionality such as task tracking.
+
+バージョン 3.7 で追加.
+
+exception queue.Empty
+空の Queue オブジェクトで、非ブロックメソッド get() (または get_nowait()) が呼ばれたとき、送出される例外です。
+
+exception queue.Full
+満杯の Queue オブジェクトで、非ブロックメソッド put() (または put_nowait()) が呼ばれたとき、送出される例外です。
+
+キューオブジェクト
+キューオブジェクト(Queue, LifoQueue, PriorityQueue)は、以下のpublicメソッドを提供しています。
+
+Queue.qsize()
+キューの近似サイズを返します。ここで、qsize() > 0 は後続の get() がブロックしないことを保証しないこと、また qsize() < maxsize が put() がブロックしないことを保証しないことに注意してください。
+
+Queue.empty()
+キューが空の場合は True を返し、そうでなければ False を返します。empty() が True を返しても、後続の put() の呼び出しがブロックしないことは保証されません。同様に、empty() が False を返しても、後続の get() の呼び出しがブロックしないことは保証されません。
+
+Queue.full()
+キューが一杯の場合は True を返し、そうでなければ False を返します。full() が True を返しても、後続の get() の呼び出しがブロックしないことは保証されません。同様に、full() が False を返しても、後続の put() の呼び出しがブロックしないことは保証されません。
+
+Queue.put(item, block=True, timeout=None)
+item をキューに入れます。 もしオプション引数 block が真で timeout が None (デフォルト) の場合は、必要であればフリースロットが利用可能になるまでブロックします。 timeout が正の数の場合は、最大で timeout 秒間ブロックし、その時間内に空きスロットが利用可能にならなければ、例外 Full を送出します。 そうでない場合 (block が偽) は、空きスロットが直ちに利用できるならば、キューにアイテムを置きます。 できないならば、例外 Full を送出します (この場合 timeout は無視されます)。
+
+Queue.put_nowait(item)
+put(item, False) と等価です。
+
+Queue.get(block=True, timeout=None)
+キューからアイテムを取り除き、それを返します。 オプション引数 block が真で timeout が None (デフォルト) の場合は、必要であればアイテムが取り出せるようになるまでブロックします。 もし timeout が正の数の場合は、最大で timeout 秒間ブロックし、その時間内でアイテムが取り出せるようにならなければ、例外 Empty を送出します。 そうでない場合 (block が偽) は、直ちにアイテムが取り出せるならば、それを返します。 できないならば、例外 Empty を送出します (この場合 timeout は無視されます)。
+
+Prior to 3.0 on POSIX systems, and for all versions on Windows, if block is true and timeout is None, this operation goes into an uninterruptible wait on an underlying lock. This means that no exceptions can occur, and in particular a SIGINT will not trigger a KeyboardInterrupt.
+
+Queue.get_nowait()
+get(False) と等価です。
+
+キューに入れられたタスクが全てコンシューマスレッドに処理されたかどうかを追跡するために 2つのメソッドが提供されます。
+
+Queue.task_done()
+過去にキューに入れられたタスクが完了した事を示します。キューのコンシューマスレッドに利用されます。タスクの取り出しに使われた各 get() の後に task_done() を呼び出すと、取り出したタスクに対する処理が完了した事をキューに教えます。
+
+join() がブロックされていた場合、全itemが処理された (キューに put() された全てのitemに対して task_done() が呼び出されたことを意味します) 時に復帰します。
+
+キューにある要素より多く呼び出された場合 ValueError が発生します。
+
+Queue.join()
+キューにあるすべてのアイテムが取り出されて処理されるまでブロックします。
+
+キューにitemが追加される度に、未完了タスクカウントが増やされます。コンシューマスレッドが task_done() を呼び出して、itemを受け取ってそれに対する処理が完了した事を知らせる度に、未完了タスクカウントが減らされます。未完了タスクカウントが0になったときに、 join() のブロックが解除されます。
+
+キューに入れたタスクが完了するのを待つ例:
+
+import threading, queue
+
+q = queue.Queue()
+
+def worker():
+    while True:
+        item = q.get()
+        print(f'Working on {item}')
+        print(f'Finished {item}')
+        q.task_done()
+
+# turn-on the worker thread
+threading.Thread(target=worker, daemon=True).start()
+
+# send thirty task requests to the worker
+for item in range(30):
+    q.put(item)
+print('All task requests sent\n', end='')
+
+# block until all tasks are done
+q.join()
+print('All work completed')
+SimpleQueue オブジェクト
+SimpleQueue オブジェクトは以下のpublicメソッドを提供しています。
+
+SimpleQueue.qsize()
+キューの近似サイズを返します。ここで、qsize() > 0 であるからといって、後続の get() の呼び出しがブロックしないことが保証されないことに注意してください。
+
+SimpleQueue.empty()
+キューが空の場合は True を返し、そうでなければ False を返します。 empty() が False を返しても、後続の get() の呼び出しがブロックしないことは保証されません。
+
+SimpleQueue.put(item, block=True, timeout=None)
+Put item into the queue. The method never blocks and always succeeds (except for potential low-level errors such as failure to allocate memory). The optional args block and timeout are ignored and only provided for compatibility with Queue.put().
+
+CPython implementation detail: This method has a C implementation which is reentrant. That is, a put() or get() call can be interrupted by another put() call in the same thread without deadlocking or corrupting internal state inside the queue. This makes it appropriate for use in destructors such as __del__ methods or weakref callbacks.
+
+SimpleQueue.put_nowait(item)
+put(item) と等価です。:meth:`Queue.put_nowait`との互換性のためのメソッドです。
+
+SimpleQueue.get(block=True, timeout=None)
+キューからアイテムを取り除き、それを返します。 オプション引数 block が真で timeout が None (デフォルト) の場合は、必要であればアイテムが取り出せるようになるまでブロックします。 もし timeout が正の数の場合は、最大で timeout 秒間ブロックし、その時間内でアイテムが取り出せるようにならなければ、例外 Empty を送出します。 そうでない場合 (block が偽) は、直ちにアイテムが取り出せるならば、それを返します。 できないならば、例外 Empty を送出します (この場合 timeout は無視されます)。
+
+SimpleQueue.get_nowait()
+get(False) と等価です。
+
+参考
+multiprocessing.Queue クラス
+(マルチスレッドではなく) マルチプロセスの文脈で使用されるキュークラス。
+
+collections.deque is an alternative implementation of unbounded queues with fast atomic append() and popleft() operations that do not require locking and also support indexing.
+
+contextvars --- コンテキスト変数
+このモジュールは、コンテキストローカルな状態を管理し、保持し、アクセスするための API を提供します。 ContextVar クラスは コンテキスト変数 を宣言し、取り扱うために使われます。 非同期フレームワークで現時点のコンテキストを管理するのには、 copy_context() 関数と Context クラスを使うべきです。
+
+状態を持っているコンテキストマネージャは threading.local() ではなくコンテキスト変数を使い、並行処理のコードから状態が意図せず他のコードへ漏れ出すのを避けるべきです。
+
+より詳しくは PEP 567 を参照をしてください。
+
+バージョン 3.7 で追加.
+
+コンテキスト変数
+class contextvars.ContextVar(name[, *, default])
+このクラスは新しいコンテキスト変数を宣言するのに使われます。例えば、次の通りです:
+
+var: ContextVar[int] = ContextVar('var', default=42)
+必須のパラメータの name は内観やデバッグの目的で使われます。
+
+オプションのキーワード専用引数 default は、現在のコンテキストにその変数の値が見付からなかったときに ContextVar.get() から返されます。
+
+重要: コンテキスト変数は、モジュールのトップレベルで生成する必要があり、クロージャの中で作成すべきではありません。Context オブジェクトはコンテキスト変数への強参照を持っており、コンテキスト変数がガーベジコレクトされるのを防ぎます。
+
+name
+変数の名前。読み出し専用のプロパティです。
+
+バージョン 3.7.1 で追加.
+
+get([default])
+現在のコンテキストのコンテキスト変数の値を返します。
+
+現在のコンテキストのコンテキスト変数に値がなければ、メソッドは:
+
+メソッドの default 引数に値が指定されていればその値を返します。さもなければ
+
+コンテキスト変数が生成された時にデフォルト値が渡されていれば、その値を返します。さもなければ
+
+LookupError を送出します。
+
+set(value)
+現在のコンテキストのコンテキスト変数に新しい値を設定する際に呼び出します。
+
+value は必須の引数で、コンテキスト変数の新しい値を指定します。
+
+Token オブジェクトを返します。このオブジェクトを ContextVar.reset() メソッドに渡すことで、以前の値に戻すことができます。
+
+reset(token)
+コンテキスト変数の値を、 token を生成した ContextVar.set() が呼び出される前の値にリセットします。
+
+例えば:
+
+var = ContextVar('var')
+
+token = var.set('new value')
+# code that uses 'var'; var.get() returns 'new value'.
+var.reset(token)
+
+# After the reset call the var has no value again, so
+# var.get() would raise a LookupError.
+class contextvars.Token
+Token オブジェクトは、ContextVar.set() メソッドによって返されるオブジェクトです。このオブジェクトを ContextVar.reset() メソッドに渡すことで、対応する set を呼び出す前のコンテキスト変数の値に戻せます。
+
+Token.var
+読み出し専用のプロパティです。トークンを生成した ContextVar オブジェクトを指します。
+
+Token.old_value
+読み出し専用のプロパティです。このトークンを返した ContextVar.set() メソッドの呼び出し前に設定されていた値を返します。もし呼び出しの前に値が設定されていなければ Token.MISSING を返します。
+
+Token.MISSING
+Token.old_value で利用されるマーカーオブジェクトです。
+
+マニュアルでのコンテキスト管理
+contextvars.copy_context()
+現在の Context オブジェクトのコピーを返します。
+
+次のスニペットは、現在のコンテキストのコピーを取得し、コンテキストに設定されているすべての変数とその値を表示します:
+
+ctx: Context = copy_context()
+print(list(ctx.items()))
+この関数の複雑性はO(1) です。つまり、少数のコンテキスト変数を持つコンテキストと多くの変数を持つコンテキストで同程度の速度で動作します。
+
+class contextvars.Context
+ContextVars とその値の対応付け。
+
+Context() は、値を持たない空のコンテキストを生成します。現在のコンテキストのコピーを得るには、copy_context() 関数を利用します。
+
+Context は、 collections.abc.Mapping インタフェースを実装します。
+
+run(callable, *args, **kwargs)
+callable(*args, **kwargs) を run メソッドが呼ばれたコンテキストオブジェクトの中で実行します。実行した結果を返すか、例外が発生した場合はその例外を伝播します。
+
+callable が行ったコンテキスト変数へのいかなる変更も、コンテキストオブジェクトに格納されます:
+
+var = ContextVar('var')
+var.set('spam')
+
+def main():
+    # 'var' was set to 'spam' before
+    # calling 'copy_context()' and 'ctx.run(main)', so:
+    # var.get() == ctx[var] == 'spam'
+
+    var.set('ham')
+
+    # Now, after setting 'var' to 'ham':
+    # var.get() == ctx[var] == 'ham'
+
+ctx = copy_context()
+
+# Any changes that the 'main' function makes to 'var'
+# will be contained in 'ctx'.
+ctx.run(main)
+
+# The 'main()' function was run in the 'ctx' context,
+# so changes to 'var' are contained in it:
+# ctx[var] == 'ham'
+
+# However, outside of 'ctx', 'var' is still set to 'spam':
+# var.get() == 'spam'
+2つ以上の OS スレッドから同一のコンテキストオブジェクトを呼び出すか、再帰的に呼び出したとき、メソッドは RuntimeError を送出します。
+
+copy()
+コンテキストオブジェクトの浅いコピーを返します。
+
+var in context
+context に var の値が設定されていた場合 True を返します; そうでない場合は False を返します。
+
+context[var]
+ContextVar var の値を返します。コンテキストオブジェクト内で変数が設定されていない場合は、KeyError を送出します。
+
+get(var[, default])
+var がコンテキストオブジェクトの中に値を持てば、その値を返します。さもなければ、default を返します。default を指定していなければ、None を返します。
+
+iter(context)
+コンテキストオブジェクトに格納されている変数群のイテレータを返します。
+
+len(proxy)
+コンテキストオブジェクトに格納されている変数の数を返します。
+
+keys()
+コンテキストオブジェクト中のすべての変数のリストを返します。
+
+values()
+コンテキストオブジェクト中のすべての変数の値のリストを返します。
+
+items()
+コンテキストオブジェクト中のすべての変数について、変数とその値からなる2要素のタプルのリストを返します。
+
+asyncio サポート
+コンテキスト変数は、追加の設定なしに asyncio をサポートします。例えば、次の単純なechoサーバーは、クライアントを扱う Task の中でリモートクライアントのアドレスが利用できるように、コンテキスト変数を利用します:
+
+import asyncio
+import contextvars
+
+client_addr_var = contextvars.ContextVar('client_addr')
+
+def render_goodbye():
+    # The address of the currently handled client can be accessed
+    # without passing it explicitly to this function.
+
+    client_addr = client_addr_var.get()
+    return f'Good bye, client @ {client_addr}\n'.encode()
+
+async def handle_request(reader, writer):
+    addr = writer.transport.get_extra_info('socket').getpeername()
+    client_addr_var.set(addr)
+
+    # In any code that we call is now possible to get
+    # client's address by calling 'client_addr_var.get()'.
+
+    while True:
+        line = await reader.readline()
+        print(line)
+        if not line.strip():
+            break
+        writer.write(line)
+
+    writer.write(render_goodbye())
+    writer.close()
+
+async def main():
+    srv = await asyncio.start_server(
+        handle_request, '127.0.0.1', 8081)
+
+    async with srv:
+        await srv.serve_forever()
+
+asyncio.run(main())
+
+# To test it you can use telnet:
+#     telnet 127.0.0.1 8081
+
+_thread --- 低水準の スレッド API
+このモジュールはマルチスレッド (別名 軽量プロセス (light-weight processes)または タスク (tasks)) に用いられる低水準プリミティブを提供します --- グローバルデータ空間を共有するマルチスレッドを制御します。同期のための単純なロック (別名 mutexes またはバイナリセマフォ (binary semaphores))が提供されています。 threading モジュールは、このモジュール上で、より使い易く高級なスレッディングの API を提供します。
+
+バージョン 3.7 で変更: このモジュールは以前はオプションでしたが、常に利用可能なモジュールとなりました。
+
+This module defines the following constants and functions:
+
+exception _thread.error
+スレッド固有の例外です。
+
+バージョン 3.3 で変更: 現在は組み込みの RuntimeError の別名です。
+
+_thread.LockType
+これはロックオブジェクトのタイプです。
+
+_thread.start_new_thread(function, args[, kwargs])
+Start a new thread and return its identifier. The thread executes the function function with the argument list args (which must be a tuple). The optional kwargs argument specifies a dictionary of keyword arguments.
+
+When the function returns, the thread silently exits.
+
+When the function terminates with an unhandled exception, sys.unraisablehook() is called to handle the exception. The object attribute of the hook argument is function. By default, a stack trace is printed and then the thread exits (but other threads continue to run).
+
+When the function raises a SystemExit exception, it is silently ignored.
+
+バージョン 3.8 で変更: sys.unraisablehook() is now used to handle unhandled exceptions.
+
+_thread.interrupt_main()
+Simulate the effect of a signal.SIGINT signal arriving in the main thread. A thread can use this function to interrupt the main thread.
+
+If signal.SIGINT isn't handled by Python (it was set to signal.SIG_DFL or signal.SIG_IGN), this function does nothing.
+
+_thread.exit()
+SystemExit を送出します。それが捕えられないときは、静かにスレッドを終了させます。
+
+_thread.allocate_lock()
+新しいロックオブジェクトを返します。ロックのメソッドはこの後に記述されます。ロックは初期状態としてアンロック状態です。
+
+_thread.get_ident()
+現在のスレッドの 'スレッドID' を返します。非ゼロの整数です。この値は直接の意味を持っていません; 例えばスレッド特有のデータの辞書に索引をつけるためのような、マジッククッキーとして意図されています。スレッドが終了し、他のスレッドが作られたとき、スレッド ID は再利用されるかもしれません。
+
+_thread.get_native_id()
+Return the native integral Thread ID of the current thread assigned by the kernel. This is a non-negative integer. Its value may be used to uniquely identify this particular thread system-wide (until the thread terminates, after which the value may be recycled by the OS).
+
+Availability: Windows, FreeBSD, Linux, macOS, OpenBSD, NetBSD, AIX.
+
+バージョン 3.8 で追加.
+
+_thread.stack_size([size])
+新しいスレッドを作るときのスレッドスタックサイズを返します。オプションの size 引数にはこれ以降に作成するスレッドのスタックサイズを指定し、0 (プラットフォームのデフォルト値または設定されたデフォルト値) か、 32,768 (32 KiB) 以上の正の整数でなければなりません。size が指定されない場合 0 が使われます。スレッドのスタックサイズの変更がサポートされていない場合、 RuntimeError を送出します。不正なスタックサイズが指定された場合、 ValueError を送出して、スタックサイズは変更されません。32 KiB は現在のインタープリタ自身のために十分であると保証された最小のスタックサイズです。いくつかのプラットフォームではスタックサイズに対して制限があることに注意してください。例えば最小のスタックサイズが 32 KiB より大きかったり、システムのメモリページサイズ の整数倍の必要があるなどです。この制限についてはプラットフォームのドキュメントを参照してください (一般的なページサイズは 4 KiB なので、プラットフォームに関する情報がない場合は 4096 の整数倍のスタックサイズを選ぶといいかもしれません)。
+
+Availability: Windows, systems with POSIX threads.
+
+_thread.TIMEOUT_MAX
+Lock.acquire() の timeout 引数に許される最大値です。これ以上の値を timeout に指定すると OverflowError を発生させます。
+
+バージョン 3.2 で追加.
+
+ロックオブジェクトは次のようなメソッドを持っています:
+
+lock.acquire(waitflag=1, timeout=-1)
+オプションの引数なしで使用すると、このメソッドは他のスレッドがロックしているかどうかにかかわらずロックを獲得します。ただし、他のスレッドがすでにロックしている場合には解除されるまで待ってからロックを獲得します (同時にロックを獲得できるスレッドはひとつだけであり、これこそがロックの存在理由です)。
+
+整数の引数 waitflag を指定すると、その値によって動作が変わります。引数が 0 のときは、待たずにすぐ獲得できる場合にだけロックを獲得します。0 以外の値を与えると、先の例と同様、ロックの状態にかかわらず獲得をおこないます。
+
+timeout 引数に正の float 値が指定された場合、返る前に待つ最大の時間を秒数で指定します。負の timeout 引数は無制限に待つことを指定します。waitflag が 0 の時は timeout を指定することはできません。
+
+なお、ロックを獲得できた場合は True、できなかった場合は False を返します。
+
+バージョン 3.2 で変更: 新しい timeout 引数。
+
+バージョン 3.2 で変更: POSIX ではロックの取得がシグナルに割り込まれるようになりました。
+
+lock.release()
+ロックを解放します。そのロックは既に獲得されたものでなければなりませんが、しかし同じスレッドによって獲得されたものである必要はありません。
+
+lock.locked()
+ロックの状態を返します: 同じスレッドによって獲得されたものなら True 、違うのなら False を返します。
+
+これらのメソッドに加えて、ロックオブジェクトは with 文を通じて以下の例のように使うこともできます。
+
+import _thread
+
+a_lock = _thread.allocate_lock()
+
+with a_lock:
+    print("a_lock is locked while this executes")
+警告:
+
+スレッドは割り込みと奇妙な相互作用をします: KeyboardInterrupt 例外は任意のスレッドによって受け取られます。 (signal モジュールが利用可能なとき、割り込みは常にメインスレッドへ行きます。)
+
+sys.exit() を呼び出す、あるいは SystemExit 例外を送出することは、 _thread.exit() を呼び出すことと同じです。
+
+ロックの acquire() メソッドに割り込むことはできません --- KeyboardInterrupt 例外は、ロックが獲得された後に発生します。
+
+メインスレッドが終了したとき、他のスレッドが生き残るかどうかは、システムに依存します。多くのシステムでは、 try ... finally 節や、オブジェクトデストラクタを実行せずに終了されます。
+
+メインスレッドが終了したとき、それの通常のクリーンアップは行なわれず、 (try ... finally 節が尊重されることは除きます)、標準 I/O ファイルはフラッシュされません。

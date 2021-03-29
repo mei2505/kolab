@@ -1,0 +1,1836 @@
+itertools --- 効率的なループ実行のためのイテレータ生成関数
+このモジュールは イテレータ を構築する部品を実装しています。プログラム言語 APL, Haskell, SML からアイデアを得ていますが、 Python に適した形に修正されています。
+
+このモジュールは、高速でメモリ効率に優れ、単独でも組合せても使用することのできるツールを標準化したものです。同時に、このツール群は "イテレータの代数" を構成していて、pure Python で簡潔かつ効率的なツールを作れるようにしています。
+
+例えば、SML の作表ツール tabulate(f) は f(0), f(1), ... のシーケンスを作成します。同じことを Python では map() と count() を組合せて map(f, count()) という形で実現できます。
+
+これらのツールと組み込み関数は operator モジュール内の高速な関数とともに使うことで見事に動作します。例えば、乗算演算子を2つのベクトルにわたってマップすることで効率的な内積計算を実現できます: sum(map(operator.mul, vector1, vector2)) 。
+
+無限イテレータ:
+
+イテレータ
+
+引数
+
+結果
+
+使用例
+
+count()
+
+start, [step]
+
+start, start+step, start+2*step, ...
+
+count(10) --> 10 11 12 13 14 ...
+
+cycle()
+
+p
+
+p0, p1, ... plast, p0, p1, ...
+
+cycle('ABCD') --> A B C D A B C D ...
+
+repeat()
+
+elem [,n]
+
+elem, elem, elem, ... 無限もしくは n 回
+
+repeat(10, 3) --> 10 10 10
+
+一番短い入力シーケンスで止まるイテレータ:
+
+イテレータ
+
+引数
+
+結果
+
+使用例
+
+accumulate()
+
+p [,func]
+
+p0, p0+p1, p0+p1+p2, ...
+
+accumulate([1,2,3,4,5]) --> 1 3 6 10 15
+
+chain()
+
+p, q, ...
+
+p0, p1, ... plast, q0, q1, ...
+
+chain('ABC', 'DEF') --> A B C D E F
+
+chain.from_iterable()
+
+iterable
+
+p0, p1, ... plast, q0, q1, ...
+
+chain.from_iterable(['ABC', 'DEF']) --> A B C D E F
+
+compress()
+
+data, selectors
+
+(d[0] if s[0]), (d[1] if s[1]), ...
+
+compress('ABCDEF', [1,0,1,0,1,1]) --> A C E F
+
+dropwhile()
+
+pred, seq
+
+seq[n], seq[n+1], pred が偽の場所から始まる
+
+dropwhile(lambda x: x<5, [1,4,6,4,1]) --> 6 4 1
+
+filterfalse()
+
+pred, seq
+
+pred(elem) が偽になるseqの要素
+
+filterfalse(lambda x: x%2, range(10)) --> 0 2 4 6 8
+
+groupby()
+
+iterable[, key]
+
+key(v) の値でグループ化したサブイテレータ
+
+islice()
+
+seq, [start,] stop [, step]
+
+seq[start:stop:step]
+
+islice('ABCDEFG', 2, None) --> C D E F G
+
+starmap()
+
+func, seq
+
+func(*seq[0]), func(*seq[1]), ...
+
+starmap(pow, [(2,5), (3,2), (10,3)]) --> 32 9 1000
+
+takewhile()
+
+pred, seq
+
+seq[0], seq[1], pred が偽になるまで
+
+takewhile(lambda x: x<5, [1,4,6,4,1]) --> 1 4
+
+tee()
+
+it, n
+
+it1, it2 , ... itn 一つのイテレータを n 個に分ける
+
+zip_longest()
+
+p, q, ...
+
+(p[0], q[0]), (p[1], q[1]), ...
+
+zip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
+
+組合せイテレータ:
+
+イテレータ
+
+引数
+
+結果
+
+product()
+
+p, q, ... [repeat=1]
+
+デカルト積、ネストしたforループと等価
+
+permutations()
+
+p[, r]
+
+長さrのタプル列、重複なしのあらゆる並び
+
+combinations()
+
+p, r
+
+長さrのタプル列、ソートされた順で重複なし
+
+combinations_with_replacement()
+
+p, r
+
+長さrのタプル列、ソートされた順で重複あり
+
+使用例
+
+結果
+
+product('ABCD', repeat=2)
+
+AA AB AC AD BA BB BC BD CA CB CC CD DA DB DC DD
+
+permutations('ABCD', 2)
+
+AB AC AD BA BC BD CA CB CD DA DB DC
+
+combinations('ABCD', 2)
+
+AB AC AD BC BD CD
+
+combinations_with_replacement('ABCD', 2)
+
+AA AB AC AD BB BC BD CC CD DD
+
+Itertool関数
+以下の関数は全て、イテレータを作成して返します。無限長のストリームのイテレータを返す関数もあり、この場合にはストリームを中断するような関数かループ処理から使用しなければなりません。
+
+itertools.accumulate(iterable[, func, *, initial=None])
+Make an iterator that returns accumulated sums, or accumulated results of other binary functions (specified via the optional func argument).
+
+If func is supplied, it should be a function of two arguments. Elements of the input iterable may be any type that can be accepted as arguments to func. (For example, with the default operation of addition, elements may be any addable type including Decimal or Fraction.)
+
+Usually, the number of elements output matches the input iterable. However, if the keyword argument initial is provided, the accumulation leads off with the initial value so that the output has one more element than the input iterable.
+
+およそ次と等価です:
+
+def accumulate(iterable, func=operator.add, *, initial=None):
+    'Return running totals'
+    # accumulate([1,2,3,4,5]) --> 1 3 6 10 15
+    # accumulate([1,2,3,4,5], initial=100) --> 100 101 103 106 110 115
+    # accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
+    it = iter(iterable)
+    total = initial
+    if initial is None:
+        try:
+            total = next(it)
+        except StopIteration:
+            return
+    yield total
+    for element in it:
+        total = func(total, element)
+        yield total
+func 引数の利用法はたくさんあります。最小値にするために min() を、最大値にするために max() を、積にするために operator.mul() を使うことができます。金利を累積し支払いを適用して償還表を作成することもできます。初期値をイテラブルに与えて func 引数で累積和を利用するだけで一階の 漸化式 をモデル化できます:
+
+>>>
+>>> data = [3, 4, 6, 2, 1, 9, 0, 7, 5, 8]
+>>> list(accumulate(data, operator.mul))     # running product
+[3, 12, 72, 144, 144, 1296, 0, 0, 0, 0]
+>>> list(accumulate(data, max))              # running maximum
+[3, 4, 6, 6, 6, 9, 9, 9, 9, 9]
+
+# Amortize a 5% loan of 1000 with 4 annual payments of 90
+>>> cashflows = [1000, -90, -90, -90, -90]
+>>> list(accumulate(cashflows, lambda bal, pmt: bal*1.05 + pmt))
+[1000, 960.0, 918.0, 873.9000000000001, 827.5950000000001]
+
+# Chaotic recurrence relation https://en.wikipedia.org/wiki/Logistic_map
+>>> logistic_map = lambda x, _:  r * x * (1 - x)
+>>> r = 3.8
+>>> x0 = 0.4
+>>> inputs = repeat(x0, 36)     # only the initial value is used
+>>> [format(x, '.2f') for x in accumulate(inputs, logistic_map)]
+['0.40', '0.91', '0.30', '0.81', '0.60', '0.92', '0.29', '0.79', '0.63',
+ '0.88', '0.39', '0.90', '0.33', '0.84', '0.52', '0.95', '0.18', '0.57',
+ '0.93', '0.25', '0.71', '0.79', '0.63', '0.88', '0.39', '0.91', '0.32',
+ '0.83', '0.54', '0.95', '0.20', '0.60', '0.91', '0.30', '0.80', '0.60']
+最終的な累積値だけを返す類似の関数については functools.reduce() を見てください。
+
+バージョン 3.2 で追加.
+
+バージョン 3.3 で変更: オプションの func 引数が追加されました。
+
+バージョン 3.8 で変更: オプションの initial パラメータが追加されました。
+
+itertools.chain(*iterables)
+先頭の iterable の全要素を返し、次に2番目の iterable の全要素を返し、と全 iterable の要素を返すイテレータを作成します。連続したシーケンスを一つのシーケンスとして扱う場合に使用します。およそ次と等価です:
+
+def chain(*iterables):
+    # chain('ABC', 'DEF') --> A B C D E F
+    for it in iterables:
+        for element in it:
+            yield element
+classmethod chain.from_iterable(iterable)
+chain() のためのもう一つのコンストラクタです。遅延評価される iterable 引数一つから連鎖した入力を受け取ります。この関数は、以下のコードとほぼ等価です:
+
+def from_iterable(iterables):
+    # chain.from_iterable(['ABC', 'DEF']) --> A B C D E F
+    for it in iterables:
+        for element in it:
+            yield element
+itertools.combinations(iterable, r)
+入力 iterable の要素からなる長さ r の部分列を返します。
+
+組合せ(combination)は入力 iterable に応じた辞書式順序で出力されます。したがって、入力 iterable がソートされていれば、出力される組合わせ(combination)タプルもソートされた順番で生成されます。
+
+各要素は場所に基づいて一意に取り扱われ、値にはよりません。入力された要素がバラバラなら各組合せの中に重複した値は現れません。
+
+およそ次と等価です:
+
+def combinations(iterable, r):
+    # combinations('ABCD', 2) --> AB AC AD BC BD CD
+    # combinations(range(4), 3) --> 012 013 023 123
+    pool = tuple(iterable)
+    n = len(pool)
+    if r > n:
+        return
+    indices = list(range(r))
+    yield tuple(pool[i] for i in indices)
+    while True:
+        for i in reversed(range(r)):
+            if indices[i] != i + n - r:
+                break
+        else:
+            return
+        indices[i] += 1
+        for j in range(i+1, r):
+            indices[j] = indices[j-1] + 1
+        yield tuple(pool[i] for i in indices)
+combinations() のコードは permutations() のシーケンスから (入力プールでの位置に応じた順序で) 要素がソートされていないものをフィルターしたようにも表現できます:
+
+def combinations(iterable, r):
+    pool = tuple(iterable)
+    n = len(pool)
+    for indices in permutations(range(n), r):
+        if sorted(indices) == list(indices):
+            yield tuple(pool[i] for i in indices)
+返される要素の数は、0 <= r <= n の場合は、n! / r! / (n-r)! で、r > n の場合は 0 です。
+
+itertools.combinations_with_replacement(iterable, r)
+入力 iterable から、それぞれの要素が複数回現れることを許して、長さ r の要素の部分列を返します。
+
+組合せ(combination)は入力 iterable に応じた辞書式順序で出力されます。したがって、入力 iterable がソートされていれば、出力される組合わせ(combination)タプルもソートされた順番で生成されます。
+
+要素は、値ではなく位置に基づいて一意に扱われます。ですから、入力の要素が一意であれば、生成された組合せも一意になります。
+
+およそ次と等価です:
+
+def combinations_with_replacement(iterable, r):
+    # combinations_with_replacement('ABC', 2) --> AA AB AC BB BC CC
+    pool = tuple(iterable)
+    n = len(pool)
+    if not n and r:
+        return
+    indices = [0] * r
+    yield tuple(pool[i] for i in indices)
+    while True:
+        for i in reversed(range(r)):
+            if indices[i] != n - 1:
+                break
+        else:
+            return
+        indices[i:] = [indices[i] + 1] * (r - i)
+        yield tuple(pool[i] for i in indices)
+combinations_with_replacement() のコードは、 product() の部分列から、要素が (入力プールの位置に従って) ソートされた順になっていない項目をフィルタリングしたものとしても表せます:
+
+def combinations_with_replacement(iterable, r):
+    pool = tuple(iterable)
+    n = len(pool)
+    for indices in product(range(n), repeat=r):
+        if sorted(indices) == list(indices):
+            yield tuple(pool[i] for i in indices)
+返される要素の数は、n > 0 のとき (n+r-1)! / r! / (n-1)! です。
+
+バージョン 3.1 で追加.
+
+itertools.compress(data, selectors)
+data の要素から selectors の対応する要素が True と評価されるものだけをフィルタしたイテレータを作ります。data と selectors のいずれかが尽きたときに止まります。およそ次と等価です:
+
+def compress(data, selectors):
+    # compress('ABCDEF', [1,0,1,0,1,1]) --> A C E F
+    return (d for d, s in zip(data, selectors) if s)
+バージョン 3.1 で追加.
+
+itertools.count(start=0, step=1)
+数 start で始まる等間隔の値を返すイテレータを作成します。map() に渡して連続したデータを生成するのによく使われます。 また、 zip() に連続した番号を追加するのにも使われます。 およそ次と等価です:
+
+def count(start=0, step=1):
+    # count(10) --> 10 11 12 13 14 ...
+    # count(2.5, 0.5) -> 2.5 3.0 3.5 ...
+    n = start
+    while True:
+        yield n
+        n += step
+浮動小数点数でカウントするときは (start + step * i for i in count()) のように掛け算を使ったコードに置き換えたほうが正確にできることがあります。
+
+バージョン 3.1 で変更: step 引数が追加され、非整数の引数が許されるようになりました。
+
+itertools.cycle(iterable)
+iterable から要素を取得し、そのコピーを保存するイテレータを作成します。iterable の全要素を返すと、セーブされたコピーから要素を返します。これを無限に繰り返します。およそ次と等価です:
+
+def cycle(iterable):
+    # cycle('ABCD') --> A B C D A B C D A B C D ...
+    saved = []
+    for element in iterable:
+        yield element
+        saved.append(element)
+    while saved:
+        for element in saved:
+              yield element
+cycle() は大きなメモリ領域を使用します。使用するメモリ量は iterable の大きさに依存します。
+
+itertools.dropwhile(predicate, iterable)
+predicate (述語) が真である間は要素を飛ばし、その後は全ての要素を返すイテレータを作成します。このイテレータは、predicate が最初に偽になるまで 全く 要素を返さないため、要素を返し始めるまでに長い時間がかかる場合があります。およそ次と等価です:
+
+def dropwhile(predicate, iterable):
+    # dropwhile(lambda x: x<5, [1,4,6,4,1]) --> 6 4 1
+    iterable = iter(iterable)
+    for x in iterable:
+        if not predicate(x):
+            yield x
+            break
+    for x in iterable:
+        yield x
+itertools.filterfalse(predicate, iterable)
+iterable から predicate が False となる要素だけを返すイテレータを作成します。predicate が None の場合、偽の要素だけを返します。およそ次と等価です:
+
+def filterfalse(predicate, iterable):
+    # filterfalse(lambda x: x%2, range(10)) --> 0 2 4 6 8
+    if predicate is None:
+        predicate = bool
+    for x in iterable:
+        if not predicate(x):
+            yield x
+itertools.groupby(iterable, key=None)
+同じキーをもつような要素からなる iterable 中のグループに対して、キーとグループを返すようなイテレータを作成します。key は各要素に対するキー値を計算する関数です。キーを指定しない場合や None にした場合、key 関数のデフォルトは恒等関数になり要素をそのまま返します。通常、iterable は同じキー関数でソート済みである必要があります。
+
+groupby() の操作は Unix の uniq フィルターと似ています。 key 関数の値が変わるたびに休止または新しいグループを生成します (このために通常同じ key 関数でソートしておく必要があるのです)。この動作は SQL の入力順に関係なく共通の要素を集約する GROUP BY とは違います。
+
+返されるグループはそれ自体がイテレータで、 groupby() と iterable を共有しています。もととなる iterable を共有しているため、 groupby() オブジェクトの要素取り出しを先に進めると、それ以前の要素であるグループは見えなくなってしまいます。従って、データが後で必要な場合にはリストの形で保存しておく必要があります:
+
+groups = []
+uniquekeys = []
+data = sorted(data, key=keyfunc)
+for k, g in groupby(data, keyfunc):
+    groups.append(list(g))      # Store group iterator as a list
+    uniquekeys.append(k)
+groupby() はおよそ次と等価です:
+
+class groupby:
+    # [k for k, g in groupby('AAAABBBCCDAABBB')] --> A B C D A B
+    # [list(g) for k, g in groupby('AAAABBBCCD')] --> AAAA BBB CC D
+    def __init__(self, iterable, key=None):
+        if key is None:
+            key = lambda x: x
+        self.keyfunc = key
+        self.it = iter(iterable)
+        self.tgtkey = self.currkey = self.currvalue = object()
+    def __iter__(self):
+        return self
+    def __next__(self):
+        self.id = object()
+        while self.currkey == self.tgtkey:
+            self.currvalue = next(self.it)    # Exit on StopIteration
+            self.currkey = self.keyfunc(self.currvalue)
+        self.tgtkey = self.currkey
+        return (self.currkey, self._grouper(self.tgtkey, self.id))
+    def _grouper(self, tgtkey, id):
+        while self.id is id and self.currkey == tgtkey:
+            yield self.currvalue
+            try:
+                self.currvalue = next(self.it)
+            except StopIteration:
+                return
+            self.currkey = self.keyfunc(self.currvalue)
+itertools.islice(iterable, stop)
+itertools.islice(iterable, start, stop[, step])
+iterable から要素を選択して返すイテレータを作成します。 start が0でない場合、iterable の要素は start に達するまでスキップされます。その後、 要素が順に返されます。
+
+def islice(iterable, *args):
+    # islice('ABCDEFG', 2) --> A B
+    # islice('ABCDEFG', 2, 4) --> C D
+    # islice('ABCDEFG', 2, None) --> C D E F G
+    # islice('ABCDEFG', 0, None, 2) --> A C E G
+    s = slice(*args)
+    start, stop, step = s.start or 0, s.stop or sys.maxsize, s.step or 1
+    it = iter(range(start, stop, step))
+    try:
+        nexti = next(it)
+    except StopIteration:
+        # Consume *iterable* up to the *start* position.
+        for i, element in zip(range(start), iterable):
+            pass
+        return
+    try:
+        for i, element in enumerate(iterable):
+            if i == nexti:
+                yield element
+                nexti = next(it)
+    except StopIteration:
+        # Consume to *stop*.
+        for i, element in zip(range(i + 1, stop), iterable):
+            pass
+start が None の場合、イテレーションは0から始まります。step が None の場合、ステップはデフォルトの1になります。
+
+itertools.permutations(iterable, r=None)
+iterable の要素からなる長さ r の順列 (permutation) を連続的に返します。
+
+r が指定されない場合や None の場合、r はデフォルトで iterable の長さとなり、可能な最長の順列の全てが生成されます。
+
+順列(permutation)は入力 iterable に応じた辞書式順序で出力されます。したがって、入力 iterable がソートされていれば、出力される組合わせタプルもソートされた順番で生成されます。
+
+要素は値ではなく位置に基づいて一意的に扱われます。したがって入力された要素が全て異なっている場合、それぞれの順列に重複した要素が現れないことになります。
+
+およそ次と等価です:
+
+def permutations(iterable, r=None):
+    # permutations('ABCD', 2) --> AB AC AD BA BC BD CA CB CD DA DB DC
+    # permutations(range(3)) --> 012 021 102 120 201 210
+    pool = tuple(iterable)
+    n = len(pool)
+    r = n if r is None else r
+    if r > n:
+        return
+    indices = list(range(n))
+    cycles = list(range(n, n-r, -1))
+    yield tuple(pool[i] for i in indices[:r])
+    while n:
+        for i in reversed(range(r)):
+            cycles[i] -= 1
+            if cycles[i] == 0:
+                indices[i:] = indices[i+1:] + indices[i:i+1]
+                cycles[i] = n - i
+            else:
+                j = cycles[i]
+                indices[i], indices[-j] = indices[-j], indices[i]
+                yield tuple(pool[i] for i in indices[:r])
+                break
+        else:
+            return
+permutations() のコードは product() の列から重複 (それらは入力プールの同じ位置から取られたものです) を除くようフィルタしたものとしても表現できます:
+
+def permutations(iterable, r=None):
+    pool = tuple(iterable)
+    n = len(pool)
+    r = n if r is None else r
+    for indices in product(range(n), repeat=r):
+        if len(set(indices)) == r:
+            yield tuple(pool[i] for i in indices)
+返される要素の数は、0 <= r <= n の場合 n! / (n-r)! で、r > n の場合は 0 です。
+
+itertools.product(*iterables, repeat=1)
+入力イテラブルのデカルト積です。
+
+ジェネレータ式の入れ子になった for ループとおよそ等価です。たとえば product(A, B) は ((x,y) for x in A for y in B) と同じものを返します。
+
+入れ子ループは走行距離計と同じように右端の要素がイテレーションごとに更新されていきます。このパターンは辞書式順序を作り出し、入力のイテレート可能オブジェクトたちがソートされていれば、直積タプルもソートされた順に出てきます。
+
+イテラブル自身との直積を計算するためには、オプションの repeat キーワード引数に繰り返し回数を指定します。たとえば product(A, repeat=4) は product(A, A, A, A) と同じ意味です。
+
+この関数は以下のコードとおよそ等価ですが、実際の実装ではメモリ中に中間結果を作りません:
+
+def product(*args, repeat=1):
+    # product('ABCD', 'xy') --> Ax Ay Bx By Cx Cy Dx Dy
+    # product(range(2), repeat=3) --> 000 001 010 011 100 101 110 111
+    pools = [tuple(pool) for pool in args] * repeat
+    result = [[]]
+    for pool in pools:
+        result = [x+[y] for x in result for y in pool]
+    for prod in result:
+        yield tuple(prod)
+Before product() runs, it completely consumes the input iterables, keeping pools of values in memory to generate the products. Accordingly, it is only useful with finite inputs.
+
+itertools.repeat(object[, times])
+繰り返し object を返すイテレータを作成します。 times 引数を指定しなければ、無限に値を返し続けます。map() の引数にして、呼び出された関数に同じ引数を渡すのに使います。また zip() と使って、タプルの変わらない部分を作ります。
+
+およそ次と等価です:
+
+def repeat(object, times=None):
+    # repeat(10, 3) --> 10 10 10
+    if times is None:
+        while True:
+            yield object
+    else:
+        for i in range(times):
+            yield object
+repeat は map や zip に定数のストリームを与えるためによく利用されます:
+
+>>>
+>>> list(map(pow, range(10), repeat(2)))
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+itertools.starmap(function, iterable)
+iterable の要素を引数として funtion を計算するイテレータを作成します。 function の引数が一つの iterable からタプルに既にグループ化されている (データが "zip済み") 場合、map() の代わりに使用します。map() と starmap() の違いは function(a,b) と function(*c) の差に似ています。およそ次と等価です:
+
+def starmap(function, iterable):
+    # starmap(pow, [(2,5), (3,2), (10,3)]) --> 32 9 1000
+    for args in iterable:
+        yield function(*args)
+itertools.takewhile(predicate, iterable)
+predicate が真である限り iterable から要素を返すイテレータを作成します。およそ次と等価です:
+
+def takewhile(predicate, iterable):
+    # takewhile(lambda x: x<5, [1,4,6,4,1]) --> 1 4
+    for x in iterable:
+        if predicate(x):
+            yield x
+        else:
+            break
+itertools.tee(iterable, n=2)
+一つの iterable から n 個の独立したイテレータを返します。
+
+以下の Python コードは tee がすることについての理解を助けるでしょう (ただし実際の実装はより複雑で、下層の FIFO キューを一つしか使いませんが)。
+
+およそ次と等価です:
+
+def tee(iterable, n=2):
+    it = iter(iterable)
+    deques = [collections.deque() for i in range(n)]
+    def gen(mydeque):
+        while True:
+            if not mydeque:             # when the local deque is empty
+                try:
+                    newval = next(it)   # fetch a new value and
+                except StopIteration:
+                    return
+                for d in deques:        # load it to all the deques
+                    d.append(newval)
+            yield mydeque.popleft()
+    return tuple(gen(d) for d in deques)
+一度 tee() でイテレータを分割すると、もとの iterable を他で使ってはいけません。さもなければ、 tee() オブジェクトの知らない間に iterable が先の要素に進んでしまうことになります。
+
+tee iterators are not threadsafe. A RuntimeError may be raised when using simultaneously iterators returned by the same tee() call, even if the original iterable is threadsafe.
+
+tee() はかなり大きなメモリ領域を使用するかもしれません (使用するメモリ量はiterableの大きさに依存します)。一般には、一つのイテレータが他のイテレータよりも先にほとんどまたは全ての要素を消費するような場合には、 tee() よりも list() を使った方が高速です。
+
+itertools.zip_longest(*iterables, fillvalue=None)
+各 iterable の要素をまとめるイテレータを作成します。iterable の長さが違う場合、足りない値は fillvalue で埋められます。最も長い itarable が尽きるまでイテレーションします。およそ次と等価です:
+
+def zip_longest(*args, fillvalue=None):
+    # zip_longest('ABCD', 'xy', fillvalue='-') --> Ax By C- D-
+    iterators = [iter(it) for it in args]
+    num_active = len(iterators)
+    if not num_active:
+        return
+    while True:
+        values = []
+        for i, it in enumerate(iterators):
+            try:
+                value = next(it)
+            except StopIteration:
+                num_active -= 1
+                if not num_active:
+                    return
+                iterators[i] = repeat(fillvalue)
+                value = fillvalue
+            values.append(value)
+        yield tuple(values)
+iterables の1つが無限になりうる場合 zip_longest() は呼び出し回数を制限するような何かでラップしなければいけません(例えば islice() or takewhile())。 fillvalue は指定しない場合のデフォルトは None です。
+
+Itertools レシピ
+この節では、既存の itertools を素材としてツールセットを拡張するためのレシピを示します。
+
+Substantially all of these recipes and many, many others can be installed from the more-itertools project found on the Python Package Index:
+
+pip install more-itertools
+iterable 全体を一度にメモリ上に置くよりも、要素を一つづつ処理する方がメモリ効率上の有利さを保てます。関数形式のままツールをリンクしてゆくと、コードのサイズを減らし、一時変数を減らす助けになります。インタプリタのオーバヘッドをもたらす for ループや ジェネレータ を使わずに、 "ベクトル化された" ビルディングブロックを使うと、高速な処理を実現できます。
+
+def take(n, iterable):
+    "Return first n items of the iterable as a list"
+    return list(islice(iterable, n))
+
+def prepend(value, iterator):
+    "Prepend a single value in front of an iterator"
+    # prepend(1, [2, 3, 4]) -> 1 2 3 4
+    return chain([value], iterator)
+
+def tabulate(function, start=0):
+    "Return function(0), function(1), ..."
+    return map(function, count(start))
+
+def tail(n, iterable):
+    "Return an iterator over the last n items"
+    # tail(3, 'ABCDEFG') --> E F G
+    return iter(collections.deque(iterable, maxlen=n))
+
+def consume(iterator, n=None):
+    "Advance the iterator n-steps ahead. If n is None, consume entirely."
+    # Use functions that consume iterators at C speed.
+    if n is None:
+        # feed the entire iterator into a zero-length deque
+        collections.deque(iterator, maxlen=0)
+    else:
+        # advance to the empty slice starting at position n
+        next(islice(iterator, n, n), None)
+
+def nth(iterable, n, default=None):
+    "Returns the nth item or a default value"
+    return next(islice(iterable, n, None), default)
+
+def all_equal(iterable):
+    "Returns True if all the elements are equal to each other"
+    g = groupby(iterable)
+    return next(g, True) and not next(g, False)
+
+def quantify(iterable, pred=bool):
+    "Count how many times the predicate is true"
+    return sum(map(pred, iterable))
+
+def pad_none(iterable):
+    """Returns the sequence elements and then returns None indefinitely.
+
+    Useful for emulating the behavior of the built-in map() function.
+    """
+    return chain(iterable, repeat(None))
+
+def ncycles(iterable, n):
+    "Returns the sequence elements n times"
+    return chain.from_iterable(repeat(tuple(iterable), n))
+
+def dotproduct(vec1, vec2):
+    return sum(map(operator.mul, vec1, vec2))
+
+def convolve(signal, kernel):
+    # See:  https://betterexplained.com/articles/intuitive-convolution/
+    # convolve(data, [0.25, 0.25, 0.25, 0.25]) --> Moving average (blur)
+    # convolve(data, [1, -1]) --> 1st finite difference (1st derivative)
+    # convolve(data, [1, -2, 1]) --> 2nd finite difference (2nd derivative)
+    kernel = tuple(kernel)[::-1]
+    n = len(kernel)
+    window = collections.deque([0], maxlen=n) * n
+    for x in chain(signal, repeat(0, n-1)):
+        window.append(x)
+        yield sum(map(operator.mul, kernel, window))
+
+def flatten(list_of_lists):
+    "Flatten one level of nesting"
+    return chain.from_iterable(list_of_lists)
+
+def repeatfunc(func, times=None, *args):
+    """Repeat calls to func with specified arguments.
+
+    Example:  repeatfunc(random.random)
+    """
+    if times is None:
+        return starmap(func, repeat(args))
+    return starmap(func, repeat(args, times))
+
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+    args = [iter(iterable)] * n
+    return zip_longest(*args, fillvalue=fillvalue)
+
+def roundrobin(*iterables):
+    "roundrobin('ABC', 'D', 'EF') --> A D E B F C"
+    # Recipe credited to George Sakkis
+    num_active = len(iterables)
+    nexts = cycle(iter(it).__next__ for it in iterables)
+    while num_active:
+        try:
+            for next in nexts:
+                yield next()
+        except StopIteration:
+            # Remove the iterator we just exhausted from the cycle.
+            num_active -= 1
+            nexts = cycle(islice(nexts, num_active))
+
+def partition(pred, iterable):
+    "Use a predicate to partition entries into false entries and true entries"
+    # partition(is_odd, range(10)) --> 0 2 4 6 8   and  1 3 5 7 9
+    t1, t2 = tee(iterable)
+    return filterfalse(pred, t1), filter(pred, t2)
+
+def powerset(iterable):
+    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+    s = list(iterable)
+    return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
+
+def unique_everseen(iterable, key=None):
+    "List unique elements, preserving order. Remember all elements ever seen."
+    # unique_everseen('AAAABBBCCDAABBB') --> A B C D
+    # unique_everseen('ABBCcAD', str.lower) --> A B C D
+    seen = set()
+    seen_add = seen.add
+    if key is None:
+        for element in filterfalse(seen.__contains__, iterable):
+            seen_add(element)
+            yield element
+    else:
+        for element in iterable:
+            k = key(element)
+            if k not in seen:
+                seen_add(k)
+                yield element
+
+def unique_justseen(iterable, key=None):
+    "List unique elements, preserving order. Remember only the element just seen."
+    # unique_justseen('AAAABBBCCDAABBB') --> A B C D A B
+    # unique_justseen('ABBCcAD', str.lower) --> A B C A D
+    return map(next, map(operator.itemgetter(1), groupby(iterable, key)))
+
+def iter_except(func, exception, first=None):
+    """ Call a function repeatedly until an exception is raised.
+
+    Converts a call-until-exception interface to an iterator interface.
+    Like builtins.iter(func, sentinel) but uses an exception instead
+    of a sentinel to end the loop.
+
+    Examples:
+        iter_except(functools.partial(heappop, h), IndexError)   # priority queue iterator
+        iter_except(d.popitem, KeyError)                         # non-blocking dict iterator
+        iter_except(d.popleft, IndexError)                       # non-blocking deque iterator
+        iter_except(q.get_nowait, Queue.Empty)                   # loop over a producer Queue
+        iter_except(s.pop, KeyError)                             # non-blocking set iterator
+
+    """
+    try:
+        if first is not None:
+            yield first()            # For database APIs needing an initial cast to db.first()
+        while True:
+            yield func()
+    except exception:
+        pass
+
+def first_true(iterable, default=False, pred=None):
+    """Returns the first true value in the iterable.
+
+    If no true value is found, returns *default*
+
+    If *pred* is not None, returns the first item
+    for which pred(item) is true.
+
+    """
+    # first_true([a,b,c], x) --> a or b or c or x
+    # first_true([a,b], x, f) --> a if f(a) else b if f(b) else x
+    return next(filter(pred, iterable), default)
+
+def random_product(*args, repeat=1):
+    "Random selection from itertools.product(*args, **kwds)"
+    pools = [tuple(pool) for pool in args] * repeat
+    return tuple(map(random.choice, pools))
+
+def random_permutation(iterable, r=None):
+    "Random selection from itertools.permutations(iterable, r)"
+    pool = tuple(iterable)
+    r = len(pool) if r is None else r
+    return tuple(random.sample(pool, r))
+
+def random_combination(iterable, r):
+    "Random selection from itertools.combinations(iterable, r)"
+    pool = tuple(iterable)
+    n = len(pool)
+    indices = sorted(random.sample(range(n), r))
+    return tuple(pool[i] for i in indices)
+
+def random_combination_with_replacement(iterable, r):
+    "Random selection from itertools.combinations_with_replacement(iterable, r)"
+    pool = tuple(iterable)
+    n = len(pool)
+    indices = sorted(random.choices(range(n), k=r))
+    return tuple(pool[i] for i in indices)
+
+def nth_combination(iterable, r, index):
+    "Equivalent to list(combinations(iterable, r))[index]"
+    pool = tuple(iterable)
+    n = len(pool)
+    if r < 0 or r > n:
+        raise ValueError
+    c = 1
+    k = min(r, n-r)
+    for i in range(1, k+1):
+        c = c * (n - k + i) // i
+    if index < 0:
+        index += c
+    if index < 0 or index >= c:
+        raise IndexError
+    result = []
+    while r:
+        c, n, r = c*r//n, n-1, r-1
+        while index >= c:
+            index -= c
+            c, n = c*(n-r)//n, n-1
+        result.append(pool[-1-n])
+    return tuple(result)
+
+functools --- 高階関数と呼び出し可能オブジェクトの操作
+ソースコード: Lib/functools.py
+
+functools モジュールは高階関数、つまり関数に影響を及ぼしたり他の関数を返したりする関数のためのものです。一般に、どんな呼び出し可能オブジェクトでもこのモジュールの目的には関数として扱えます。
+
+モジュール functools は以下の関数を定義します:
+
+@functools.cache(user_function)
+Simple lightweight unbounded function cache. Sometimes called "memoize".
+
+Returns the same as lru_cache(maxsize=None), creating a thin wrapper around a dictionary lookup for the function arguments. Because it never needs to evict old values, this is smaller and faster than lru_cache() with a size limit.
+
+例えば:
+
+@cache
+def factorial(n):
+    return n * factorial(n-1) if n else 1
+
+>>> factorial(10)      # no previously cached result, makes 11 recursive calls
+3628800
+>>> factorial(5)       # just looks up cached value result
+120
+>>> factorial(12)      # makes two new recursive calls, the other 10 are cached
+479001600
+バージョン 3.9 で追加.
+
+@functools.cached_property(func)
+Transform a method of a class into a property whose value is computed once and then cached as a normal attribute for the life of the instance. Similar to property(), with the addition of caching. Useful for expensive computed properties of instances that are otherwise effectively immutable.
+
+以下はプログラム例です:
+
+class DataSet:
+
+    def __init__(self, sequence_of_numbers):
+        self._data = tuple(sequence_of_numbers)
+
+    @cached_property
+    def stdev(self):
+        return statistics.stdev(self._data)
+The mechanics of cached_property() are somewhat different from property(). A regular property blocks attribute writes unless a setter is defined. In contrast, a cached_property allows writes.
+
+The cached_property decorator only runs on lookups and only when an attribute of the same name doesn't exist. When it does run, the cached_property writes to the attribute with the same name. Subsequent attribute reads and writes take precedence over the cached_property method and it works like a normal attribute.
+
+The cached value can be cleared by deleting the attribute. This allows the cached_property method to run again.
+
+Note, this decorator interferes with the operation of PEP 412 key-sharing dictionaries. This means that instance dictionaries can take more space than usual.
+
+Also, this decorator requires that the __dict__ attribute on each instance be a mutable mapping. This means it will not work with some types, such as metaclasses (since the __dict__ attributes on type instances are read-only proxies for the class namespace), and those that specify __slots__ without including __dict__ as one of the defined slots (as such classes don't provide a __dict__ attribute at all).
+
+If a mutable mapping is not available or if space-efficient key sharing is desired, an effect similar to cached_property() can be achieved by a stacking property() on top of cache():
+
+class DataSet:
+    def __init__(self, sequence_of_numbers):
+        self._data = sequence_of_numbers
+
+    @property
+    @cache
+    def stdev(self):
+        return statistics.stdev(self._data)
+バージョン 3.8 で追加.
+
+functools.cmp_to_key(func)
+古いスタイルの比較関数を key function に変換します。key 関数を受け取るツール (sorted(), min(), max(), heapq.nlargest(), heapq.nsmallest(), itertools.groupby() など) と共に使用します。この関数は、主に比較関数を使っていた Python 2 からプログラムの移行のための変換ツールとして使われます。
+
+比較関数は2つの引数を受け取り、それらを比較し、 "より小さい" 場合は負の数を、同値の場合には 0 を、 "より大きい" 場合には正の数を返す、あらゆる呼び出し可能オブジェクトです。key 関数は呼び出し可能オブジェクトで、1つの引数を受け取り、ソートキーとして使われる値を返します。
+
+以下はプログラム例です:
+
+sorted(iterable, key=cmp_to_key(locale.strcoll))  # locale-aware sort order
+ソートの例と簡単なチュートリアルは ソート HOW TO を参照して下さい。
+
+バージョン 3.2 で追加.
+
+@functools.lru_cache(user_function)
+@functools.lru_cache(maxsize=128, typed=False)
+関数をメモ化用の呼び出し可能オブジェクトでラップし、最近の呼び出し最大 maxsize 回まで保存するするデコレータです。高価な関数や I/O に束縛されている関数を定期的に同じ引数で呼び出すときに、時間を節約できます。
+
+結果のキャッシュには辞書が使われるので、関数の位置引数およびキーワード引数はハッシュ可能でなくてはなりません。
+
+引数のパターンが異なる場合は、異なる呼び出しと見なされ別々のキャッシュエントリーとなります。 例えば、 f(a=1, b=2) と f(b=2, a=1) はキーワード引数の順序が異なっているので、2つの別個のキャッシュエントリーになります。
+
+If user_function is specified, it must be a callable. This allows the lru_cache decorator to be applied directly to a user function, leaving the maxsize at its default value of 128:
+
+@lru_cache
+def count_vowels(sentence):
+    sentence = sentence.casefold()
+    return sum(sentence.count(vowel) for vowel in 'aeiou')
+If maxsize is set to None, the LRU feature is disabled and the cache can grow without bound.
+
+typed が真に設定された場合は、関数の異なる型の引数が別々にキャッシュされます。例えば、f(3) と f(3.0) は別の結果をもたらす別の呼び出しとして扱われます。
+
+The wrapped function is instrumented with a cache_parameters() function that returns a new dict showing the values for maxsize and typed. This is for information purposes only. Mutating the values has no effect.
+
+キャッシュ効率の測定や maxsize パラメータの調整をしやすくするため、ラップされた関数には cache_info() 関数が追加されます。この関数は hits, misses, maxsize, currsize を示す named tuple を返します。マルチスレッド環境では、hits と misses は概算です。
+
+このデコレータは、キャッシュの削除と無効化のための cache_clear() 関数も提供します。
+
+元々の基底の関数には、 __wrapped__ 属性を通してアクセスできます。これはキャッシュを回避して、または関数を別のキャッシュでラップして、内観するのに便利です。
+
+An LRU (least recently used) cache works best when the most recent calls are the best predictors of upcoming calls (for example, the most popular articles on a news server tend to change each day). The cache's size limit assures that the cache does not grow without bound on long-running processes such as web servers.
+
+一般的には、 LRU キャッシュは前回計算した値を再利用したいときにのみ使うべきです。 そのため、副作用のある関数、呼び出すごとに個別の可変なオブジェクトを作成する必要がある関数、 time() や random() のような純粋でない関数をキャッシュする意味はありません。
+
+静的 web コンテンツ の LRU キャッシュの例:
+
+@lru_cache(maxsize=32)
+def get_pep(num):
+    'Retrieve text of a Python Enhancement Proposal'
+    resource = 'http://www.python.org/dev/peps/pep-%04d/' % num
+    try:
+        with urllib.request.urlopen(resource) as s:
+            return s.read()
+    except urllib.error.HTTPError:
+        return 'Not Found'
+
+>>> for n in 8, 290, 308, 320, 8, 218, 320, 279, 289, 320, 9991:
+...     pep = get_pep(n)
+...     print(n, len(pep))
+
+>>> get_pep.cache_info()
+CacheInfo(hits=3, misses=8, maxsize=32, currsize=8)
+キャッシュを使って 動的計画法 の技法を実装し、フィボナッチ数 を効率よく計算する例:
+
+@lru_cache(maxsize=None)
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n-1) + fib(n-2)
+
+>>> [fib(n) for n in range(16)]
+[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610]
+
+>>> fib.cache_info()
+CacheInfo(hits=28, misses=16, maxsize=None, currsize=16)
+バージョン 3.2 で追加.
+
+バージョン 3.3 で変更: typed オプションが追加されました。
+
+バージョン 3.8 で変更: Added the user_function option.
+
+バージョン 3.9 で追加: Added the function cache_parameters()
+
+@functools.total_ordering
+ひとつ以上の拡張順序比較メソッド (rich comparison ordering methods) を定義したクラスを受け取り、残りを実装するクラスデコレータです。このデコレータは全ての拡張順序比較演算をサポートするための労力を軽減します:
+
+引数のクラスは、 __lt__(), __le__(), __gt__(), __ge__() の中からどれか1つと、 __eq__() メソッドを定義する必要があります。
+
+例えば:
+
+@total_ordering
+class Student:
+    def _is_valid_operand(self, other):
+        return (hasattr(other, "lastname") and
+                hasattr(other, "firstname"))
+    def __eq__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return ((self.lastname.lower(), self.firstname.lower()) ==
+                (other.lastname.lower(), other.firstname.lower()))
+    def __lt__(self, other):
+        if not self._is_valid_operand(other):
+            return NotImplemented
+        return ((self.lastname.lower(), self.firstname.lower()) <
+                (other.lastname.lower(), other.firstname.lower()))
+注釈 このデコレータにより、完全に順序の付いた振る舞いの良い型を簡単に作ることができますが、実行速度は遅くなり、派生した比較メソッドのスタックトレースは複雑になります。性能ベンチマークにより、これがアプリケーションのボトルネックになっていることがわかった場合は、代わりに 6 つの拡張比較メソッドをすべて実装すれば、簡単にスピードアップを図れるでしょう。
+バージョン 3.2 で追加.
+
+バージョン 3.4 で変更: 認識できない型に対して下層の比較関数から NotImplemented を返すことがサポートされるようになりました。
+
+functools.partial(func, /, *args, **keywords)
+新しい partial オブジェクト を返します。このオブジェクトは呼び出されると位置引数 args とキーワード引数 keywords 付きで呼び出された func のように振る舞います。呼び出しに際してさらなる引数が渡された場合、それらは args に付け加えられます。追加のキーワード引数が渡された場合には、それらで keywords を拡張または上書きします。おおよそ次のコードと等価です:
+
+def partial(func, /, *args, **keywords):
+    def newfunc(*fargs, **fkeywords):
+        newkeywords = {**keywords, **fkeywords}
+        return func(*args, *fargs, **newkeywords)
+    newfunc.func = func
+    newfunc.args = args
+    newfunc.keywords = keywords
+    return newfunc
+関数 partial() は、関数の位置引数・キーワード引数の一部を「凍結」した部分適用として使われ、簡素化された引数形式をもった新たなオブジェクトを作り出します。例えば、 partial() を使って base 引数のデフォルトが 2 である int() 関数のように振る舞う呼び出し可能オブジェクトを作ることができます:
+
+>>>
+from functools import partial
+basetwo = partial(int, base=2)
+basetwo.__doc__ = 'Convert base 2 string to an int.'
+basetwo('10010')
+18
+class functools.partialmethod(func, /, *args, **keywords)
+partial と似た動作をする新しい partialmethod 記述子 (デスクリプタ) を返します。直接呼び出しではなく、メソッド定義としての使用が目的であることのみが、partial とは異なります。
+
+func は、descriptor または呼び出し可能オブジェクトである必要があります (通常の関数など、両方の性質を持つオブジェクトは記述子として扱われます。)
+
+func が記述子 (Python の通常の関数、 classmethod()、staticmethod()、abstractmethod() または別の partialmethod のインスタンスなど) の場合、 __get__ への呼び出しは下層の記述子に委譲され、返り値として適切な partial オブジェクト が返されます。
+
+func が記述子以外の呼び出し可能オブジェクトである場合、適切な束縛メソッドが動的に作成されます。この func は、メソッドとして使用された場合、Python の通常の関数と同様に動作します。 partialmethod コンストラクタに args と keywords が渡されるよりも前に、 self 引数が最初の位置引数として挿入されます。
+
+以下はプログラム例です:
+
+>>>
+>>> class Cell:
+...     def __init__(self):
+...         self._alive = False
+...     @property
+...     def alive(self):
+...         return self._alive
+...     def set_state(self, state):
+...         self._alive = bool(state)
+...     set_alive = partialmethod(set_state, True)
+...     set_dead = partialmethod(set_state, False)
+...
+>>> c = Cell()
+>>> c.alive
+False
+>>> c.set_alive()
+>>> c.alive
+True
+バージョン 3.4 で追加.
+
+functools.reduce(function, iterable[, initializer])
+Apply function of two arguments cumulatively to the items of iterable, from left to right, so as to reduce the iterable to a single value. For example, reduce(lambda x, y: x+y, [1, 2, 3, 4, 5]) calculates ((((1+2)+3)+4)+5). The left argument, x, is the accumulated value and the right argument, y, is the update value from the iterable. If the optional initializer is present, it is placed before the items of the iterable in the calculation, and serves as a default when the iterable is empty. If initializer is not given and iterable contains only one item, the first item is returned.
+
+およそ次と等価です:
+
+def reduce(function, iterable, initializer=None):
+    it = iter(iterable)
+    if initializer is None:
+        value = next(it)
+    else:
+        value = initializer
+    for element in it:
+        value = function(value, element)
+    return value
+See itertools.accumulate() for an iterator that yields all intermediate values.
+
+@functools.singledispatch
+関数を シングルディスパッチ ジェネリック関数 に変換します。
+
+ジェネリック関数を定義するには、 @singledispatch デコレータを付けます。ディスパッチは 1 つ目の引数の型で行われることに注意して、関数を次のように作成してください:
+
+>>>
+>>> from functools import singledispatch
+>>> @singledispatch
+... def fun(arg, verbose=False):
+...     if verbose:
+...         print("Let me just say,", end=" ")
+...     print(arg)
+関数にオーバーロード実装を追加するには、ジェネリック関数の register() 属性を使用します。 この属性はデコレータです。 型アノテーションが付いている関数については、このデコレータは1つ目の引数の型を自動的に推測します。
+
+>>>
+>>> @fun.register
+... def _(arg: int, verbose=False):
+...     if verbose:
+...         print("Strength in numbers, eh?", end=" ")
+...     print(arg)
+...
+>>> @fun.register
+... def _(arg: list, verbose=False):
+...     if verbose:
+...         print("Enumerate this:")
+...     for i, elem in enumerate(arg):
+...         print(i, elem)
+型アノテーションを使っていないコードについては、デコレータに適切な型引数を明示的に渡せます:
+
+>>>
+>>> @fun.register(complex)
+... def _(arg, verbose=False):
+...     if verbose:
+...         print("Better than complicated.", end=" ")
+...     print(arg.real, arg.imag)
+...
+register() 属性を関数形式で使用すると、lambda 関数と既存の関数の登録を有効にできます:
+
+>>>
+>>> def nothing(arg, verbose=False):
+...     print("Nothing.")
+...
+>>> fun.register(type(None), nothing)
+The register() attribute returns the undecorated function which enables decorator stacking, pickling, as well as creating unit tests for each variant independently:
+
+>>>
+>>> @fun.register(float)
+... @fun.register(Decimal)
+... def fun_num(arg, verbose=False):
+...     if verbose:
+...         print("Half of your number:", end=" ")
+...     print(arg / 2)
+...
+>>> fun_num is fun
+False
+汎用関数は、呼び出されると 1 つ目の引数の型でディスパッチします:
+
+>>>
+>>> fun("Hello, world.")
+Hello, world.
+>>> fun("test.", verbose=True)
+Let me just say, test.
+>>> fun(42, verbose=True)
+Strength in numbers, eh? 42
+>>> fun(['spam', 'spam', 'eggs', 'spam'], verbose=True)
+Enumerate this:
+0 spam
+1 spam
+2 eggs
+3 spam
+>>> fun(None)
+Nothing.
+>>> fun(1.23)
+0.615
+特定の型について登録された実装が存在しない場合、その型のメソッド解決順序が、汎用の実装をさらに検索するために使用されます。@singledispatch でデコレートされた元の関数は基底の object 型に登録されます。これは、他によりよい実装が見つからないことを意味します。
+
+If an implementation registered to abstract base class, virtual subclasses will be dispatched to that implementation:
+
+>>>
+>>> from collections.abc import Mapping
+>>> @fun.register
+... def _(arg: Mapping, verbose=False):
+...     if verbose:
+...         print("Keys & Values")
+...     for key, value in arg.items():
+...         print(key, "=>", value)
+...
+>>> fun({"a": "b"})
+a => b
+指定された型に対して、汎用関数がどの実装を選択するかを確認するには、dispatch() 属性を使用します:
+
+>>>
+>>> fun.dispatch(float)
+<function fun_num at 0x1035a2840>
+>>> fun.dispatch(dict)    # note: default implementation
+<function fun at 0x103fe0000>
+登録されたすべての実装にアクセスするには、読み出し専用の registry 属性を使用します:
+
+>>>
+>>> fun.registry.keys()
+dict_keys([<class 'NoneType'>, <class 'int'>, <class 'object'>,
+          <class 'decimal.Decimal'>, <class 'list'>,
+          <class 'float'>])
+>>> fun.registry[float]
+<function fun_num at 0x1035a2840>
+>>> fun.registry[object]
+<function fun at 0x103fe0000>
+バージョン 3.4 で追加.
+
+バージョン 3.7 で変更: register() 属性が型アノテーションの使用をサポートするようになりました。
+
+class functools.singledispatchmethod(func)
+Transform a method into a single-dispatch generic function.
+
+To define a generic method, decorate it with the @singledispatchmethod decorator. Note that the dispatch happens on the type of the first non-self or non-cls argument, create your function accordingly:
+
+class Negator:
+    @singledispatchmethod
+    def neg(self, arg):
+        raise NotImplementedError("Cannot negate a")
+
+    @neg.register
+    def _(self, arg: int):
+        return -arg
+
+    @neg.register
+    def _(self, arg: bool):
+        return not arg
+@singledispatchmethod supports nesting with other decorators such as @classmethod. Note that to allow for dispatcher.register, singledispatchmethod must be the outer most decorator. Here is the Negator class with the neg methods being class bound:
+
+class Negator:
+    @singledispatchmethod
+    @classmethod
+    def neg(cls, arg):
+        raise NotImplementedError("Cannot negate a")
+
+    @neg.register
+    @classmethod
+    def _(cls, arg: int):
+        return -arg
+
+    @neg.register
+    @classmethod
+    def _(cls, arg: bool):
+        return not arg
+The same pattern can be used for other similar decorators: staticmethod, abstractmethod, and others.
+
+バージョン 3.8 で追加.
+
+functools.update_wrapper(wrapper, wrapped, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)
+wrapper 関数を wrapped 関数に見えるようにアップデートします。オプション引数はタプルで、元の関数のどの属性がラッパー関数の対応する属性に直接代入されるか、またラッパー関数のどの属性が元の関数の対応する属性でアップデートされるか、を指定します。これらの引数のデフォルト値は、モジュールレベル定数 WRAPPER_ASSIGNMENTS (これはラッパー関数の __module__, __name__, __qualname__, __annotations__ そしてドキュメンテーション文字列 __doc__ に代入する) と WRAPPER_UPDATES (これはラッパー関数の __dict__ すなわちインスタンス辞書をアップデートする) です。
+
+内観や別の目的 (例えば、 lru_cache() のようなキャッシュするデコレータの回避) のために元の関数にアクセスできるように、この関数はラップされている関数を参照するラッパーに自動的に __wrapped__ 属性を追加します。
+
+この関数は主に関数を包んでラッパーを返す デコレータ 関数の中で使われるよう意図されています。もしラッパー関数がアップデートされないとすると、返される関数のメタデータは元の関数の定義ではなくラッパー関数の定義を反映してしまい、これは通常あまり有益ではありません。
+
+update_wrapper() は、関数以外の呼び出し可能オブジェクトにも使えます。 assigned または updated で指名され、ラップされるオブジェクトに存在しない属性は、すべて無視されます (すなわち、ラッパー関数にそれらの属性を設定しようとは試みられません)。しかし、 updated で指名された属性がラッパー関数自身に存在しないなら AttributeError が送出されます。
+
+バージョン 3.2 で追加: __wrapped__ 属性の自動的な追加。
+
+バージョン 3.2 で追加: デフォルトで __annotations__ 属性がコピーされます。
+
+バージョン 3.2 で変更: 存在しない属性によって AttributeError を発生しなくなりました。
+
+バージョン 3.4 で変更: ラップされた関数が __wrapped__ を定義していない場合でも、 __wrapped__ が常にラップされた関数を参照するようになりました。(bpo-17482 を参照)
+
+@functools.wraps(wrapped, assigned=WRAPPER_ASSIGNMENTS, updated=WRAPPER_UPDATES)
+これはラッパー関数を定義するときに update_wrapper() を関数デコレータとして呼び出す便宜関数です。これは partial(update_wrapper, wrapped=wrapped, assigned=assigned, updated=updated) と等価です。例えば:
+
+>>>
+>>> from functools import wraps
+>>> def my_decorator(f):
+...     @wraps(f)
+...     def wrapper(*args, **kwds):
+...         print('Calling decorated function')
+...         return f(*args, **kwds)
+...     return wrapper
+...
+>>> @my_decorator
+... def example():
+...     """Docstring"""
+...     print('Called example function')
+...
+>>> example()
+Calling decorated function
+Called example function
+>>> example.__name__
+'example'
+>>> example.__doc__
+'Docstring'
+このデコレータ・ファクトリを使用しないと、上の例中の関数の名前は 'wrapper' となり、元の example() のドキュメンテーション文字列は失われてしまいます。
+
+partial オブジェクト
+partial オブジェクトは、 partial() 関数によって作られる呼び出し可能オブジェクトです。オブジェクトには読み出し専用の属性が三つあります:
+
+partial.func
+呼び出し可能オブジェクトまたは関数です。 partial オブジェクトの呼び出しは新しい引数とキーワードと共に func に転送されます。
+
+partial.args
+最左の位置引数で、 partial オブジェクトの呼び出し時にその呼び出しの際の位置引数の前に追加されます。
+
+partial.keywords
+partial オブジェクトの呼び出し時に渡されるキーワード引数です。
+
+partial オブジェクトは function オブジェクトのように呼び出し可能で、弱参照可能で、属性を持つことができます。重要な相違点もあります。例えば、 __name__ と __doc__ 両属性は自動では作られません。また、クラス中で定義された partial オブジェクトはスタティックメソッドのように振る舞い、インスタンスの属性問い合わせの中で束縛メソッドに変換されません。
+
+operator --- 関数形式の標準演算子
+ソースコード: Lib/operator.py
+
+operator モジュールは、Python の組み込み演算子に対応する効率的な関数群を提供します。 例えば、 operator.add(x, y) は式 x+y と等価です。 多くの関数名は、特殊メソッドに使われている名前から前後の二重アンダースコアを除いたものと同じです。 後方互換性のため、ほとんどの関数に二重アンダースコアを付けたままのバージョンがあります。 簡潔さのために、二重アンダースコアが無いバージョンの方が好まれます。
+
+これらの関数は、オブジェクト比較、論理演算、数学演算、シーケンス演算をするものに分類されます。
+
+オブジェクト比較関数は全てのオブジェクトで有効で、関数の名前はサポートする拡張比較演算子からとられています:
+
+operator.lt(a, b)
+operator.le(a, b)
+operator.eq(a, b)
+operator.ne(a, b)
+operator.ge(a, b)
+operator.gt(a, b)
+operator.__lt__(a, b)
+operator.__le__(a, b)
+operator.__eq__(a, b)
+operator.__ne__(a, b)
+operator.__ge__(a, b)
+operator.__gt__(a, b)
+a と b の "拡張比較 (rich comparisons)" を行います。具体的には、 lt(a, b) は a < b 、 le(a, b) は a <= b 、 eq(a, b) は a == b 、 ne(a, b) は a != b 、 gt(a, b) は a > b 、そして ge(a, b) は a >= b と等価です。これらの関数はどのような値を返してもよく、ブール値として解釈できてもできなくてもかまいません。拡張比較の詳細については 比較 を参照してください。
+
+論理演算もまた全てのオブジェクトに対して適用でき、真理値判定、同一性判定およびブール演算をサポートします:
+
+operator.not_(obj)
+operator.__not__(obj)
+not obj の結果を返します。(オブジェクトインスタンスには __not__() メソッドは無いので注意してください; インタプリタコアがこの演算を定義しているだけです。結果は __bool__() および __len__() メソッドに影響されます。)
+
+operator.truth(obj)
+obj が真の場合 True を返し、そうでない場合 False を返します。この関数は bool のコンストラクタ呼び出しと同等です。
+
+operator.is_(a, b)
+a is b を返します。オブジェクトの同一性を判定します。
+
+operator.is_not(a, b)
+a is not b を返します。オブジェクトの同一性を判定します。
+
+演算子で最も多いのは数学演算およびビット単位の演算です:
+
+operator.abs(obj)
+operator.__abs__(obj)
+obj の絶対値を返します。
+
+operator.add(a, b)
+operator.__add__(a, b)
+数値 a および b について a + b を返します。
+
+operator.and_(a, b)
+operator.__and__(a, b)
+a と b のビット単位論理積を返します。
+
+operator.floordiv(a, b)
+operator.__floordiv__(a, b)
+a // b を返します。
+
+operator.index(a)
+operator.__index__(a)
+整数に変換された a を返します。a.__index__() と同等です。
+
+operator.inv(obj)
+operator.invert(obj)
+operator.__inv__(obj)
+operator.__invert__(obj)
+obj のビット単位反転を返します。~obj と同じです。
+
+operator.lshift(a, b)
+operator.__lshift__(a, b)
+a の b ビット左シフトを返します。
+
+operator.mod(a, b)
+operator.__mod__(a, b)
+a % b を返します。
+
+operator.mul(a, b)
+operator.__mul__(a, b)
+数値 a および b について a * b を返します。
+
+operator.matmul(a, b)
+operator.__matmul__(a, b)
+a @ b を返します。
+
+バージョン 3.5 で追加.
+
+operator.neg(obj)
+operator.__neg__(obj)
+負の obj (-obj) を返します。
+
+operator.or_(a, b)
+operator.__or__(a, b)
+a と b のビット単位論理和を返します。
+
+operator.pos(obj)
+operator.__pos__(obj)
+正の obj (+obj) を返します。
+
+operator.pow(a, b)
+operator.__pow__(a, b)
+数値 a および b について a ** b を返します。
+
+operator.rshift(a, b)
+operator.__rshift__(a, b)
+a の b ビット右シフトを返します。
+
+operator.sub(a, b)
+operator.__sub__(a, b)
+a - b を返します。
+
+operator.truediv(a, b)
+operator.__truediv__(a, b)
+2/3 が 0 ではなく 0.66 となるような a / b を返します。 "真の" 除算としても知られています。
+
+operator.xor(a, b)
+operator.__xor__(a, b)
+a および b のビット単位排他的論理和を返します。
+
+シーケンスを扱う演算子（いくつかの演算子はマッピングも扱います）には以下のようなものがあります:
+
+operator.concat(a, b)
+operator.__concat__(a, b)
+シーケンス a および b について a + b を返します。
+
+operator.contains(a, b)
+operator.__contains__(a, b)
+b in a の判定結果を返します。被演算子が左右反転しているので注意してください。
+
+operator.countOf(a, b)
+a の中に b が出現する回数を返します。
+
+operator.delitem(a, b)
+operator.__delitem__(a, b)
+a でインデクスが b の値を削除します。
+
+operator.getitem(a, b)
+operator.__getitem__(a, b)
+a でインデクスが b の値を返します。
+
+operator.indexOf(a, b)
+a で最初に b が出現する場所のインデクスを返します。
+
+operator.setitem(a, b, c)
+operator.__setitem__(a, b, c)
+a でインデクスが b の値を c に設定します。
+
+operator.length_hint(obj, default=0)
+オブジェクト o の概算の長さを返します。最初に実際の長さを、次に object.__length_hint__() を使って概算の長さを、そして最後にデフォルトの値を返そうとします。
+
+バージョン 3.4 で追加.
+
+operator モジュールは属性とアイテムの汎用的な検索のための道具も定義しています。 map(), sorted(), itertools.groupby(), や関数を引数に取るその他の関数に対して高速にフィールドを抽出する際に引数として使うと便利です。
+
+operator.attrgetter(attr)
+operator.attrgetter(*attrs)
+演算対象から attr を取得する呼び出し可能なオブジェクトを返します。二つ以上の属性を要求された場合には、属性のタプルを返します。属性名はドットを含むこともできます。例えば:
+
+f = attrgetter('name') とした後で、f(b) を呼び出すと b.name を返します。
+
+f = attrgetter('name', 'date') とした後で、f(b) を呼び出すと (b.name, b.date) を返します。
+
+f = attrgetter('name.first', 'name.last') とした後で、f(b) を呼び出すと (b.name.first, b.name.last) を返します。
+
+次と等価です:
+
+def attrgetter(*items):
+    if any(not isinstance(item, str) for item in items):
+        raise TypeError('attribute name must be a string')
+    if len(items) == 1:
+        attr = items[0]
+        def g(obj):
+            return resolve_attr(obj, attr)
+    else:
+        def g(obj):
+            return tuple(resolve_attr(obj, attr) for attr in items)
+    return g
+
+def resolve_attr(obj, attr):
+    for name in attr.split("."):
+        obj = getattr(obj, name)
+    return obj
+operator.itemgetter(item)
+operator.itemgetter(*items)
+演算対象からその __getitem__() メソッドを使って item を取得する呼び出し可能なオブジェクトを返します。 二つ以上のアイテムを要求された場合には、アイテムのタプルを返します。例えば:
+
+f = itemgetter(2) とした後で、f(r) を呼び出すと r[2] を返します。
+
+g = itemgetter(2, 5, 3) とした後で、g(r) を呼び出すと (r[2], r[5], r[3]) を返します。
+
+次と等価です:
+
+def itemgetter(*items):
+    if len(items) == 1:
+        item = items[0]
+        def g(obj):
+            return obj[item]
+    else:
+        def g(obj):
+            return tuple(obj[item] for item in items)
+    return g
+アイテムは被演算子の __getitem__() メソッドが受け付けるどんな型でも構いません。辞書ならば任意のハッシュ可能な値を受け付けます。リスト、タプル、文字列などはインデクスかスライスを受け付けます:
+
+>>>
+itemgetter('name')({'name': 'tu', 'age': 18})
+'tu'
+itemgetter(1)('ABCDEFG')
+'B'
+itemgetter(1,3,5)('ABCDEFG')
+('B', 'D', 'F')
+itemgetter(slice(2,None))('ABCDEFG')
+'CDEFG'
+>>>
+soldier = dict(rank='captain', name='dotterbart')
+itemgetter('rank')(soldier)
+'captain'
+itemgetter() を使って特定のフィールドをタプルレコードから取り出す例:
+
+>>>
+inventory = [('apple', 3), ('banana', 2), ('pear', 5), ('orange', 1)]
+getcount = itemgetter(1)
+list(map(getcount, inventory))
+[3, 2, 5, 1]
+sorted(inventory, key=getcount)
+[('orange', 1), ('banana', 2), ('apple', 3), ('pear', 5)]
+operator.methodcaller(name, /, *args, **kwargs)
+引数の name メソッドを呼び出す呼び出し可能オブジェクトを返します。追加の引数および/またはキーワード引数が与えられると、これらもそのメソッドに引き渡されます。例えば:
+
+f = methodcaller('name') とした後で、f(b) を呼び出すと b.name() を返します。
+
+f = methodcaller('name', 'foo', bar=1) とした後で、f(b) を呼び出すと b.name('foo', bar=1) を返します。
+
+次と等価です:
+
+def methodcaller(name, /, *args, **kwargs):
+    def caller(obj):
+        return getattr(obj, name)(*args, **kwargs)
+    return caller
+演算子から関数への対応表
+下のテーブルでは、個々の抽象的な操作が、どのように Python 構文上の各演算子や operator モジュールの関数に対応しているかを示しています。
+
+演算
+
+操作
+
+関数
+
+加算
+
+a + b
+
+add(a, b)
+
+結合
+
+seq1 + seq2
+
+concat(seq1, seq2)
+
+包含判定
+
+obj in seq
+
+contains(seq, obj)
+
+除算
+
+a / b
+
+truediv(a, b)
+
+除算
+
+a // b
+
+floordiv(a, b)
+
+ビット単位論理積
+
+a & b
+
+and_(a, b)
+
+ビット単位排他的論理和
+
+a ^ b
+
+xor(a, b)
+
+ビット単位反転
+
+~ a
+
+invert(a)
+
+ビット単位論理和
+
+a | b
+
+or_(a, b)
+
+冪乗
+
+a ** b
+
+pow(a, b)
+
+同一性
+
+a is b
+
+is_(a, b)
+
+同一性
+
+a is not b
+
+is_not(a, b)
+
+インデクス指定の代入
+
+obj[k] = v
+
+setitem(obj, k, v)
+
+インデクス指定の削除
+
+del obj[k]
+
+delitem(obj, k)
+
+インデクス指定
+
+obj[k]
+
+getitem(obj, k)
+
+左シフト
+
+a << b
+
+lshift(a, b)
+
+剰余
+
+a % b
+
+mod(a, b)
+
+乗算
+
+a * b
+
+mul(a, b)
+
+行列の乗算
+
+a @ b
+
+matmul(a, b)
+
+(算術) 負
+
+- a
+
+neg(a)
+
+(論理) 否
+
+not a
+
+not_(a)
+
+正
+
++ a
+
+pos(a)
+
+右シフト
+
+a >> b
+
+rshift(a, b)
+
+スライス指定の代入
+
+seq[i:j] = values
+
+setitem(seq, slice(i, j), values)
+
+スライス指定の削除
+
+del seq[i:j]
+
+delitem(seq, slice(i, j))
+
+スライス指定
+
+seq[i:j]
+
+getitem(seq, slice(i, j))
+
+文字列書式化
+
+s % obj
+
+mod(s, obj)
+
+減算
+
+a - b
+
+sub(a, b)
+
+真理値判定
+
+obj
+
+truth(obj)
+
+順序付け
+
+a < b
+
+lt(a, b)
+
+順序付け
+
+a <= b
+
+le(a, b)
+
+等価性
+
+a == b
+
+eq(a, b)
+
+不等性
+
+a != b
+
+ne(a, b)
+
+順序付け
+
+a >= b
+
+ge(a, b)
+
+順序付け
+
+a > b
+
+gt(a, b)
+
+インプレース (in-place) 演算子
+多くの演算に「インプレース」版があります。 以下の関数はそうした演算子の通常の文法に比べてより素朴な呼び出し方を提供します。たとえば、 文 x += y は x = operator.iadd(x, y) と等価です。別の言い方をすると、 z = operator.iadd(x, y) は複合文 z = x; z += y と等価です。
+
+なお、これらの例では、インプレースメソッドが呼び出されたとき、計算と代入は二段階に分けて行われます。以下に挙げるインプレース関数は、インプレースメソッドを呼び出してその第一段階だけを行います。第二段階の代入は扱われません。
+
+文字列、数、タプルのようなイミュータブルなターゲットでは、更新された値が計算されますが、入力変数に代入し返されはしません。
+
+>>>
+a = 'hello'
+iadd(a, ' world')
+'hello world'
+a
+'hello'
+リストや辞書のようなミュータブルなターゲットでは、インプレースメソッドは更新を行うので、その後に代入をする必要はありません。
+
+>>>
+s = ['h', 'e', 'l', 'l', 'o']
+iadd(s, [' ', 'w', 'o', 'r', 'l', 'd'])
+['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd']
+s
+['h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd']
+operator.iadd(a, b)
+operator.__iadd__(a, b)
+a = iadd(a, b) は a += b と等価です。
+
+operator.iand(a, b)
+operator.__iand__(a, b)
+a = iand(a, b) は a &= b と等価です。
+
+operator.iconcat(a, b)
+operator.__iconcat__(a, b)
+a = iconcat(a, b) は二つのシーケンス a と b に対し a += b と等価です。
+
+operator.ifloordiv(a, b)
+operator.__ifloordiv__(a, b)
+a = ifloordiv(a, b) は a //= b と等価です。
+
+operator.ilshift(a, b)
+operator.__ilshift__(a, b)
+a = ilshift(a, b) は a <<= b と等価です。
+
+operator.imod(a, b)
+operator.__imod__(a, b)
+a = imod(a, b) は a %= b と等価です。
+
+operator.imul(a, b)
+operator.__imul__(a, b)
+a = imul(a, b) は a *= b と等価です。
+
+operator.imatmul(a, b)
+operator.__imatmul__(a, b)
+a = imatmul(a, b) は a @= b と等価です。
+
+バージョン 3.5 で追加.
+
+operator.ior(a, b)
+operator.__ior__(a, b)
+a = ior(a, b) は a |= b と等価です。
+
+operator.ipow(a, b)
+operator.__ipow__(a, b)
+a = ipow(a, b) は a **= b と等価です。
+
+operator.irshift(a, b)
+operator.__irshift__(a, b)
+a = irshift(a, b) は a >>= b と等価です。
+
+operator.isub(a, b)
+operator.__isub__(a, b)
+a = isub(a, b) は a -= b と等価です。
+
+operator.itruediv(a, b)
+operator.__itruediv__(a, b)
+a = itruediv(a, b) は a /= b と等価です。
+
+operator.ixor(a, b)
+operator.__ixor__(a, b)
+a = ixor(a, b) は a ^= b と等価です。

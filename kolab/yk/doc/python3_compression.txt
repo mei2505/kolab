@@ -1,0 +1,1697 @@
+zlib --- gzip 互換の圧縮
+For applications that require data compression, the functions in this module allow compression and decompression, using the zlib library. The zlib library has its own home page at https://www.zlib.net. There are known incompatibilities between the Python module and versions of the zlib library earlier than 1.1.3; 1.1.3 has a security vulnerability, so we recommend using 1.1.4 or later.
+
+zlib の関数にはたくさんのオプションがあり、場合によっては特定の順番で使わなければなりません。このドキュメントではそれら順番についてすべてを説明しようとはしていません。詳細は公式サイト http://www.zlib.net/manual.html にある zlib のマニュアルを参照してください。
+
+.gz ファイルの読み書きのためには、 gzip モジュールを参照してください。
+
+このモジュールで利用可能な例外と関数を以下に示します:
+
+exception zlib.error
+圧縮および展開時のエラーによって送出される例外です。
+
+zlib.adler32(data[, value])
+data の Adler-32 チェックサムを計算します (Adler-32 チェックサムは、おおむね CRC32 と同等の信頼性を持ちながら、はるかに高速に計算できます)。結果は、符号のない 32 ビットの整数です。 value が与えられている場合、チェックサム計算の初期値として使われます。与えられていない場合、デフォルト値の 1 が使われます。 value を与えることで、複数の入力を結合したデータ全体にわたり、通しのチェックサムを計算できます。このアルゴリズムは暗号論的には強力ではなく、認証やデジタル署名などに用いるべきではありません。また、チェックサムアルゴリズムとして設計されているため、汎用のハッシュアルゴリズムには向きません。
+
+バージョン 3.0 で変更: 常に符号のない値を返します。すべてのバージョンとプラットフォームの Python に渡って同一の数値を生成するには、 adler32(data) & 0xffffffff を使用します。
+
+zlib.compress(data, /, level=-1)
+Compresses the bytes in data, returning a bytes object containing compressed data. level is an integer from 0 to 9 or -1 controlling the level of compression; 1 (Z_BEST_SPEED) is fastest and produces the least compression, 9 (Z_BEST_COMPRESSION) is slowest and produces the most. 0 (Z_NO_COMPRESSION) is no compression. The default value is -1 (Z_DEFAULT_COMPRESSION). Z_DEFAULT_COMPRESSION represents a default compromise between speed and compression (currently equivalent to level 6). Raises the error exception if any error occurs.
+
+バージョン 3.6 で変更: level can now be used as a keyword parameter.
+
+zlib.compressobj(level=-1, method=DEFLATED, wbits=MAX_WBITS, memLevel=DEF_MEM_LEVEL, strategy=Z_DEFAULT_STRATEGY[, zdict])
+一度にメモリ上に置くことができないようなデータストリームを圧縮するための圧縮オブジェクトを返します。
+
+level is the compression level -- an integer from 0 to 9 or -1. A value of 1 (Z_BEST_SPEED) is fastest and produces the least compression, while a value of 9 (Z_BEST_COMPRESSION) is slowest and produces the most. 0 (Z_NO_COMPRESSION) is no compression. The default value is -1 (Z_DEFAULT_COMPRESSION). Z_DEFAULT_COMPRESSION represents a default compromise between speed and compression (currently equivalent to level 6).
+
+method is the compression algorithm. Currently, the only supported value is DEFLATED.
+
+The wbits argument controls the size of the history buffer (or the "window size") used when compressing data, and whether a header and trailer is included in the output. It can take several ranges of values, defaulting to 15 (MAX_WBITS):
+
++9 to +15: The base-two logarithm of the window size, which therefore ranges between 512 and 32768. Larger values produce better compression at the expense of greater memory usage. The resulting output will include a zlib-specific header and trailer.
+
+−9 to −15: Uses the absolute value of wbits as the window size logarithm, while producing a raw output stream with no header or trailing checksum.
+
++25 to +31 = 16 + (9 to 15): Uses the low 4 bits of the value as the window size logarithm, while including a basic gzip header and trailing checksum in the output.
+
+memLevel 引数は内部圧縮状態用に使用されるメモリ量を制御します。有効な値は 1 から 9 です。大きい値ほど多くのメモリを消費しますが、より速く、より小さな出力を作成します。
+
+strategy is used to tune the compression algorithm. Possible values are Z_DEFAULT_STRATEGY, Z_FILTERED, Z_HUFFMAN_ONLY, Z_RLE (zlib 1.2.0.1) and Z_FIXED (zlib 1.2.2.2).
+
+zdict は定義済み圧縮辞書です。これは圧縮されるデータ内で繰り返し現れると予想されるサブシーケンスを含む (bytes オブジェクトのような) バイト列のシーケンスです。最も一般的と思われるサブシーケンスは辞書の末尾に来なければなりません。
+
+バージョン 3.3 で変更: zdict パラメータとキーワード引数のサポートが追加されました。
+
+zlib.crc32(data[, value])
+data の CRC (Cyclic Redundancy Check, 巡回冗長検査) チェックサムを計算します。結果は、符号のない 32 ビットの整数です。 value が与えられている場合、チェックサム計算の初期値として使われます。与えられていない場合、デフォルト値の 1 が使われます。 value を与えることで、複数の入力を結合したデータ全体にわたり、通しのチェックサムを計算できます。このアルゴリズムは暗号論的には強力ではなく、認証やデジタル署名などに用いるべきではありません。また、チェックサムアルゴリズムとして設計されているため、汎用のハッシュアルゴリズムには向きません。
+
+バージョン 3.0 で変更: 常に符号のない値を返します。すべてのバージョンとプラットフォームの Python に渡って同一の数値を生成するには、crc32(data) & 0xffffffff を使用します。
+
+zlib.decompress(data, /, wbits=MAX_WBITS, bufsize=DEF_BUF_SIZE)
+Decompresses the bytes in data, returning a bytes object containing the uncompressed data. The wbits parameter depends on the format of data, and is discussed further below. If bufsize is given, it is used as the initial size of the output buffer. Raises the error exception if any error occurs.
+
+The wbits parameter controls the size of the history buffer (or "window size"), and what header and trailer format is expected. It is similar to the parameter for compressobj(), but accepts more ranges of values:
+
++8 to +15: The base-two logarithm of the window size. The input must include a zlib header and trailer.
+
+0: Automatically determine the window size from the zlib header. Only supported since zlib 1.2.3.5.
+
+−8 to −15: Uses the absolute value of wbits as the window size logarithm. The input must be a raw stream with no header or trailer.
+
++24 to +31 = 16 + (8 to 15): Uses the low 4 bits of the value as the window size logarithm. The input must include a gzip header and trailer.
+
++40 to +47 = 32 + (8 to 15): Uses the low 4 bits of the value as the window size logarithm, and automatically accepts either the zlib or gzip format.
+
+When decompressing a stream, the window size must not be smaller than the size originally used to compress the stream; using a too-small value may result in an error exception. The default wbits value corresponds to the largest window size and requires a zlib header and trailer to be included.
+
+bufsize is the initial size of the buffer used to hold decompressed data. If more space is required, the buffer size will be increased as needed, so you don't have to get this value exactly right; tuning it will only save a few calls to malloc().
+
+バージョン 3.6 で変更: wbits and bufsize can be used as keyword arguments.
+
+zlib.decompressobj(wbits=MAX_WBITS[, zdict])
+一度にメモリ上に置くことができないようなデータストリームを展開するための展開オブジェクトを返します。
+
+The wbits parameter controls the size of the history buffer (or the "window size"), and what header and trailer format is expected. It has the same meaning as described for decompress().
+
+zdict パラメータには定義済み圧縮辞書を指定します。このパラメータを指定する場合、展開するデータを圧縮した際に使用した辞書と同じものでなければなりません。
+
+注釈 zdict が (bytearray のような) 変更可能オブジェクトの場合、decompressobj() の呼び出しとデコンプレッサの decompress() メソッドの最初の呼び出しの間に辞書の内容を変更してはいけません。
+バージョン 3.3 で変更: パラメータに zdict を追加しました。
+
+圧縮オブジェクトは以下のメソッドをサポートしています:
+
+Compress.compress(data)
+data を圧縮し、圧縮されたデータを含むバイト列オブジェクトを返します。この文字列は少なくとも data の一部分のデータに対する圧縮データを含みます。このデータは以前に呼んだ compress() が返した出力と結合することができます。入力の一部は以後の処理のために内部バッファに保存されることもあります。
+
+Compress.flush([mode])
+All pending input is processed, and a bytes object containing the remaining compressed output is returned. mode can be selected from the constants Z_NO_FLUSH, Z_PARTIAL_FLUSH, Z_SYNC_FLUSH, Z_FULL_FLUSH, Z_BLOCK (zlib 1.2.3.4), or Z_FINISH, defaulting to Z_FINISH. Except Z_FINISH, all constants allow compressing further bytestrings of data, while Z_FINISH finishes the compressed stream and prevents compressing any more data. After calling flush() with mode set to Z_FINISH, the compress() method cannot be called again; the only realistic action is to delete the object.
+
+Compress.copy()
+圧縮オブジェクトのコピーを返します。これを使うと先頭部分が共通している複数のデータを効率的に圧縮することができます。
+
+バージョン 3.8 で変更: Added copy.copy() and copy.deepcopy() support to compression objects.
+
+展開オブジェクトは以下のメソッドと属性をサポートしています:
+
+Decompress.unused_data
+圧縮データの末尾より後のバイト列が入ったバイト列オブジェクトです。すなわち、この値は圧縮データの入っているバイト列の最後の文字が利用可能になるまでは b"" のままとなります。入力バイト文字列すべてが圧縮データを含んでいた場合、この属性は b"" 、すなわち空バイト列になります。
+
+Decompress.unconsumed_tail
+展開されたデータを収めるバッファの長さ制限を超えたために、直近の decompress() 呼び出しで処理しきれなかったデータを含むバイト列オブジェクトです。このデータはまだ zlib 側からは見えていないので、正しい展開出力を得るには以降の decompress() メソッド呼び出しに (場合によっては後続のデータが追加された) データを差し戻さなければなりません。
+
+Decompress.eof
+圧縮データストリームの終了に達したかどうかを示すブール値です。
+
+これは、正常な形式の圧縮ストリームと、不完全あるいは切り詰められたストリームとを区別することを可能にします。
+
+バージョン 3.3 で追加.
+
+Decompress.decompress(data, max_length=0)
+data を展開し、少なくとも string の一部分に対応する展開されたデータを含むバイト列オブジェクトを返します。このデータは以前に decompress() メソッドを呼んだ時に返された出力と結合することができます。入力データの一部分が以後の処理のために内部バッファに保存されることもあります。
+
+If the optional parameter max_length is non-zero then the return value will be no longer than max_length. This may mean that not all of the compressed input can be processed; and unconsumed data will be stored in the attribute unconsumed_tail. This bytestring must be passed to a subsequent call to decompress() if decompression is to continue. If max_length is zero then the whole input is decompressed, and unconsumed_tail is empty.
+
+バージョン 3.6 で変更: max_length can be used as a keyword argument.
+
+Decompress.flush([length])
+未処理の入力データをすべて処理し、最終的に圧縮されなかった残りの出力バイト列オブジェクトを返します。flush() を呼んだ後、decompress() を再度呼ぶべきではありません。このときできる唯一の現実的な操作はオブジェクトの削除だけです。
+
+オプション引数 length には出力バッファの初期サイズを指定します。
+
+Decompress.copy()
+展開オブジェクトのコピーを返します。これを使うとデータストリームの途中にある展開オブジェクトの状態を保存でき、未来のある時点で行なわれるストリームのランダムなシークをスピードアップするのに利用できます。
+
+バージョン 3.8 で変更: Added copy.copy() and copy.deepcopy() support to decompression objects.
+
+使用している zlib ライブラリのバージョン情報を以下の定数で確認できます:
+
+zlib.ZLIB_VERSION
+モジュールのビルド時に使用された zlib ライブラリのバージョン文字列です。これは ZLIB_RUNTIME_VERSION で確認できる、実行時に使用している実際の zlib ライブラリのバージョンとは異なる場合があります。
+
+zlib.ZLIB_RUNTIME_VERSION
+インタプリタが読み込んだ実際の zlib ライブラリのバージョン文字列です。
+
+バージョン 3.3 で追加.
+
+参考
+gzip モジュール
+gzip 形式ファイルへの読み書きを行うモジュール。
+
+http://www.zlib.net
+zlib ライブラリホームページ。
+
+http://www.zlib.net/manual.html
+zlib ライブラリの多くの関数の意味と使い方を解説したマニュアル。
+
+gzip --- gzip ファイルのサポート
+ソースコード: Lib/gzip.py
+
+このモジュールは、GNU の gzip や gunzip のようにファイルを圧縮、展開するシンプルなインターフェイスを提供しています。
+
+データ圧縮は zlib モジュールで提供されています。
+
+gzip は GzipFile クラスと、簡易関数 open()、compress()、および decompress() を提供しています。GzipFile クラスは通常の ファイルオブジェクト と同様に gzip 形式のファイルを読み書きし、データを自動的に圧縮または展開します。
+
+compress や pack 等によって作成され、gzip や gunzip が展開できる他のファイル形式についてはこのモジュールは対応していないので注意してください。
+
+このモジュールは以下の項目を定義しています:
+
+gzip.open(filename, mode='rb', compresslevel=9, encoding=None, errors=None, newline=None)
+gzip 圧縮ファイルをバイナリまたはテキストモードで開き、ファイルオブジェクト を返します。
+
+引数 filename には実際のファイル名 (str または bytes オブジェクト) か、既存のファイルオブジェクトを指定します。
+
+引数 mode には、バイナリモード用に 'r'、'rb'、'a'、'ab'、'w'、'wb'、'x'、または 'xb'、テキストモード用に 'rt'、'at'、'wt'、または 'xt' を指定できます。デフォルトは 'rb' です。
+
+引数 compresslevel は GzipFile コンストラクタと同様に 0 から 9 の整数を取ります。
+
+バイナリモードでは、この関数は GzipFile コンストラクタ GzipFile(filename, mode, compresslevel) と等価です。この時、引数 encoding、errors、および newline を指定してはいけません。
+
+テキストモードでは、GzipFile オブジェクトが作成され、指定されたエンコーディング、エラーハンドラの挙動、および改行文字で io.TextIOWrapper インスタンスにラップされます。
+
+バージョン 3.3 で変更: filename にファイルオブジェクト指定のサポート、テキストモードのサポート、および引数に encoding、errors、および newline を追加しました。
+
+バージョン 3.4 で変更: Added support for the 'x', 'xb' and 'xt' modes.
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+exception gzip.BadGzipFile
+An exception raised for invalid gzip files. It inherits OSError. EOFError and zlib.error can also be raised for invalid gzip files.
+
+バージョン 3.8 で追加.
+
+class gzip.GzipFile(filename=None, mode=None, compresslevel=9, fileobj=None, mtime=None)
+GzipFile クラスのコンストラクタです。GzipFile オブジェクトは truncate() メソッドを除くほとんどの ファイルオブジェクト のメソッドをシミュレートします。少なくとも fileobj および filename は有効な値でなければなりません。
+
+クラスの新しいインスタンスは、 fileobj に基づいて作成されます。 fileobj は通常のファイル、 io.BytesIO オブジェクト、 そしてその他ファイルをシミュレートできるオブジェクトでかまいません。 値はデフォルトでは None で、その場合ファイルオブジェクトを生成するために filename を開きます。
+
+fileobj が None でない場合、filename 引数は gzip ファイルヘッダにインクルードされることのみに使用されます。gzip ファイルヘッダは圧縮されていないファイルの元の名前をインクルードするかもしれません。認識可能な場合、規定値は fileobj のファイル名です。そうでない場合、規定値は空の文字列で、元のファイル名はヘッダにはインクルードされません。
+
+The mode argument can be any of 'r', 'rb', 'a', 'ab', 'w', 'wb', 'x', or 'xb', depending on whether the file will be read or written. The default is the mode of fileobj if discernible; otherwise, the default is 'rb'. In future Python releases the mode of fileobj will not be used. It is better to always specify mode for writing.
+
+ファイルは常にバイナリモードで開かれることに注意してください。圧縮ファイルをテキストモードで開く場合、open() (または GzipFile を io.TextIOWrapper でラップしたオブジェクト) を使ってください。
+
+引数 compresslevel は 0 から 9 の整数を取り、圧縮レベルを制御します; 1 は最も高速で最小限の圧縮を行い、9 は最も低速ですが最大限の圧縮を行います。0 は圧縮しません。デフォルトは 9 です。
+
+mtime 引数は、圧縮時にストリームの最終更新日時フィールドに書き込まれるオプションの数値のタイムスタンプです。これは、圧縮モードでのみ提供することができます。省略された場合か None である場合、現在時刻が使用されます。詳細については、 mtime 属性を参照してください。
+
+圧縮したデータの後ろにさらに何か追加したい場合もあるので、GzipFile オブジェクトの close() メソッド呼び出しは fileobj を閉じません。 このため、書き込みのためにオープンした io.BytesIO オブジェクトを fileobj として渡し、(GzipFile を close() した後に) io.BytesIO オブジェクトの getvalue() メソッドを使って書き込んだデータの入っているメモリバッファを取得することができます。
+
+GzipFile は、イテレーションと with 文を含む io.BufferedIOBase インターフェイスをサポートしています。truncate() メソッドのみ実装されていません。
+
+GzipFile は以下のメソッドと属性も提供しています:
+
+peek(n)
+ファイル内の位置を移動せずに展開した n バイトを読み込みます。呼び出し要求を満たすために、圧縮ストリームに対して最大 1 回の単一読み込みが行われます。返されるバイト数はほぼ要求した値になります。
+
+注釈 peek() の呼び出しでは GzipFile のファイル位置は変わりませんが、下層のファイルオブジェクトの位置が変わる惧れがあります。(e.g. GzipFile が fileobj 引数で作成された場合)
+バージョン 3.2 で追加.
+
+mtime
+展開時に、最後に読み取られたヘッダーの最終更新日時フィールドの値は、この属性から整数として読み取ることができます。ヘッダーを読み取る前の初期値は None です。
+
+gzip で圧縮されたすべてのストリームは、このタイムスタンプフィールドを含む必要があります。gunzip などの一部のプログラムがこのタイムスタンプを使用します。形式は、 time.time() の返り値や、os.stat() が返すオブジェクトの st_mtime 属性と同一です。
+
+バージョン 3.1 で変更: with 文がサポートされました。mtime コンストラクタ引数と mtime 属性が追加されました。
+
+バージョン 3.2 で変更: ゼロパディングされたファイルやシーク出来ないファイルがサポートされました。
+
+バージョン 3.3 で変更: io.BufferedIOBase.read1() メソッドを実装しました。
+
+バージョン 3.4 で変更: 'x' ならびに 'xb' モードがサポートされました。
+
+バージョン 3.5 で変更: 任意の バイトライクオブジェクト の書き込みがサポートされました。 read() メソッドが None を引数として受け取るようになりました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+バージョン 3.9 で非推奨: Opening GzipFile for writing without specifying the mode argument is deprecated.
+
+gzip.compress(data, compresslevel=9, *, mtime=None)
+Compress the data, returning a bytes object containing the compressed data. compresslevel and mtime have the same meaning as in the GzipFile constructor above.
+
+バージョン 3.2 で追加.
+
+バージョン 3.8 で変更: Added the mtime parameter for reproducible output.
+
+gzip.decompress(data)
+data を展開し、展開データを含む bytes オブジェクトを返します。
+
+バージョン 3.2 で追加.
+
+使い方の例
+圧縮されたファイルを読み込む例:
+
+import gzip
+with gzip.open('/home/joe/file.txt.gz', 'rb') as f:
+    file_content = f.read()
+GZIP 圧縮されたファイルを作成する例:
+
+import gzip
+content = b"Lots of content here"
+with gzip.open('/home/joe/file.txt.gz', 'wb') as f:
+    f.write(content)
+既存のファイルを GZIP 圧縮する例:
+
+import gzip
+import shutil
+with open('/home/joe/file.txt', 'rb') as f_in:
+    with gzip.open('/home/joe/file.txt.gz', 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+バイナリ文字列を GZIP 圧縮する例:
+
+import gzip
+s_in = b"Lots of content here"
+s_out = gzip.compress(s_in)
+参考
+zlib モジュール
+gzip ファイル形式のサポートを行うために必要な基本ライブラリモジュール。
+
+コマンドラインインターフェイス
+The gzip module provides a simple command line interface to compress or decompress files.
+
+Once executed the gzip module keeps the input file(s).
+
+バージョン 3.8 で変更: Add a new command line interface with a usage. By default, when you will execute the CLI, the default compression level is 6.
+
+コマンドラインオプション
+file
+If file is not specified, read from sys.stdin.
+
+--fast
+Indicates the fastest compression method (less compression).
+
+--best
+Indicates the slowest compression method (best compression).
+
+-d, --decompress
+Decompress the given file.
+
+-h, --help
+ヘルプメッセージを出力します
+
+bz2 --- bzip2 圧縮のサポート
+ソースコード: Lib/bz2.py
+
+このモジュールは、bzip2 アルゴリズムを用いて圧縮・展開を行う包括的なインターフェイスを提供します。
+
+bz2 モジュールには以下のクラスや関数があります:
+
+圧縮ファイルを読み書きするための open() 関数と BZ2File クラス。
+
+インクリメンタルにデータを圧縮・展開するための BZ2Compressor および BZ2Decompressor クラス。
+
+一度に圧縮・展開を行う compress() および decompress() 関数。
+
+このモジュールのクラスはすべて、複数のスレッドから安全にアクセスできます。
+
+ファイルの圧縮/解凍
+bz2.open(filename, mode='rb', compresslevel=9, encoding=None, errors=None, newline=None)
+bzip2 圧縮されたファイルを、バイナリモードかテキストモードでオープンし、ファイルオブジェクト を返します。
+
+BZ2File のコンストラクタと同様に、引数 filename には実際のファイル名 (str または bytes オブジェクト) か、読み書きする既存のファイルオブジェクトを指定します。
+
+引数 mode には、バイナリモード用に 'r'、'rb'、'w'、'wb'、'x'、'xb'、'a'、あるいは 'ab'、テキストモード用に 'rt'、'wt'、'xt'、あるいは 'at' を指定できます。デフォルトは 'rb' です。
+
+引数 compresslevel には BZ2File コンストラクタと同様に 1 から 9 の整数を指定します。
+
+バイナリモードでは、この関数は BZ2File コンストラクタ BZ2File(filename, mode, compresslevel=compresslevel) と等価です。この時、引数 encoding、errors、および newline を指定してはいけません。
+
+テキストモードでは、BZ2File オブジェクトが作成され、指定されたエンコーディング、エラーハンドラの挙動、および改行文字で io.TextIOWrapper にラップされます。
+
+バージョン 3.3 で追加.
+
+バージョン 3.4 で変更: 'x' (排他的作成) モードが追加されました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+class bz2.BZ2File(filename, mode='r', *, compresslevel=9)
+bzip2 圧縮ファイルをバイナリモードでオープンします。
+
+filename が str あるいは bytes オブジェクトの場合、それを名前とするファイルを直接開きます。そうでない場合、filename は圧縮データを読み書きする ファイルオブジェクト でなくてはなりません。
+
+引数 mode は読み込みモードの 'r' (デフォルト)、上書きモードの 'w'、排他的作成モードの 'x'、あるいは追記モードの 'a' のいずれかを指定できます。これらはそれぞれ 'rb'、'wb'、'xb' および 'ab' と等価です。
+
+filename が (実際のファイル名でなく) ファイルオブジェクトの場合、'w' はファイルを上書きせず、'a' と等価になります。
+
+mode が 'w' あるいは 'a' の場合、compresslevel に圧縮レベルを 1 から 9 の整数で指定できます。 圧縮率は 1 が最低で、9 (デフォルト値) が最高です。
+
+mode の値が 'r' の場合、入力ファイルは複数の圧縮ストリームでも構いません。
+
+BZ2File には、 io.BufferedIOBase で規定されているメソッドや属性のうち、 detach() と truncate() を除くすべてが備わっています。イテレーションと with 文をサポートしています。
+
+BZ2File は以下のメソッドも提供しています:
+
+peek([n])
+ファイル上の現在位置を変更せずにバッファのデータを返します。このメソッドは少なくとも 1 バイトのデータを返します (EOF の場合を除く)。返される正確なバイト数は規定されていません。
+
+注釈 peek() の呼び出しでは BZ2File のファイル位置は変わりませんが、下層のファイルオブジェクトの位置が変わる惧れがあります(e.g. BZ2File を filename にファイルオブジェクトを渡して作成した場合)。
+バージョン 3.3 で追加.
+
+バージョン 3.1 で変更: with 構文のサポートが追加されました。
+
+バージョン 3.3 で変更: fileno() 、 readable() 、 seekable() 、 writable() 、 read1() 、 readinto() メソッドが追加されました。
+
+バージョン 3.3 で変更: filename が実際のファイル名でなく ファイルオブジェクト だった場合のサポートが追加されました。
+
+バージョン 3.3 で変更: 'a' (追記) モードが追加され、複数のストリームの読み込みがサポートされました。
+
+バージョン 3.4 で変更: 'x' (排他的作成) モードが追加されました。
+
+バージョン 3.5 で変更: read() メソッドが None を引数として受け取るようになりました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+バージョン 3.9 で変更: The buffering parameter has been removed. It was ignored and deprecated since Python 3.0. Pass an open file object to control how the file is opened.
+
+The compresslevel parameter became keyword-only.
+
+逐次圧縮および展開
+class bz2.BZ2Compressor(compresslevel=9)
+新しくコンプレッサオブジェクトを作成します。このオブジェクトはデータの逐次的な圧縮に使用できます。一度に圧縮したい場合は、compress() 関数を使ってください。
+
+引数 compresslevel を指定する場合は、1 から 9 までの整数を与えてください。 デフォルト値は 9 です。
+
+compress(data)
+データをコンプレッサオブジェクトに渡します。戻り値は圧縮されたデータですが、圧縮データを返すことができない場合は空のバイト文字列を返します。
+
+コンプレッサオブジェクトにデータをすべて渡し終えたら、flush() メソッドを呼び出し、圧縮プロセスを完了させてください。
+
+flush()
+圧縮プロセスを完了させ、内部バッファに残っている圧縮済みデータを返します。
+
+このメソッドを呼び出すと、それ以後コンプレッサオブジェクトは使用できなくなります。
+
+class bz2.BZ2Decompressor
+新しくデコンプレッサオブジェクトを作成します。このオブジェクトは逐次的なデータ展開に使用できます。一度に展開したい場合は、decompress() 関数を使ってください。
+
+注釈 このクラスは、decompress() や BZ2File とは異なり、複数の圧縮レベルが混在しているデータを透過的に扱うことができません。 BZ2Decompressor クラスを用いて、複数のストリームからなるデータを展開する場合は、それぞれのストリームについてデコンプレッサオブジェクトを用意してください。
+decompress(data, max_length=-1)
+data (bytes-like object) を展開し、未圧縮のデータを bytes で返します。 data の一部は、後で decompress() の呼び出しに使用するため内部でバッファされている場合があります。 返されたデータは、以前の decompress() の呼び出しの出力に連結する必要があります。
+
+max_length が非負の場合、最大 max_length バイトの展開データを返します。この制限に達して、出力がさらに生成できる場合、 needs_input が False に設定されます。この場合、 decompress() を次に呼び出すと、data を b'' として提供し、出力をさらに取得することができます。
+
+入力データの全てが圧縮され返された (max_length バイトより少ないためか max_length が負のため) 場合、 needs_input 属性は True になります。
+
+ストリームの終端に到達した後にデータを展開しようとすると EOFError が送出されます。 ストリームの終端の後ろの全てのデータは無視され、その部分は unused_data 属性に保存されます。
+
+バージョン 3.5 で変更: max_length パラメータが追加されました。
+
+eof
+ストリーム終端記号に到達した場合 True を返します。
+
+バージョン 3.3 で追加.
+
+unused_data
+圧縮ストリームの末尾以降に存在したデータを表します。
+
+ストリームの末尾に達する前には、この属性には b'' という値が収められています。
+
+needs_input
+decompress() メソッドが、新しい非圧縮入力を必要とせずにさらに展開データを提供できる場合、 False です。
+
+バージョン 3.5 で追加.
+
+一括圧縮/解凍
+bz2.compress(data, compresslevel=9)
+バイト類オブジェクト の data を圧縮します。
+
+引数 compresslevel を指定する場合は、1 から 9 までの整数を与えてください。 デフォルト値は 9 です。
+
+逐次的にデータを圧縮したい場合は、BZ2Compressor を使ってください。
+
+bz2.decompress(data)
+バイト類オブジェクト の data を展開します。
+
+data が複数の圧縮ストリームから成る場合、そのすべてを展開します。
+
+逐次的に展開を行う場合は、BZ2Decompressor を使ってください。
+
+バージョン 3.3 で変更: 複数ストリームの入力をサポートしました。
+
+使い方の例
+以下は、典型的な bz2 モジュールの利用方法です。
+
+compress() と decompress() を使い、圧縮して展開する実演をしています:
+
+>>>
+import bz2
+data = b"""\
+Donec rhoncus quis sapien sit amet molestie. Fusce scelerisque vel augue
+nec ullamcorper. Nam rutrum pretium placerat. Aliquam vel tristique lorem,
+sit amet cursus ante. In interdum laoreet mi, sit amet ultrices purus
+pulvinar a. Nam gravida euismod magna, non varius justo tincidunt feugiat.
+Aliquam pharetra lacus non risus vehicula rutrum. Maecenas aliquam leo
+felis. Pellentesque semper nunc sit amet nibh ullamcorper, ac elementum
+dolor luctus. Curabitur lacinia mi ornare consectetur vestibulum."""
+c = bz2.compress(data)
+len(data) / len(c)  # Data compression ratio
+1.513595166163142
+d = bz2.decompress(c)
+data == d  # Check equality to original object after round-trip
+True
+BZ2Compressor を使い、逐次圧縮をしています:
+
+>>>
+import bz2
+def gen_data(chunks=10, chunksize=1000):
+    """Yield incremental blocks of chunksize bytes."""
+    for _ in range(chunks):
+        yield b"z" * chunksize
+
+comp = bz2.BZ2Compressor()
+out = b""
+for chunk in gen_data():
+    # Provide data to the compressor object
+    out = out + comp.compress(chunk)
+
+# Finish the compression process.  Call this once you have
+# finished providing data to the compressor.
+out = out + comp.flush()
+上の例は、非常に "ランダムでない" データストリーム (チャンク b"z" のストリーム) です。 ランダムなデータは圧縮率が低い傾向にある一方、揃っていて、繰り返しのあるデータは通常は高い圧縮率を叩き出します。
+
+bzip2 圧縮されたファイルをバイナリモードで読み書きしています:
+
+>>>
+import bz2
+data = b"""\
+Donec rhoncus quis sapien sit amet molestie. Fusce scelerisque vel augue
+nec ullamcorper. Nam rutrum pretium placerat. Aliquam vel tristique lorem,
+sit amet cursus ante. In interdum laoreet mi, sit amet ultrices purus
+pulvinar a. Nam gravida euismod magna, non varius justo tincidunt feugiat.
+Aliquam pharetra lacus non risus vehicula rutrum. Maecenas aliquam leo
+felis. Pellentesque semper nunc sit amet nibh ullamcorper, ac elementum
+dolor luctus. Curabitur lacinia mi ornare consectetur vestibulum."""
+with bz2.open("myfile.bz2", "wb") as f:
+    # Write compressed data to file
+    unused = f.write(data)
+with bz2.open("myfile.bz2", "rb") as f:
+    # Decompress data from file
+    content = f.read()
+content == data  # Check equality to original object after round-trip
+True
+
+lzma --- LZMA アルゴリズムを使用した圧縮
+バージョン 3.3 で追加.
+
+ソースコード: Lib/lzma.py
+
+このモジュールは LZMA 圧縮アルゴリズムを使用したデータ圧縮および展開のためのクラスや便利な関数を提供しています。また、xz ユーティリティを使用した .xz およびレガシーな .lzma ファイル形式へのファイルインターフェイスの他、RAW 圧縮ストリームもサポートしています。
+
+このモジュールが提供するインターフェイスは bz2 モジュールと非常によく似ています。ただし、LZMAFile は (bz2.BZ2File と異なり) スレッドセーフではない点に注意してください。単一の LZMAFile インスタンスを複数スレッドから使用する場合は、ロックで保護する必要があります。
+
+exception lzma.LZMAError
+この例外は圧縮あるいは展開中にエラーが発生した場合、または圧縮/展開状態の初期化中に送出されます。
+
+圧縮ファイルへの読み書き
+lzma.open(filename, mode="rb", *, format=None, check=-1, preset=None, filters=None, encoding=None, errors=None, newline=None)
+LZMA 圧縮ファイルをバイナリまたはテキストモードでオープンし、ファイルオブジェクト を返します。
+
+filename 引数には、ファイルをオープンする際には実際のファイル名 (str、 bytes、または path-like オブジェクトとして指定します)か、読み込みまたは書き込むためであれば、すでに存在するファイルオブジェクトを指定できます。
+
+引数 mode は、バイナリモードでは "r"、"rb"、"w"、"wb"、"x"、"xb"、"a"、あるいは "ab" の、テキストモードでは "rt"、"wt"、"xt"、あるいは "at" のいずれかになります。デフォルトは "rb" です。
+
+読み込み用にファイルをオープンした場合、引数 format および filters は LZMADecompressor と同じ意味になります。この時、引数 check および preset は使用しないでください。
+
+書き出し用にオープンした場合、引数 format、check、preset、および filters は LZMACompressor と同じ意味になります。
+
+バイナリモードでは、この関数は LZMAFile コンストラクタと等価になります (LZMAFile(filename, mode, ...))。この場合、引数 encoding、errors、および newline を指定しなければなりません。
+
+テキストモードでは、LZMAFile オブジェクトが生成され、指定したエンコーディング、エラーハンドラの挙動、および改行コードで io.TextIOWrapper にラップされます。
+
+バージョン 3.4 で変更: "x", "xb", "xt" モードのサポートが追加されました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+class lzma.LZMAFile(filename=None, mode="r", *, format=None, check=-1, preset=None, filters=None)
+LZMA 圧縮ファイルをバイナリモードで開きます。
+
+LZMAFile はすでにオープンしている file object をラップ、または名前付きファイルを直接操作できます。引数 filename にはラップするファイルオブジェクトかオープンするファイル名 (str オブジェクトま、bytes オブジェクト、または path-like オブジェクト) を指定します。既存のファイルオブジェクトをラップした場合、LZMAFile をクローズしてもラップしたファイルはクローズされません。
+
+引数 mode は読み込みモードの "r" (デフォルト)、上書きモードの "w"、排他的生成モードの "x"、あるいは追記モードの "a" のいずれかを指定できます。これらはそれぞれ "rb"、"wb"、"xb"、および "ab" と等価です。
+
+filename が (実際のファイル名でなく) ファイルオブジェクトの場合、"w" モードはファイルを上書きせず、"a" と等価になります。
+
+読み込みモードでファイルをオープンした時、入力ファイルは複数に分割された圧縮ストリームを連結したものでもかまいません。これらは透過的に単一論理ストリームとしてデコードされます。
+
+読み込み用にファイルをオープンした場合、引数 format および filters は LZMADecompressor と同じ意味になります。この時、引数 check および preset は使用しないでください。
+
+書き出し用にオープンした場合、引数 format、check、preset、および filters は LZMACompressor と同じ意味になります。
+
+LZMAFile は io.BufferedIOBase で規定されているメンバのうち、detach() と truncate() を除くすべてをサポートします。イテレーションと with 文をサポートしています。
+
+次のメソッドを提供しています:
+
+peek(size=-1)
+ファイル上の現在位置を変更せずにバッファのデータを返します。EOF に達しない限り、少なくとも 1 バイトが返されます。返される正確なバイト数は規定されていません (引数 size は無視されます)。
+
+注釈 peek() の呼び出しでは LZMAFile のファイル位置は変わりませんが、下層のファイルオブジェクトの位置が変わる惧れがあります。(e.g. LZMAFile を filename にファイルオブジェクトを渡して作成した場合)
+バージョン 3.4 で変更: 'x', 'xb' モードがサポートが追加されました。
+
+バージョン 3.5 で変更: read() メソッドが None を引数として受け取るようになりました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+メモリ上での圧縮と展開
+class lzma.LZMACompressor(format=FORMAT_XZ, check=-1, preset=None, filters=None)
+データをインクリメンタルに圧縮する圧縮オブジェクトを作成します。
+
+大量の単一データを圧縮する、より便利な方法については compress() を参照してください。
+
+引数 format には使用するコンテナフォーマットを指定します。以下の値が指定できます:
+
+FORMAT_XZ: The .xz コンテナフォーマット。
+デフォルトのフォーマットです。
+
+FORMAT_ALONE: レガシーな .lzma コンテナフォーマット。
+このフォーマットは .xz より制限があります -- インテグリティチェックや複数フィルタをサポートしていません。
+
+FORMAT_RAW: 特定のコンテナフォーマットを使わない、生のデータストリーム。
+このフォーマット指定子はインテグリティチェックをサポートしておらず、(圧縮および展開双方のために) 常にカスタムフィルタチェインを指定する必要があります。さらに、この方法で圧縮されたデータは FORMAT_AUTO を使っても展開できません (LZMADecompressor を参照)。
+
+引数 check には圧縮データに組み込むインテグリティチェックのタイプを指定します。このチェックは展開時に使用され、データが破損していないことを保証します。以下の値が指定できます:
+
+CHECK_NONE: インテグリティチェックなし。FORMAT_ALONE および FORMAT_RAW のデフォルト (かつ唯一指定可能な値) です。
+
+CHECK_CRC32: 32-bit 巡回冗長検査。
+
+CHECK_CRC64: 64-bit 巡回冗長検査。FORMAT_XZ のデフォルトです。
+
+CHECK_SHA256: 256-bit セキュアハッシュアルゴリズム (SHA)。
+
+指定したチェック方法がサポートされていない場合、LZMAError が送出されます。
+
+圧縮設定はプリセット圧縮レベル (引数 preset で指定) またはカスタムフィルタチェイン (引数 filters で指定) のどちらかを指定します。
+
+引数 preset を指定する場合、0 から 9 までの整数値でなければならず、オプションで定数 PRESET_EXTREME を論理和指定できます。preset も filters も指定されなかった場合、デフォルトの挙動として PRESET_DEFAULT (プリセットレベル 6) が使用されます。高いプリセット値を指定すると圧縮率が上がりますが、圧縮にかかる時間が長くなります。
+
+注釈 CPU の使用量が多いのに加えて、高いプリセットで圧縮を行うには、メモリをずっと多く必要とします (さらに、生成される出力も展開により多くのメモリを必要とします)。例えば、プリセットが 9 の場合、LZMACompressor オブジェクトのオーバーヘッドは 800 MiB にまで高くなる場合があります。このため、通常はデフォルトのプリセットを使用するのがよいでしょう。
+引数 filters を指定する場合、フィルタチェイン指定子でなければなりません。詳しくは カスタムフィルタチェインの指定 を参照してください。
+
+compress(data)
+data (bytes オブジェクト) を圧縮し、少なくともその一部が圧縮されたデータを格納する bytes オブジェクトを返します。data の一部は、後で compress() および flush() の呼び出しに使用するため内部でバッファされている場合があります。返すデータは以前の compress() 呼び出しの出力を連結したものです。
+
+flush()
+圧縮処理を終了し、コンプレッサの内部バッファにあるあらゆるデータを格納する bytes オブジェクトを返します。
+
+コンプレッサはこのメソッドが呼び出された後は使用できません。
+
+class lzma.LZMADecompressor(format=FORMAT_AUTO, memlimit=None, filters=None)
+データをインクリメンタルに展開するために使用できる展開オブジェクトを作成します。
+
+圧縮されたストリーム全体を一度に展開にする、より便利な方法については、decompress() を参照してください。
+
+引数 format には使用するコンテナフォーマットを指定します。デフォルトは FORMAT_AUTO で、.xz および .lzma ファイルを展開できます。その他に指定できる値は、FORMAT_XZ、FORMAT_ALONE、および FORMAT_RAW です。
+
+引数 memlimit にはデコンプレッサが使用できるメモリ量をバイトで指定します。この引数を指定した場合、そのメモリ量で展開ができないと LZMAError を送出します。
+
+引数 filters には展開されるストリームの作成に使用するフィルタチェインを指定します。この引数を使用する際は、引数 format に FORMAT_RAW を指定しなければなりません。フィルタチェインについての詳細は カスタムフィルタチェインの指定 を参照してください。
+
+注釈 このクラスは decompress() および LZMAFile と異なり、複数の圧縮ストリームを含む入力を透過的に扱いません。 LZMADecompressor で複数ストリーム入力を展開するには、各ストリームごとに新しいデコンプレッサを作成しなければなりません。
+decompress(data, max_length=-1)
+data (bytes-like object) を展開し、未圧縮のデータを bytes で返します。 data の一部は、後で decompress() の呼び出しに使用するため内部でバッファされている場合があります。 返すデータは以前の decompress() 呼び出しの出力を全て連結したものです。
+
+max_length が非負の場合、最大 max_length バイトの展開データを返します。この制限に達して、出力がさらに生成できる場合、 needs_input が False に設定されます。この場合、 decompress() を次に呼び出すと、data を b'' として提供し、出力をさらに取得することができます。
+
+入力データの全てが圧縮され返された (max_length バイトより少ないためか max_length が負のため) 場合、 needs_input 属性は True になります。
+
+ストリームの終端に到達した後にデータを展開しようとすると EOFError が送出されます。 ストリームの終端の後ろの全てのデータは無視され、その部分は unused_data 属性に保存されます。
+
+バージョン 3.5 で変更: max_length パラメータが追加されました。
+
+check
+入力ストリームに使用されるインテグリティチェックの ID です。これは何のインテグリティチェックが使用されているか決定するために十分な入力がデコードされるまでは CHECK_UNKNOWN になることがあります。
+
+eof
+ストリーム終端記号に到達した場合 True を返します。
+
+unused_data
+圧縮ストリームの末尾以降に存在したデータを表します。
+
+ストリームの末尾に達する前は、これは b"" になります。
+
+needs_input
+decompress() メソッドが、新しい非圧縮入力を必要とせずにさらに展開データを提供できる場合、 False です。
+
+バージョン 3.5 で追加.
+
+lzma.compress(data, format=FORMAT_XZ, check=-1, preset=None, filters=None)
+data (bytes オブジェクト) を圧縮し、圧縮データを bytes オブジェクトとして返します。
+
+引数 format、check、preset、および filters についての説明は上記の LZMACompressor を参照してください。
+
+lzma.decompress(data, format=FORMAT_AUTO, memlimit=None, filters=None)
+data (bytes オブジェクト) を展開し、展開データを bytes オブジェクトとして返します。
+
+data が複数の明確な圧縮ストリームの連結だった場合、すべてのストリームを展開し、結果の連結を返します。
+
+引数 format、memlimit、および filters の説明は、上記 LZMADecompressor を参照してください。
+
+その他
+lzma.is_check_supported(check)
+指定したインテグリティチェックがシステムでサポートされていれば True を返します。
+
+CHECK_NONE および CHECK_CRC32 は常にサポートされています。CHECK_CRC64 および CHECK_SHA256 は liblzma が機能制限セットでコンパイルされている場合利用できないことがあります。
+
+カスタムフィルタチェインの指定
+フィルタチェイン指定子は、辞書のシーケンスで、各辞書は ID と単一フィルタのオプションからなります。各辞書はキー "id" を持たなければならず、フィルタ依存のオプションを指定する追加キーを持つ場合もあります。有効なフィルタ ID は以下のとおりです:
+
+圧縮フィルタ:
+FILTER_LZMA1 (FORMAT_ALONE と共に使用)
+
+FILTER_LZMA2 (FORMAT_XZ および FORMAT_RAW と共に使用)
+
+デルタフィルター:
+FILTER_DELTA
+
+ブランチコールジャンプ (BCJ) フィルター:
+FILTER_X86
+
+FILTER_IA64
+
+FILTER_ARM
+
+FILTER_ARMTHUMB
+
+FILTER_POWERPC
+
+FILTER_SPARC
+
+一つのフィルタチェインは 4 個までのフィルタを定義することができ、空にはできません。チェインの最後は圧縮フィルタでなくてはならず、その他のフィルタはデルタまたは BCJ フィルタでなければなりません。
+
+圧縮フィルタは以下のオプション (追加エントリとしてフィルタを表す辞書に指定) をサポートしています:
+
+preset: 明示されていないオプションのデフォルト値のソースとして使用する圧縮プリセット。
+
+dict_size: 辞書のサイズのバイト数。これは、 4 KiB から 1.5 GiB の間にしてください (両端を含みます)。
+
+lc: リテラルコンテキストビットの数。
+
+lp: リテラル位置ビットの数。lc + lp で最大 4 までです。
+
+pb: 位置ビットの数。最大で 4 までです。
+
+mode: MODE_FAST または MODE_NORMAL。
+
+nice_len: マッチに "良い" とみなす長さ。273 以下でなければなりません。
+
+mf: 使用するマッチファインダ -- MF_HC3、MF_HC4、MF_BT2、MF_BT3、または MF_BT4。
+
+depth: マッチファインダが使用する検索の最大深度。0 (デフォルト) では他のフィルタオプションをベースに自動選択します。
+
+デルタフィルターは、バイト間の差異を保存し、特定の状況で、コンプレッサーに対してさらに反復的な入力を生成します。 デルタフィルターは、1 つのオプション dist のみをサポートします。 これは差し引くバイトどうしの距離を示します。 デフォルトは 1 で、隣接するバイトの差異を扱います。
+
+The BCJ filters are intended to be applied to machine code. They convert relative branches, calls and jumps in the code to use absolute addressing, with the aim of increasing the redundancy that can be exploited by the compressor. These filters support one option, start_offset. This specifies the address that should be mapped to the beginning of the input data. The default is 0.
+
+使用例
+圧縮ファイルからの読み込み:
+
+import lzma
+with lzma.open("file.xz") as f:
+    file_content = f.read()
+圧縮ファイルの作成:
+
+import lzma
+data = b"Insert Data Here"
+with lzma.open("file.xz", "w") as f:
+    f.write(data)
+メモリ上でデータを圧縮:
+
+import lzma
+data_in = b"Insert Data Here"
+data_out = lzma.compress(data_in)
+逐次圧縮:
+
+import lzma
+lzc = lzma.LZMACompressor()
+out1 = lzc.compress(b"Some data\n")
+out2 = lzc.compress(b"Another piece of data\n")
+out3 = lzc.compress(b"Even more data\n")
+out4 = lzc.flush()
+# Concatenate all the partial results:
+result = b"".join([out1, out2, out3, out4])
+すでにオープンしているファイルへの圧縮データの書き出し:
+
+import lzma
+with open("file.xz", "wb") as f:
+    f.write(b"This data will not be compressed\n")
+    with lzma.open(f, "w") as lzf:
+        lzf.write(b"This *will* be compressed\n")
+    f.write(b"Not compressed\n")
+カスタムフィルタチェインを使った圧縮ファイルの作成:
+
+import lzma
+my_filters = [
+    {"id": lzma.FILTER_DELTA, "dist": 5},
+    {"id": lzma.FILTER_LZMA2, "preset": 7 | lzma.PRESET_EXTREME},
+]
+with lzma.open("file.xz", "w", filters=my_filters) as f:
+    f.write(b"blah blah blah")
+
+zipfile --- ZIP アーカイブの処理
+ソースコード: Lib/zipfile.py
+
+ZIP は一般によく知られているアーカイブ (書庫化) および圧縮の標準ファイルフォーマットです。このモジュールでは ZIP 形式のファイルの作成、読み書き、追記、書庫内のファイル一覧の作成を行うためのツールを提供します。より高度な使い方でこのモジュールを利用したいのであれば、 PKZIP Application Note に定義されている ZIP ファイルフォーマットの理解が必要になるでしょう。
+
+このモジュールは現在マルチディスク ZIP ファイルを扱うことはできません。ZIP64 拡張を利用する ZIP ファイル (サイズが 4 GiB を超えるような ZIP ファイル) は扱えます。このモジュールは暗号化されたアーカイブの復号をサポートしますが、現在暗号化ファイルを作成することはできません。C 言語ではなく、Python で実装されているため、復号は非常に遅くなっています。
+
+このモジュールは以下の項目を定義しています:
+
+exception zipfile.BadZipFile
+正常ではない ZIP ファイルに対して送出されるエラーです。
+
+バージョン 3.2 で追加.
+
+exception zipfile.BadZipfile
+BadZipFile の別名です。過去のバージョンの Python との互換性のために用意されています。
+
+バージョン 3.2 で非推奨.
+
+exception zipfile.LargeZipFile
+ZIP ファイルが ZIP64 の機能を必要としているが、その機能が有効化されていない場合に送出されるエラーです。
+
+class zipfile.ZipFile
+ZIP ファイルの読み書きのためのクラスです。コンストラクタの詳細については、ZipFile オブジェクト 節を参照してください。
+
+class zipfile.Path
+A pathlib-compatible wrapper for zip files. See section Path オブジェクト for details.
+
+バージョン 3.8 で追加.
+
+class zipfile.PyZipFile
+Python ライブラリを含む、ZIP アーカイブを作成するためのクラスです。
+
+class zipfile.ZipInfo(filename='NoName', date_time=(1980, 1, 1, 0, 0, 0))
+アーカイブ内の 1 個のメンバの情報を取得するために使うクラスです。このクラスのインスタンスは ZipFile オブジェクトの getinfo() および infolist() メソッドによって返されます。ほとんどの zipfile モジュールの利用者はこのクラスのインスタンスを作成する必要はなく、このモジュールによって作成されたものを使用できます。filename はアーカイブメンバのフルネームでなければならず、date_time はファイルが最後に変更された日時を表す 6 個のフィールドのタプルでなければなりません; フィールドは ZipInfo オブジェクト 節で説明されています。
+
+zipfile.is_zipfile(filename)
+filename が正しいマジックナンバをもつ ZIP ファイルの時に True を返し、そうでない場合 False を返します。filename にはファイルやファイルライクオブジェクトを渡すこともできます。
+
+バージョン 3.1 で変更: ファイルおよびファイルライクオブジェクトをサポートしました。
+
+zipfile.ZIP_STORED
+アーカイブメンバを圧縮しない (複数ファイルを一つにまとめるだけ) ことを表す数値定数です。
+
+zipfile.ZIP_DEFLATED
+通常の ZIP 圧縮方法を表す数値定数です。これには zlib モジュールが必要です。
+
+zipfile.ZIP_BZIP2
+BZIP2 圧縮方法を表す数値定数です。これには bz2 モジュールが必要です。
+
+バージョン 3.3 で追加.
+
+zipfile.ZIP_LZMA
+LZMA 圧縮方法を表す数値定数です。これには lzma モジュールが必要です。
+
+バージョン 3.3 で追加.
+
+注釈 ZIP ファイルフォーマット仕様は 2001 年より bzip2 圧縮を、2006 年より LZMA 圧縮をサポートしていますが、(過去の Python リリースを含む) 一部のツールはこれら圧縮方式をサポートしていないため、ZIP ファイルの処理を全く受け付けないか、あるいは個々のファイルの抽出に失敗する場合があります。
+参考
+PKZIP Application Note
+ZIP ファイルフォーマットおよびアルゴリズムを作成した Phil Katz によるドキュメント。
+
+Info-ZIP Home Page
+Info-ZIP プロジェクトによる ZIP アーカイブプログラムおよびプログラム開発ライブラリに関する情報。
+
+ZipFile オブジェクト
+class zipfile.ZipFile(file, mode='r', compression=ZIP_STORED, allowZip64=True, compresslevel=None, *, strict_timestamps=True)
+Open a ZIP file, where file can be a path to a file (a string), a file-like object or a path-like object.
+
+The mode parameter should be 'r' to read an existing file, 'w' to truncate and write a new file, 'a' to append to an existing file, or 'x' to exclusively create and write a new file. If mode is 'x' and file refers to an existing file, a FileExistsError will be raised. If mode is 'a' and file refers to an existing ZIP file, then additional files are added to it. If file does not refer to a ZIP file, then a new ZIP archive is appended to the file. This is meant for adding a ZIP archive to another file (such as python.exe). If mode is 'a' and the file does not exist at all, it is created. If mode is 'r' or 'a', the file should be seekable.
+
+compression is the ZIP compression method to use when writing the archive, and should be ZIP_STORED, ZIP_DEFLATED, ZIP_BZIP2 or ZIP_LZMA; unrecognized values will cause NotImplementedError to be raised. If ZIP_DEFLATED, ZIP_BZIP2 or ZIP_LZMA is specified but the corresponding module (zlib, bz2 or lzma) is not available, RuntimeError is raised. The default is ZIP_STORED.
+
+If allowZip64 is True (the default) zipfile will create ZIP files that use the ZIP64 extensions when the zipfile is larger than 4 GiB. If it is false zipfile will raise an exception when the ZIP file would require ZIP64 extensions.
+
+The compresslevel parameter controls the compression level to use when writing files to the archive. When using ZIP_STORED or ZIP_LZMA it has no effect. When using ZIP_DEFLATED integers 0 through 9 are accepted (see zlib for more information). When using ZIP_BZIP2 integers 1 through 9 are accepted (see bz2 for more information).
+
+The strict_timestamps argument, when set to False, allows to zip files older than 1980-01-01 at the cost of setting the timestamp to 1980-01-01. Similar behavior occurs with files newer than 2107-12-31, the timestamp is also set to the limit.
+
+ファイルがモード 'w'、 'x' または 'a' で作成され、その後そのアーカイブにファイルを追加することなく クローズ された場合、空のアーカイブのための適切な ZIP 構造がファイルに書き込まれます。
+
+ZipFile is also a context manager and therefore supports the with statement. In the example, myzip is closed after the with statement's suite is finished---even if an exception occurs:
+
+with ZipFile('spam.zip', 'w') as myzip:
+    myzip.write('eggs.txt')
+バージョン 3.2 で追加: ZipFile をコンテキストマネージャとして使用できるようになりました。
+
+バージョン 3.3 で変更: bzip2 および lzma 圧縮をサポートしました。
+
+バージョン 3.4 で変更: ZIP64 拡張がデフォルトで有効になりました。
+
+バージョン 3.5 で変更: seek 出来ないストリームのサポートが追加されました。'x' モードのサポートが追加されました。
+
+バージョン 3.6 で変更: Previously, a plain RuntimeError was raised for unrecognized compression values.
+
+バージョン 3.6.2 で変更: The file parameter accepts a path-like object.
+
+バージョン 3.7 で変更: Add the compresslevel parameter.
+
+バージョン 3.8 で追加: The strict_timestamps keyword-only argument
+
+ZipFile.close()
+アーカイブファイルをクローズします。close() はプログラムを終了する前に必ず呼び出さなければなりません。さもないとアーカイブ上の重要なレコードが書き込まれません。
+
+ZipFile.getinfo(name)
+アーカイブメンバ name に関する情報を持つ ZipInfo オブジェクトを返します。アーカイブに含まれないファイル名に対して getinfo() を呼び出すと、KeyError が送出されます。
+
+ZipFile.infolist()
+アーカイブに含まれる各メンバの ZipInfo オブジェクトからなるリストを返します。既存のアーカイブファイルを開いている場合、リストの順番は実際の ZIP ファイル中のメンバの順番と同じになります。
+
+ZipFile.namelist()
+アーカイブメンバの名前のリストを返します。
+
+ZipFile.open(name, mode='r', pwd=None, *, force_zip64=False)
+Access a member of the archive as a binary file-like object. name can be either the name of a file within the archive or a ZipInfo object. The mode parameter, if included, must be 'r' (the default) or 'w'. pwd is the password used to decrypt encrypted ZIP files.
+
+open() はコンテキストマネージャでもあるので with 文をサポートしています:
+
+with ZipFile('spam.zip') as myzip:
+    with myzip.open('eggs.txt') as myfile:
+        print(myfile.read())
+With mode 'r' the file-like object (ZipExtFile) is read-only and provides the following methods: read(), readline(), readlines(), seek(), tell(), __iter__(), __next__(). These objects can operate independently of the ZipFile.
+
+With mode='w', a writable file handle is returned, which supports the write() method. While a writable file handle is open, attempting to read or write other files in the ZIP file will raise a ValueError.
+
+When writing a file, if the file size is not known in advance but may exceed 2 GiB, pass force_zip64=True to ensure that the header format is capable of supporting large files. If the file size is known in advance, construct a ZipInfo object with file_size set, and use that as the name parameter.
+
+注釈 open()、read()、および extract() メソッドには、ファイル名または ZipInfo オブジェクトを指定できます。これは重複する名前のメンバを含む ZIP ファイルを読み込むときにそのメリットを享受できるでしょう。
+バージョン 3.6 で変更: Removed support of mode='U'. Use io.TextIOWrapper for reading compressed text files in universal newlines mode.
+
+バージョン 3.6 で変更: open() can now be used to write files into the archive with the mode='w' option.
+
+バージョン 3.6 で変更: Calling open() on a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+ZipFile.extract(member, path=None, pwd=None)
+メンバをアーカイブから現在の作業ディレクトリに展開します。member は展開するファイルのフルネームまたは ZipInfo オブジェクトでなければなりません。ファイル情報は可能な限り正確に展開されます。path は展開先のディレクトリを指定します。member はファイル名または ZipInfo オブジェクトです。pwd は暗号化ファイルに使われるパスワードです。
+
+作成された (ディレクトリか新ファイルの) 正規化されたパスを返します。
+
+注釈 メンバのファイル名が絶対パスなら、ドライブ/UNC sharepoint および先頭の (バック) スラッシュは取り除かれます。例えば、Unix で ///foo/bar は foo/bar となり、Window で C:\foo\bar は foo\bar となります。また、メンバのファイル名に含まれる全ての ".." は取り除かれます。例えば、../../foo../../ba..r は foo../ba..r となります。Windows では、不正な文字 (:, <, >, |, ", ?, および *) はアンダースコア (_) で置き換えられます。
+バージョン 3.6 で変更: Calling extract() on a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+バージョン 3.6.2 で変更: path パラメタが path-like object を受け付けるようになりました。
+
+ZipFile.extractall(path=None, members=None, pwd=None)
+すべてのメンバをアーカイブから現在の作業ディレクトリに展開します。path は展開先のディレクトリを指定します。members は、オプションで、namelist() で返されるリストの部分集合でなければなりません。pwd は、暗号化ファイルに使われるパスワードです。
+
+警告 信頼できないソースからきた Zip ファイルを、事前に中身をチェックせずに展開してはいけません。ファイルを path の外側に作成することができるからです。例えば、 "/" で始まる絶対パスを持ったメンバーや、 2 つのドット ".." を持つファイル名などの場合です。このモジュールはそれを避けようとします。 extract() の注釈を参照してください。
+バージョン 3.6 で変更: Calling extractall() on a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+バージョン 3.6.2 で変更: path パラメタが path-like object を受け付けるようになりました。
+
+ZipFile.printdir()
+アーカイブの内容の一覧を sys.stdout に出力します。
+
+ZipFile.setpassword(pwd)
+pwd を展開する圧縮ファイルのデフォルトパスワードとして指定します。
+
+ZipFile.read(name, pwd=None)
+Return the bytes of the file name in the archive. name is the name of the file in the archive, or a ZipInfo object. The archive must be open for read or append. pwd is the password used for encrypted files and, if specified, it will override the default password set with setpassword(). Calling read() on a ZipFile that uses a compression method other than ZIP_STORED, ZIP_DEFLATED, ZIP_BZIP2 or ZIP_LZMA will raise a NotImplementedError. An error will also be raised if the corresponding compression module is not available.
+
+バージョン 3.6 で変更: Calling read() on a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+ZipFile.testzip()
+Read all the files in the archive and check their CRC's and file headers. Return the name of the first bad file, or else return None.
+
+バージョン 3.6 で変更: Calling testzip() on a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+ZipFile.write(filename, arcname=None, compress_type=None, compresslevel=None)
+Write the file named filename to the archive, giving it the archive name arcname (by default, this will be the same as filename, but without a drive letter and with leading path separators removed). If given, compress_type overrides the value given for the compression parameter to the constructor for the new entry. Similarly, compresslevel will override the constructor if given. The archive must be open with mode 'w', 'x' or 'a'.
+
+注釈 アーカイブ名はアーカイブルートに対する相対パスでなければなりません。言い換えると、アーカイブ名はパスセパレータで始まってはいけません。
+注釈 もし、arcname (arcname が与えられない場合は、filename) が null byte を含むなら、アーカイブ中のファイルのファイル名は、null byte までで切り詰められます。
+バージョン 3.6 で変更: Calling write() on a ZipFile created with mode 'r' or a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+ZipFile.writestr(zinfo_or_arcname, data, compress_type=None, compresslevel=None)
+Write a file into the archive. The contents is data, which may be either a str or a bytes instance; if it is a str, it is encoded as UTF-8 first. zinfo_or_arcname is either the file name it will be given in the archive, or a ZipInfo instance. If it's an instance, at least the filename, date, and time must be given. If it's a name, the date and time is set to the current date and time. The archive must be opened with mode 'w', 'x' or 'a'.
+
+If given, compress_type overrides the value given for the compression parameter to the constructor for the new entry, or in the zinfo_or_arcname (if that is a ZipInfo instance). Similarly, compresslevel will override the constructor if given.
+
+注釈 ZipInfo インスタンスを引数 zinfo_or_arcname として与えた場合、与えられた ZipInfo インスタンスのメンバーである compress_type で指定された圧縮方法が使われます。デフォルトでは、ZipInfo コンストラクターが、このメンバーを ZIP_STORED に設定します。
+バージョン 3.2 で変更: 引数 compress_type を追加しました。
+
+バージョン 3.6 で変更: Calling writestr() on a ZipFile created with mode 'r' or a closed ZipFile will raise a ValueError. Previously, a RuntimeError was raised.
+
+以下のデータ属性も利用することができます:
+
+ZipFile.filename
+ZIP ファイルの名前です。
+
+ZipFile.debug
+使用するデバッグ出力レベルです。この属性は 0 (デフォルト、何も出力しない) から 3 (最も多く出力する) までの値に設定することができます。デバッグ情報は sys.stdout に出力されます。
+
+ZipFile.comment
+ZIP ファイルに bytes オブジェクトとして関連付けられたコメントです。モード 'w' 、 'x' または 'a' で作成された ZipFile インスタンスへコメントを割り当てる場合、文字列長は 65535 バイトまでにしてください。その長さを超えたコメントは切り捨てられます。
+
+Path オブジェクト
+class zipfile.Path(root, at='')
+Construct a Path object from a root zipfile (which may be a ZipFile instance or file suitable for passing to the ZipFile constructor).
+
+at specifies the location of this Path within the zipfile, e.g. 'dir/file.txt', 'dir/', or ''. Defaults to the empty string, indicating the root.
+
+Path objects expose the following features of pathlib.Path objects:
+
+Path objects are traversable using the / operator.
+
+Path.name
+The final path component.
+
+Path.open(mode='r', *, pwd, **)
+Invoke ZipFile.open() on the current path. Allows opening for read or write, text or binary through supported modes: 'r', 'w', 'rb', 'wb'. Positional and keyword arguments are passed through to io.TextIOWrapper when opened as text and ignored otherwise. pwd is the pwd parameter to ZipFile.open().
+
+バージョン 3.9 で変更: Added support for text and binary modes for open. Default mode is now text.
+
+Path.iterdir()
+Enumerate the children of the current directory.
+
+Path.is_dir()
+Return True if the current context references a directory.
+
+Path.is_file()
+Return True if the current context references a file.
+
+Path.exists()
+Return True if the current context references a file or directory in the zip file.
+
+Path.read_text(*, **)
+Read the current file as unicode text. Positional and keyword arguments are passed through to io.TextIOWrapper (except buffer, which is implied by the context).
+
+Path.read_bytes()
+Read the current file as bytes.
+
+PyZipFile オブジェクト
+PyZipFile コンストラクタは ZipFile コンストラクタと同じパラメータに加え、optimize パラメータをとります。
+
+class zipfile.PyZipFile(file, mode='r', compression=ZIP_STORED, allowZip64=True, optimize=-1)
+バージョン 3.2 で追加: パラメータに optimize を追加しました。
+
+バージョン 3.4 で変更: ZIP64 拡張がデフォルトで有効になりました。
+
+インスタンスは ZipFile オブジェクトのメソッドの他に、追加のメソッドを 1 個持ちます:
+
+writepy(pathname, basename='', filterfunc=None)
+*.py ファイルを探し、一致するファイルをアーカイブに追加します。
+
+PyZipFile に optimize 引数が与えられない場合、あるいは -1 が指定された場合、対応するファイルは *.pyc ファイルで、必要に応じてコンパイルします。
+
+PyZipFile の optimize パラメータが 0、1、あるいは 2 の場合、それを最適化レベル (compile() 参照) とするファイルのみが、必要に応じてコンパイルされアーカイブに追加されます。
+
+If pathname is a file, the filename must end with .py, and just the (corresponding *.pyc) file is added at the top level (no path information). If pathname is a file that does not end with .py, a RuntimeError will be raised. If it is a directory, and the directory is not a package directory, then all the files *.pyc are added at the top level. If the directory is a package directory, then all *.pyc are added under the package name as a file path, and if any subdirectories are package directories, all of these are added recursively in sorted order.
+
+basename は内部が使用するためだけのものです。
+
+filterfunc を与える場合、単一の文字列引数を取る関数を渡してください。これには(個々のフルパスを含む)それぞれのパスがアーカイブに加えられる前に渡されます。 filterfunc が偽を返せば、そのパスはアーカイブに追加されず、ディレクトリだった場合はその中身が無視されます。例として、私たちのテストファイルが全て test ディレクトリの中にあるか、 test 文字列で始まるとしましょう。 filterfunc を使ってそれらを除外出来ます:
+
+>>>
+>>> zf = PyZipFile('myprog.zip')
+>>> def notests(s):
+...     fn = os.path.basename(s)
+...     return (not (fn == 'test' or fn.startswith('test_')))
+>>> zf.writepy('myprog', filterfunc=notests)
+writepy() メソッドは以下のようなファイル名でアーカイブを作成します:
+
+string.pyc                   # Top level name
+test/__init__.pyc            # Package directory
+test/testall.pyc             # Module test.testall
+test/bogus/__init__.pyc      # Subpackage directory
+test/bogus/myfile.pyc        # Submodule test.bogus.myfile
+バージョン 3.4 で追加: filterfunc パラメータ。
+
+バージョン 3.6.2 で変更: The pathname parameter accepts a path-like object.
+
+バージョン 3.7 で変更: Recursion sorts directory entries.
+
+ZipInfo オブジェクト
+ZipInfo クラスのインスタンスは、ZipFile オブジェクトの getinfo() および infolist() メソッドによって返されます。各オブジェクトは ZIP アーカイブ内の 1 個のメンバに関する情報を格納します。
+
+There is one classmethod to make a ZipInfo instance for a filesystem file:
+
+classmethod ZipInfo.from_file(filename, arcname=None, *, strict_timestamps=True)
+Construct a ZipInfo instance for a file on the filesystem, in preparation for adding it to a zip file.
+
+filename should be the path to a file or directory on the filesystem.
+
+If arcname is specified, it is used as the name within the archive. If arcname is not specified, the name will be the same as filename, but with any drive letter and leading path separators removed.
+
+The strict_timestamps argument, when set to False, allows to zip files older than 1980-01-01 at the cost of setting the timestamp to 1980-01-01. Similar behavior occurs with files newer than 2107-12-31, the timestamp is also set to the limit.
+
+バージョン 3.6 で追加.
+
+バージョン 3.6.2 で変更: The filename parameter accepts a path-like object.
+
+バージョン 3.8 で追加: The strict_timestamps keyword-only argument
+
+Instances have the following methods and attributes:
+
+ZipInfo.is_dir()
+Return True if this archive member is a directory.
+
+This uses the entry's name: directories should always end with /.
+
+バージョン 3.6 で追加.
+
+ZipInfo.filename
+アーカイブ中のファイル名。
+
+ZipInfo.date_time
+アーカイブメンバの最終更新日時。6 つの値からなるタプルになります:
+
+インデックス
+
+値
+
+0
+
+西暦年 (>= 1980)
+
+1
+
+月 (1 から始まる)
+
+2
+
+日 (1 から始まる)
+
+3
+
+時 (0 から始まる)
+
+4
+
+分 (0 から始まる)
+
+5
+
+秒 (0 から始まる)
+
+注釈 ZIP ファイルフォーマットは 1980 年より前のタイムスタンプをサポートしていません。
+ZipInfo.compress_type
+アーカイブメンバの圧縮形式。
+
+ZipInfo.comment
+Comment for the individual archive member as a bytes object.
+
+ZipInfo.extra
+Expansion field data. The PKZIP Application Note contains some comments on the internal structure of the data contained in this bytes object.
+
+ZipInfo.create_system
+ZIP アーカイブを作成したシステムを記述する文字列。
+
+ZipInfo.create_version
+このアーカイブを作成した PKZIP のバージョン。
+
+ZipInfo.extract_version
+このアーカイブを展開する際に必要な PKZIP のバージョン。
+
+ZipInfo.reserved
+予約領域。ゼロでなくてはなりません。
+
+ZipInfo.flag_bits
+ZIP フラグビット列。
+
+ZipInfo.volume
+ファイルヘッダのボリューム番号。
+
+ZipInfo.internal_attr
+内部属性。
+
+ZipInfo.external_attr
+外部ファイル属性。
+
+ZipInfo.header_offset
+ファイルヘッダへのバイトオフセット。
+
+ZipInfo.CRC
+圧縮前のファイルの CRC-32 チェックサム。
+
+ZipInfo.compress_size
+圧縮後のデータのサイズ。
+
+ZipInfo.file_size
+圧縮前のファイルのサイズ。
+
+コマンドラインインターフェイス
+zipfile モジュールは、 ZIP アーカイブを操作するための簡単なコマンドラインインターフェースを提供しています。
+
+ZIP アーカイブを新規に作成したい場合、-c オプションの後にまとめたいファイルを列挙してください:
+
+$ python -m zipfile -c monty.zip spam.txt eggs.txt
+ディレクトリを渡すこともできます:
+
+$ python -m zipfile -c monty.zip life-of-brian_1979/
+ZIP アーカイブを特定のディレクトリに展開したい場合、-e オプションを使用してください:
+
+$ python -m zipfile -e monty.zip target-dir/
+ZIP アーカイブ内のファイル一覧を表示するには -l を使用してください:
+
+$ python -m zipfile -l monty.zip
+コマンドラインオプション
+-l <zipfile>
+--list <zipfile>
+zipfile 内のファイル一覧を表示します。
+
+-c <zipfile> <source1> ... <sourceN>
+--create <zipfile> <source1> ... <sourceN>
+ソースファイルから zipfile を作成します。
+
+-e <zipfile> <output_dir>
+--extract <zipfile> <output_dir>
+zipfile を対象となるディレクトリに展開します。
+
+-t <zipfile>
+--test <zipfile>
+zipfile が有効かどうか調べます。
+
+Decompression pitfalls
+The extraction in zipfile module might fail due to some pitfalls listed below.
+
+From file itself
+Decompression may fail due to incorrect password / CRC checksum / ZIP format or unsupported compression method / decryption.
+
+File System limitations
+Exceeding limitations on different file systems can cause decompression failed. Such as allowable characters in the directory entries, length of the file name, length of the pathname, size of a single file, and number of files, etc.
+
+Resources limitations
+The lack of memory or disk volume would lead to decompression failed. For example, decompression bombs (aka ZIP bomb) apply to zipfile library that can cause disk volume exhaustion.
+
+Interruption
+Interruption during the decompression, such as pressing control-C or killing the decompression process may result in incomplete decompression of the archive.
+
+Default behaviors of extraction
+Not knowing the default extraction behaviors can cause unexpected decompression results. For example, when extracting the same archive twice, it overwrites files without asking.
+
+tarfile --- tar アーカイブファイルの読み書き
+ソースコード: Lib/tarfile.py
+
+tarfile モジュールは、gzip、bz2、および lzma 圧縮されたものを含む、tar アーカイブを読み書きできます。.zip ファイルの読み書きには zipfile モジュールか、あるいは shutil の高水準関数を使用してください。
+
+いくつかの事実と形態:
+
+モジュールが利用可能な場合、gzip、bz2 ならびに lzma で圧縮されたアーカイブを読み書きします。
+
+POSIX.1-1988 (ustar) フォーマットの読み書きをサポートしています。
+
+longname および longlink 拡張を含む GNU tar フォーマットの読み書きをサポートしています。スパースファイルの復元を含む sparse 拡張は読み込みのみサポートしています。
+
+POSIX.1-2001 (pax) フォーマットの読み書きをサポートしています。
+
+ディレクトリ、一般ファイル、ハードリンク、シンボリックリンク、fifo、キャラクターデバイスおよびブロックデバイスを処理します。また、タイムスタンプ、アクセス許可や所有者のようなファイル情報の取得および保存が可能です。
+
+バージョン 3.3 で変更: lzma 圧縮をサポートしました。
+
+tarfile.open(name=None, mode='r', fileobj=None, bufsize=10240, **kwargs)
+パス名 name の TarFile オブジェクトを返します。TarFile オブジェクトと、利用できるキーワード引数に関する詳細な情報については、TarFile オブジェクト 節を参照してください。
+
+mode は 'filemode[:compression]' の形式をとる文字列でなければなりません。デフォルトの値は 'r' です。以下に mode のとりうる組み合わせすべてを示します:
+
+mode
+
+action
+
+'r' または 'r:*'
+
+圧縮方法に関して透過的に、読み込み用にオープンします (推奨)。
+
+'r:'
+
+非圧縮で読み込み用に排他的にオープンします。
+
+'r:gz'
+
+gzip 圧縮で読み込み用にオープンします。
+
+'r:bz2'
+
+bzip2 圧縮で読み込み用にオープンします。
+
+'r:xz'
+
+lzma 圧縮で読み込み用にオープンします。
+
+'x' or 'x:'
+
+圧縮せずに tarfile を排他的に作成します。tarfile が既存の場合 FileExistsError 例外を送出します。
+
+'x:gz'
+
+gzip 圧縮で tarfile を作成します。tarfile が既存の場合 FileExistsError 例外を送出します。
+
+'x:bz2'
+
+bzip2 圧縮で tarfile を作成します。tarfile が既存の場合 FileExistsError 例外を送出します。
+
+'x:xz'
+
+lzma 圧縮で tarfile を作成します。tarfile が既存の場合 FileExistsError 例外を送出します。
+
+'a' または 'a:'
+
+非圧縮で追記用にオープンします。ファイルが存在しない場合は新たに作成されます。
+
+'w' または 'w:'
+
+非圧縮で書き込み用にオープンします。
+
+'w:gz'
+
+gzip 圧縮で書き込み用にオープンします。
+
+'w:bz2'
+
+bzip2 圧縮で書き込み用にオープンします。
+
+'w:xz'
+
+lzma 圧縮で書き込み用にオープンします。
+
+'a:gz'、'a:bz2'、'a:xz' は利用できないことに注意して下さい。もし mode が、ある (圧縮した) ファイルを読み込み用にオープンするのに適していないなら、ReadError が送出されます。これを防ぐには mode 'r' を使って下さい。もし圧縮方式がサポートされていなければ、CompressionError が送出されます。
+
+もし fileobj が指定されていれば、それは name でバイナリモードでオープンされた ファイルオブジェクト の代替として使うことができます。そのファイルオブジェクトの位置が 0 であることを前提に動作します。
+
+'w:gz'、'r:gz'、'w:bz2'、'r:bz2', 'x:gz', 'x:bz2' モードの場合、tarfile.open() はファイルの圧縮レベルを指定するキーワード引数 compresslevel (デフォルトは 9) を受け付けます。
+
+特別な目的のために、mode には 2 番目の形式: 'ファイルモード|[圧縮]' があります。この形式を使うと、tarfile.open() が返すのは、データをブロックからなるストリームとして扱う TarFile オブジェクトになります。この場合、ファイルに対してランダムなシークが行えなくなります。fileobj を指定する場合、 read() および write() メソッドを持つ (mode に依存した) 任意のオブジェクトにできます。bufsize にはブロックサイズを指定します。デフォルトは 20 * 512 バイトです。sys.stdin、ソケット file object、あるいはテープデバイスと組み合わせる場合にはこの形式を使ってください。ただし、このような TarFile オブジェクトにはランダムアクセスを行えないという制限があります。使用例 節を参照してください。現在可能なモードは以下のとおりです。
+
+モード
+
+動作
+
+'r|*'
+
+tar ブロックの stream を圧縮方法に関して透過的に読み込み用にオープンします。
+
+'r|'
+
+非圧縮 tar ブロックの stream を読み込み用にオープンします。
+
+'r|gz'
+
+gzip 圧縮の stream を読み込み用にオープンします。
+
+'r|bz2'
+
+bzip2 圧縮の stream を読み込み用にオープンします。
+
+'r|xz'
+
+lzma 圧縮の stream を読み込み用にオープンします。
+
+'w|'
+
+非圧縮の stream を書き込み用にオープンします。
+
+'w|gz'
+
+gzip 圧縮の stream を書き込み用にオープンします。
+
+'w|bz2'
+
+bzip2 圧縮の stream を書き込み用にオープンします。
+
+'w|xz'
+
+lzma 圧縮の stream を書き込み用にオープンします。
+
+バージョン 3.5 で変更: 'x' (排他的作成) モードが追加されました。
+
+バージョン 3.6 で変更: name パラメタが path-like object を受け付けるようになりました。
+
+class tarfile.TarFile
+tar アーカイブを読み書きするためのクラスです。このクラスを直接使わないこと: 代わりに tarfile.open() を使ってください。TarFile オブジェクト を参照してください。
+
+tarfile.is_tarfile(name)
+Return True if name is a tar archive file, that the tarfile module can read. name may be a str, file, or file-like object.
+
+バージョン 3.9 で変更: ファイルおよびファイルライクオブジェクトをサポートしました。
+
+tarfile モジュールは以下の例外を定義しています:
+
+exception tarfile.TarError
+すべての tarfile 例外のための基本クラスです。
+
+exception tarfile.ReadError
+tar アーカイブがオープンされた時、tarfile モジュールで操作できないか、あるいは何か無効であるとき送出されます。
+
+exception tarfile.CompressionError
+圧縮方法がサポートされていないか、あるいはデータを正しくデコードできない時に送出されます。
+
+exception tarfile.StreamError
+ストリームのような TarFile オブジェクトで典型的な制限のために送出されます。
+
+exception tarfile.ExtractError
+TarFile.extract() を使った時に 致命的でない エラーに対して送出されます。ただし TarFile.errorlevel== 2 の場合に限ります。
+
+exception tarfile.HeaderError
+TarInfo.frombuf() メソッドが取得したバッファーが不正だったときに送出されます。
+
+モジュールレベルで以下の定数が利用できます。
+
+tarfile.ENCODING
+既定の文字エンコーディング。Windows では 'utf-8' 、それ以外では sys.getfilesystemencoding() の返り値です。
+
+以下の各定数は、tarfile モジュールが作成できる tar アーカイブフォーマットを定義しています。詳細は、サポートしている tar フォーマット を参照してください。
+
+tarfile.USTAR_FORMAT
+POSIX.1-1988 (ustar) フォーマット。
+
+tarfile.GNU_FORMAT
+GNU tar フォーマット。
+
+tarfile.PAX_FORMAT
+POSIX.1-2001 (pax) フォーマット。
+
+tarfile.DEFAULT_FORMAT
+The default format for creating archives. This is currently PAX_FORMAT.
+
+バージョン 3.8 で変更: The default format for new archives was changed to PAX_FORMAT from GNU_FORMAT.
+
+参考
+zipfile モジュール
+zipfile 標準モジュールのドキュメント。
+
+アーカイブ化操作
+shutil が提供するより高水準のアーカイブ機能についてのドキュメント。
+
+GNU tar manual, Basic Tar Format
+GNU tar 拡張機能を含む、tar アーカイブファイルのためのドキュメント。
+
+TarFile オブジェクト
+TarFile オブジェクトは、tar アーカイブへのインターフェースを提供します。tar アーカイブは一連のブロックです。アーカイブメンバー (保存されたファイル) は、ヘッダーブロックとそれに続くデータブロックで構成されています。一つの tar アーカイブにファイルを何回も保存することができます。各アーカイブメンバーは、TarInfo オブジェクトで確認できます。詳細については TarInfo オブジェクト を参照してください。
+
+TarFile オブジェクトは with 文のコンテキストマネージャーとして利用できます。with ブロックが終了したときにオブジェクトはクローズされます。例外が発生した時、内部で利用されているファイルオブジェクトのみがクローズされ、書き込み用にオープンされたアーカイブのファイナライズは行われないことに注意してください。使用例 節のユースケースを参照してください。
+
+バージョン 3.2 で追加: コンテキスト管理のプロトコルがサポートされました。
+
+class tarfile.TarFile(name=None, mode='r', fileobj=None, format=DEFAULT_FORMAT, tarinfo=TarInfo, dereference=False, ignore_zeros=False, encoding=ENCODING, errors='surrogateescape', pax_headers=None, debug=0, errorlevel=0)
+以下のすべての引数はオプションで、インスタンス属性としてもアクセスできます。
+
+name はアーカイブのパス名です。name は path-like object でも構いません。fileobj が渡された場合は省略可能です。その場合、ファイルオブジェクトに name 属性があれば、それを利用します。
+
+mode は、既存のアーカイブから読み込むための 'r'、既存のアーカイブに追記するための 'a'、既存のファイルがあれば上書きして新しいファイルを作成する 'w' 、あるいは存在しない場合にのみ新しいファイルを作成する 'x' のいずれかです。
+
+fileobj が与えられていれば、それを使ってデータを読み書きします。もしそれが決定できれば、mode は fileobj のモードで上書きされます。fileobj は位置 0 から利用されます。
+
+注釈 TarFile をクローズした時、fileobj はクローズされません。
+format controls the archive format for writing. It must be one of the constants USTAR_FORMAT, GNU_FORMAT or PAX_FORMAT that are defined at module level. When reading, format will be automatically detected, even if different formats are present in a single archive.
+
+tarinfo 引数を利用して、デフォルトの TarInfo クラスを別のクラスで置き換えることができます。
+
+dereference が False だった場合、シンボリックリンクやハードリンクがアーカイブに追加されます。True だった場合、リンクのターゲットとなるファイルの内容がアーカイブに追加されます。シンボリックリンクをサポートしていないシステムでは効果がありません。
+
+ignore_zeros が False だった場合、空ブロックをアーカイブの終端として扱います。True だった場合、空の (無効な) ブロックをスキップして、可能な限り多くのメンバーを取得しようとします。このオプションは、連結されたり、壊れたアーカイブファイルを扱うときにのみ、意味があります。
+
+debug は 0 (デバッグメッセージ無し) から 3 (全デバッグメッセージ) まで設定できます。このメッセージは sys.stderr に書き込まれます。
+
+errorlevel が 0 の場合、TarFile.extract() 使用時にすべてのエラーが無視されます。エラーが無視された場合でも、debug が有効であれば、エラーメッセージは出力されます。1 の場合、すべての 致命的な(fatal) エラーは OSError を送出します。2 の場合、すべての 致命的でない(non-fatal) エラーも TarError 例外として送出されます。
+
+引数 encoding および errors にはアーカイブの読み書きやエラー文字列の変換に使用する文字エンコーディングを指定します。ほとんどのユーザーはデフォルト設定のままで動作します。詳細に関しては Unicode に関する問題 節を参照してください。
+
+引数 pax_headers は、オプションの文字列辞書で、format が PAX_FORMAT だった場合に pax グローバルヘッダーに追加されます。
+
+バージョン 3.2 で変更: 引数 errors のデフォルトが 'surrogateescape' になりました。
+
+バージョン 3.5 で変更: 'x' (排他的作成) モードが追加されました。
+
+バージョン 3.6 で変更: name パラメタが path-like object を受け付けるようになりました。
+
+classmethod TarFile.open(...)
+代替コンストラクターです。モジュールレベルでの tarfile.open() 関数は、実際はこのクラスメソッドへのショートカットです。
+
+TarFile.getmember(name)
+メンバー name に対する TarInfo オブジェクトを返します。name がアーカイブに見つからなければ、KeyError が送出されます。
+
+注釈 アーカイブ内にメンバーが複数ある場合は、最後に出現するものが最新のバージョンとみなされます。
+TarFile.getmembers()
+TarInfo アーカイブのメンバーをオブジェクトのリストとして返します。このリストはアーカイブ内のメンバーと同じ順番です。
+
+TarFile.getnames()
+メンバーをその名前のリストを返します。これは getmembers() で返されるリストと同じ順番です。
+
+TarFile.list(verbose=True, *, members=None)
+内容の一覧を sys.stdout に出力します。verbose が False の場合、メンバー名のみ表示します。True の場合、 ls -l に似た出力を生成します。オプションの members を与える場合、 getmembers() が返すリストのサブセットである必要があります。
+
+バージョン 3.5 で変更: members 引数が追加されました。.
+
+TarFile.next()
+TarFile が読み込み用にオープンされている時、アーカイブの次のメンバーを TarInfo オブジェクトとして返します。もしそれ以上利用可能なものがなければ、None を返します。
+
+TarFile.extractall(path=".", members=None, *, numeric_owner=False)
+すべてのメンバーをアーカイブから現在の作業ディレクトリまたは path に抽出します。オプションの members が与えられるときには、getmembers() で返されるリストの一部でなければなりません。所有者、変更時刻、アクセス権限のようなディレクトリ情報はすべてのメンバーが抽出された後にセットされます。これは二つの問題を回避するためです。一つはディレクトリの変更時刻はその中にファイルが作成されるたびにリセットされるということ、もう一つはディレクトリに書き込み許可がなければその中のファイル抽出は失敗してしまうということです。
+
+numeric_owner が True の場合、tarfile の uid と gid 数値が抽出されたファイルのオーナー/グループを設定するために使用されます。False の場合、tarfile の名前付きの値が使用されます。
+
+警告 内容を信頼できない tar アーカイブを、事前の内部チェック前に展開してはいけません。ファイルが path の外側に作られる可能性があります。例えば、"/" で始まる絶対パスのファイル名や、2 重ドット ".." で始まるパスのファイル名です。
+バージョン 3.5 で変更: numeric_owner 引数が追加されました。
+
+バージョン 3.6 で変更: path パラメタが path-like object を受け付けるようになりました。
+
+TarFile.extract(member, path="", set_attrs=True, *, numeric_owner=False)
+アーカイブからメンバーの完全な名前を使って、現在のディレクトリに展開します。ファイル情報はできる限り正確に展開されます。 member はファイル名もしくは TarInfo オブジェクトです。 path を使って別のディレクトリを指定することもできます。 path は　path-like object でも構いません。set_attrs が false でない限り、ファイルの属性 (所有者、最終更新時刻、モード) は設定されます。
+
+numeric_owner が True の場合、tarfile の uid と gid 数値が抽出されたファイルのオーナー/グループを設定するために使用されます。False の場合、tarfile の名前付きの値が使用されます。
+
+注釈 extract() メソッドはいくつかの展開に関する問題を扱いません。ほとんどの場合、extractall() メソッドの利用を考慮するべきです。
+警告 extractall() の警告を参してください。
+バージョン 3.2 で変更: パラメーターに set_attrs を追加しました。
+
+バージョン 3.5 で変更: numeric_owner 引数が追加されました。
+
+バージョン 3.6 で変更: path パラメタが path-like object を受け付けるようになりました。
+
+TarFile.extractfile(member)
+Extract a member from the archive as a file object. member may be a filename or a TarInfo object. If member is a regular file or a link, an io.BufferedReader object is returned. For all other existing members, None is returned. If member does not appear in the archive, KeyError is raised.
+
+バージョン 3.3 で変更: 戻り値が io.BufferedReader オブジェクトになりました。
+
+TarFile.add(name, arcname=None, recursive=True, *, filter=None)
+ファイル name をアーカイブに追加します。 name は、任意のファイルタイプ (ディレクトリ、fifo、シンボリックリンク等)です。 arcname が与えられている場合は、それはアーカイブ内のファイルの代替名を指定します。 デフォルトではディレクトリは再帰的に追加されます。 これは、 recursive を False に設定すると避けられます。 再帰処理はソートされた順序でエントリーを追加します。 filter が与えられた場合、それは TarInfo オブジェクトを引数として受け取り、操作した TarInfo オブジェクトを返す関数でなければなりません。 代わりに None を返した場合、 TarInfo オブジェクトはアーカイブから除外されます。 使用例 にある例を参照してください。
+
+バージョン 3.2 で変更: filter パラメータが追加されました。
+
+バージョン 3.7 で変更: 再帰処理はソートされた順序でエントリーを追加するようになりました。
+
+TarFile.addfile(tarinfo, fileobj=None)
+TarInfo オブジェクト tarinfo をアーカイブに追加します。fileobj を与える場合、binary file にしなければならず、 tarinfo.size バイトがそれから読まれ、アーカイブに追加されます。TarInfo オブジェクトを直接作成するか、gettarinfo() を使って作成することができます。
+
+TarFile.gettarinfo(name=None, arcname=None, fileobj=None)
+os.stat() の結果か、既存のファイルに相当するものから、TarInfo オブジェクトを作成します。このファイルは、name で名付けられるか、ファイル記述子を持つ file object fileobj として指定されます。name は:term:path-like object でも構いません。 arcname が与えられた場合、アーカイブ内のファイルに対して代替名を指定します。与えられない場合、名前は fileobj の name 属性 name 属性から取られます。名前はテキスト文字列にしてください。
+
+TarInfo の属性の一部は、addfile() を使用して追加する前に修正できます。ファイルオブジェクトが、ファイルの先頭にある通常のファイルオブジェクトでない場合、 size などの属性は修正が必要かもしれません。これは、 GzipFile などの属性に当てはまります。name も修正できるかもしれず、この場合、arcname はダミーの文字列にすることができます。
+
+バージョン 3.6 で変更: name パラメタが path-like object を受け付けるようになりました。
+
+TarFile.close()
+TarFile をクローズします。書き込みモードでは、完了ゼロブロックが 2 個アーカイブに追加されます。
+
+TarFile.pax_headers
+pax グローバルヘッダーに含まれる key-value ペアの辞書です。
+
+TarInfo オブジェクト
+TarInfo オブジェクトは TarFile の一つのメンバーを表します。ファイルに必要なすべての属性 (ファイルタイプ、ファイルサイズ、時刻、アクセス権限、所有者等のような) を保存する他に、そのタイプを決定するのに役に立ついくつかのメソッドを提供します。これにはファイルのデータそのものは 含まれません 。
+
+TarInfo オブジェクトは TarFile のメソッド getmember()、 getmembers() および gettarinfo() によって返されます。
+
+class tarfile.TarInfo(name="")
+TarInfo オブジェクトを作成します。
+
+classmethod TarInfo.frombuf(buf, encoding, errors)
+TarInfo オブジェクトを文字列バッファー buf から作成して返します。
+
+バッファーが不正な場合 HeaderError を送出します。
+
+classmethod TarInfo.fromtarfile(tarfile)
+TarFile オブジェクトの tarfile から、次のメンバーを読み込んで、それを TarInfo オブジェクトとして返します。
+
+TarInfo.tobuf(format=DEFAULT_FORMAT, encoding=ENCODING, errors='surrogateescape')
+TarInfo オブジェクトから文字列バッファーを作成します。引数についての情報は、TarFile クラスのコンストラクターを参照してください。
+
+バージョン 3.2 で変更: 引数 errors のデフォルトが 'surrogateescape' になりました。
+
+TarInfo オブジェクトには以下のデータ属性があります:
+
+TarInfo.name
+アーカイブメンバーの名前。
+
+TarInfo.size
+バイト単位でのサイズ。
+
+TarInfo.mtime
+最後に変更された時刻。
+
+TarInfo.mode
+許可ビット。
+
+TarInfo.type
+ファイルタイプ。type は通常、定数 REGTYPE、AREGTYPE、LNKTYPE、SYMTYPE、DIRTYPE、FIFOTYPE、CONTTYPE、CHRTYPE、BLKTYPE、あるいは GNUTYPE_SPARSE のいずれかです。TarInfo オブジェクトのタイプをもっと簡単に解決するには、下記の is*() メソッドを使って下さい。
+
+TarInfo.linkname
+リンク先ファイルの名前。これはタイプ LNKTYPE と SYMTYPE の TarInfo オブジェクトにだけ存在します。
+
+TarInfo.uid
+ファイルメンバーを保存した元のユーザーのユーザー ID。
+
+TarInfo.gid
+ファイルメンバーを保存した元のユーザーのグループ ID。
+
+TarInfo.uname
+ファイルメンバーを保存した元のユーザーのユーザー名。
+
+TarInfo.gname
+ファイルメンバーを保存した元のユーザーのグループ名。
+
+TarInfo.pax_headers
+pax 拡張ヘッダーに関連付けられた、key-value ペアの辞書。
+
+TarInfo オブジェクトは便利な照会用のメソッドもいくつか提供しています:
+
+TarInfo.isfile()
+Tarinfo オブジェクトが一般ファイルの場合に、True を返します。
+
+TarInfo.isreg()
+isfile() と同じです。
+
+TarInfo.isdir()
+ディレクトリの場合に True を返します。
+
+TarInfo.issym()
+シンボリックリンクの場合に True を返します。
+
+TarInfo.islnk()
+ハードリンクの場合に True を返します。
+
+TarInfo.ischr()
+キャラクターデバイスの場合に True を返します。
+
+TarInfo.isblk()
+ブロックデバイスの場合に True を返します。
+
+TarInfo.isfifo()
+FIFO の場合に True を返します。
+
+TarInfo.isdev()
+キャラクターデバイス、ブロックデバイスあるいは FIFO のいずれかの場合に True を返します。
+
+コマンドラインインターフェイス
+バージョン 3.4 で追加.
+
+tarfile モジュールは、 tar アーカイブを操作するための簡単なコマンドラインインターフェースを提供しています。
+
+tar アーカイブを新規に作成したい場合、-c オプションの後にまとめたいファイル名のリストを指定してください:
+
+$ python -m tarfile -c monty.tar  spam.txt eggs.txt
+ディレクトリを渡すこともできます:
+
+$ python -m tarfile -c monty.tar life-of-brian_1979/
+tar アーカイブをカレントディレクトリに展開したい場合、-e オプションを使用してください:
+
+$ python -m tarfile -e monty.tar
+ディレクトリ名を渡すことで tar アーカイブを別のディレクトリに取り出すこともできます:
+
+$ python -m tarfile -e monty.tar  other-dir/
+tar アーカイブ内のファイル一覧を表示するには -l を使用してください:
+
+$ python -m tarfile -l monty.tar
+コマンドラインオプション
+-l <tarfile>
+--list <tarfile>
+tarfile 内のファイル一覧を表示します。
+
+-c <tarfile> <source1> ... <sourceN>
+--create <tarfile> <source1> ... <sourceN>
+ソースファイルから tarfile を作成します。
+
+-e <tarfile> [<output_dir>]
+--extract <tarfile> [<output_dir>]
+output_dir が指定されていない場合、カレントディレクトリに tarfile を展開します。
+
+-t <tarfile>
+--test <tarfile>
+tarfile が有効かどうか調べます。
+
+-v, --verbose
+詳細も出力します。
+
+使用例
+tar アーカイブから現在のディレクトリにすべて抽出する方法:
+
+import tarfile
+tar = tarfile.open("sample.tar.gz")
+tar.extractall()
+tar.close()
+tar アーカイブの一部を、リストの代わりにジェネレーター関数を利用して TarFile.extractall() で展開する方法:
+
+import os
+import tarfile
+
+def py_files(members):
+    for tarinfo in members:
+        if os.path.splitext(tarinfo.name)[1] == ".py":
+            yield tarinfo
+
+tar = tarfile.open("sample.tar.gz")
+tar.extractall(members=py_files(tar))
+tar.close()
+非圧縮 tar アーカイブをファイル名のリストから作成する方法:
+
+import tarfile
+tar = tarfile.open("sample.tar", "w")
+for name in ["foo", "bar", "quux"]:
+    tar.add(name)
+tar.close()
+with 文を利用した同じ例:
+
+import tarfile
+with tarfile.open("sample.tar", "w") as tar:
+    for name in ["foo", "bar", "quux"]:
+        tar.add(name)
+gzip 圧縮 tar アーカイブを作成してメンバー情報のいくつかを表示する方法:
+
+import tarfile
+tar = tarfile.open("sample.tar.gz", "r:gz")
+for tarinfo in tar:
+    print(tarinfo.name, "is", tarinfo.size, "bytes in size and is ", end="")
+    if tarinfo.isreg():
+        print("a regular file.")
+    elif tarinfo.isdir():
+        print("a directory.")
+    else:
+        print("something else.")
+tar.close()
+TarFile.add() 関数の filter 引数を利用してユーザー情報をリセットしながらアーカイブを作成する方法:
+
+import tarfile
+def reset(tarinfo):
+    tarinfo.uid = tarinfo.gid = 0
+    tarinfo.uname = tarinfo.gname = "root"
+    return tarinfo
+tar = tarfile.open("sample.tar.gz", "w:gz")
+tar.add("foo", filter=reset)
+tar.close()
+サポートしている tar フォーマット
+tarfile モジュールは 3 種類の tar フォーマットを作成することができます:
+
+POSIX.1-1988 ustar format (USTAR_FORMAT). ファイル名の長さは256文字までで、リンク名の長さは100文字までです。最大のファイルサイズは8GiBです。このフォーマットは古くて制限が多いですが、広くサポートされています。
+
+GNU tar format (GNU_FORMAT). 長いファイル名とリンク名、8GiBを超えるファイルやスパース(sparse)ファイルをサポートしています。これは GNU/Linux システムにおいてデファクト・スタンダードになっています。 tarfile モジュールは長いファイル名を完全にサポートしています。 スパースファイルは読み込みのみサポートしています。
+
+The POSIX.1-2001 pax format (PAX_FORMAT). It is the most flexible format with virtually no limits. It supports long filenames and linknames, large files and stores pathnames in a portable way. Modern tar implementations, including GNU tar, bsdtar/libarchive and star, fully support extended pax features; some old or unmaintained libraries may not, but should treat pax archives as if they were in the universally-supported ustar format. It is the current default format for new archives.
+
+It extends the existing ustar format with extra headers for information that cannot be stored otherwise. There are two flavours of pax headers: Extended headers only affect the subsequent file header, global headers are valid for the complete archive and affect all following files. All the data in a pax header is encoded in UTF-8 for portability reasons.
+
+他にも、読み込みのみサポートしている tar フォーマットがいくつかあります:
+
+ancient V7 フォーマット。これは Unix 7th Edition から存在する、最初の tar フォーマットです。通常のファイルとディレクトリのみ保存します。名前は 100 文字を超えてはならず、ユーザー/グループ名に関する情報は保存されません。いくつかのアーカイブは、フィールドが ASCII でない文字を含む場合に、ヘッダーのチェックサムの計算を誤ります。
+
+SunOS tar 拡張フォーマット。POSIX.1-2001 pax フォーマットの亜流ですが、互換性がありません。
+
+Unicode に関する問題
+tar フォーマットは、もともとテープドライブにファイルシステムのバックアップをとる目的で設計されました。現在、tarアーカイブはファイルを配布する際に一般的に用いられ、ネットワーク上で交換されています。オリジナルフォーマットが抱える一つの問題は (他の多くのフォーマットでも同じですが)、様々な文字エンコーディングのサポートについて考慮していないことです。例えば、UTF-8 システム上で作成された通常の tar アーカイブは、非 ASCII 文字を含んでいた場合、Latin-1 システムでは正しく読み取ることができません。テキストのメタデータ (ファイル名、リンク名、ユーザー/グループ名など) は破壊されます。残念なことに、アーカイブのエンコーディングを自動検出する方法はありません。pax フォーマットはこの問題を解決するために設計されました。これは非 ASCII メタデータをユニバーサル文字エンコーディング UTF-8 を使用して格納します。
+
+tarfile における文字変換処理の詳細は TarFile クラスのキーワード引数 encoding および errors によって制御されます。
+
+encoding はアーカイブのメタデータに使用する文字エンコーディングを指定します。デフォルト値は sys.getfilesystemencoding() で、フォールバックとして 'ascii' が使用されます。アーカイブの読み書き時に、メタデータはそれぞれデコードまたはエンコードしなければなりません。encoding に適切な値が設定されていない場合、その変換は失敗することがあります。
+
+引数 errors は文字を変換できない時の扱いを指定します。指定できる値は エラーハンドラ 節を参照してください。デフォルトのスキームは 'surrogateescape' で、Python はそのファイルシステムの呼び出しも使用します。ファイル名、コマンドライン引数、および環境変数 を参照してください。
+
+For PAX_FORMAT archives (the default), encoding is generally not needed because all the metadata is stored using UTF-8. encoding is only used in the rare cases when binary pax headers are decoded or when strings with surrogate characters are stored.

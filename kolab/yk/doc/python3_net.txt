@@ -1,0 +1,4363 @@
+asyncio --- 非同期 I/O
+Hello World!
+
+import asyncio
+
+async def main():
+    print('Hello ...')
+    await asyncio.sleep(1)
+    print('... World!')
+
+# Python 3.7+
+asyncio.run(main())
+asyncio は async/await 構文を使い 並行処理の コードを書くためのライブラリです。
+
+asyncio は、高性能なネットワークとウェブサーバ、データベース接続ライブラリ、分散タスクキューなどの複数の非同期 Python フレームワークの基盤として使われています。
+
+asyncio は多くの場合、 IOバウンドだったり高レベルの 構造化された ネットワークコードに完璧に適しています。
+
+asyncio は次の目的で 高レベル API を提供しています:
+
+並行に Python コルーチンを起動 し、実行全体を管理する
+
+ネットワーク IO と IPC を執り行う
+
+subprocesses を管理する
+
+キュー を使ってタスクを分散する
+
+並列処理のコードを 同期 させる
+
+これに加えて、 ライブラリやフレームワークの開発者 が次のことをするための 低レベル API があります:
+
+ネットワーク通信 、 サブプロセス の実行、 OS シグナル の取り扱いなどのための非同期 API を提供する イベントループ の作成と管理を行う
+
+Transport を使った効率的な protocol を実装します
+
+コールバックを用いたライブラリと async/await 構文を使ったコードの 橋渡し
+
+リファレンス
+
+高レベル API
+
+コルーチンと Task
+Streams
+Synchronization Primitives
+Subprocesses
+キュー
+例外
+低レベル API
+
+イベントループ
+Future
+Transports and Protocols
+Policies
+Platform Support
+ガイドとチュートリアル
+
+高水準の API インデックス
+Low-level API Index
+Developing with asyncio
+注釈 asyncio のソースコードは Lib/asyncio/ にあります。
+
+socket --- 低水準ネットワークインターフェース
+ソースコード: Lib/socket.py
+
+このモジュールはBSDの ソケット(socket) インターフェイスへのアクセスを提供します。これは、近代的なUnixシステム、Windows、MacOS、その他多くのプラットフォームで動作します。
+
+注釈 いくつかの挙動はプラットフォームに依存します。オペレーティングシステムのソケットAPIを呼び出しているためです。
+Pythonインターフェースは、Unixのソケット用システムコールとライブラリインターフェースを、そのままPythonのオブジェクト指向スタイルに変換したものです。各種ソケット関連のシステムコールは、 socket() 関数で生成される socket オブジェクト のメソッドとして実装されています。 メソッドの引数は C のインターフェイスよりも多少高水準で、例えばファイルに対する read() や write() メソッドと同様に、 受信時のバッファ確保は自動的に処理され、送信時のバッファ長は暗黙的に決まります。
+
+参考
+Module socketserver
+ネットワークサーバの開発を省力化するためのクラス群。
+
+Module ssl
+ソケットオブジェクトに対する TLS/SSL ラッパー.
+
+ソケットファミリー
+どのシステムで実行するかとビルドオプションに依存しますが、このモジュールによって多様なソケットファミリーをサポートします。
+
+特定のソケットオブジェクトによって必要とされるアドレスフォーマットは、ソケットオブジェクトが生成されたときに指定されたアドレスファミリーを元に自動的に選択されます。ソケットアドレスは次の通りです。
+
+ファイルシステム上のノードに束縛された AF_UNIX ソケットのアドレスは、ファイルシステムエンコーディングと 'surrogateescape' エラーハンドラ (PEP 383 を参照) を使って文字列として表現されます。 Linux の抽象名前空間のアドレスは、先頭が null バイトとなる bytes-like object として返されます。この名前空間のソケットは通常のファイルシステム上のソケットと通信できるので、 Linux 上で動作することを意図したプログラムは両方のアドレスを扱う必要がある可能性があります。文字列と bytes-like オブジェクトはどちらのタイプのアドレスにも引数として渡すことができます。
+
+バージョン 3.3 で変更: これまでは AF_UNIX ソケットパスは UTF-8 エンコーディングを使用するものとされていました。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+AF_INET アドレスファミリーには、 (host, port) ペアがアドレスとして利用されます。 host はホスト名か 'daring.cwi.nl' のようなインターネットドメインか、 '100.50.200.5' のような IPv4 アドレスで、 port は整数です。
+
+For IPv4 addresses, two special forms are accepted instead of a host address: '' represents INADDR_ANY, which is used to bind to all interfaces, and the string '<broadcast>' represents INADDR_BROADCAST. This behavior is not compatible with IPv6, therefore, you may want to avoid these if you intend to support IPv6 with your Python programs.
+
+For AF_INET6 address family, a four-tuple (host, port, flowinfo, scope_id) is used, where flowinfo and scope_id represent the sin6_flowinfo and sin6_scope_id members in struct sockaddr_in6 in C. For socket module methods, flowinfo and scope_id can be omitted just for backward compatibility. Note, however, omission of scope_id can cause problems in manipulating scoped IPv6 addresses.
+
+バージョン 3.7 で変更: For multicast addresses (with scope_id meaningful) address may not contain %scope_id (or zone id) part. This information is superfluous and may be safely omitted (recommended).
+
+AF_NETLINK ソケットのアドレスは (pid, groups) のペアで表されます。
+
+Linux 限定で、 AF_TIPC アドレスファミリーを用いて TIPC がサポートされます。 TIPC は、クラスタコンピューティング環境のために設計された、IP ベースではないオープンなネットワークプロトコルです。アドレスはタプルで表現され、フィールドはアドレスタイプに依存します。一般的なタプルの形式は (addr_type, v1, v2, v3 [, scope]) で、それぞれは次の通りです:
+
+addr_type は TIPC_ADDR_NAMESEQ, TIPC_ADDR_NAME, TIPC_ADDR_ID の1つ。
+
+scope は TIPC_ZONE_SCOPE, TIPC_CLUSTER_SCOPE, TIPC_NODE_SCOPE の1つ。
+
+addr_type が TIPC_ADDR_NAME の場合、 v1 はサーバータイプ、 v2 はポートID (the port identifier)、そして v3 は 0 であるべきです。
+
+addr_type が TIPC_ADDR_NAMESEQ の場合、 v1 はサーバータイプ、 v2 はポート番号下位(lower port number)、 v3 はポート番号上位(upper port number) です。
+
+addr_type が TIPC_ADDR_ID の場合、 v1 はノード、 v2 は参照、 v3 は0であるべきです。
+
+AF_CAN アドレスファミリーには (interface,) というタプルを利用します。 interface は 'can0' のようなネットワークインタフェース名を表す文字列です。このファミリーの全てのネットワークインタフェースからパケットを受信するために、ネットワークインタフェース名 '' を利用できます。
+
+CAN_ISOTP protocol require a tuple (interface, rx_addr, tx_addr) where both additional parameters are unsigned long integer that represent a CAN identifier (standard or extended).
+
+CAN_J1939 protocol require a tuple (interface, name, pgn, addr) where additional parameters are 64-bit unsigned integer representing the ECU name, a 32-bit unsigned integer representing the Parameter Group Number (PGN), and an 8-bit integer representing the address.
+
+文字列またはタプル (id, unit) は PF_SYSTEM ファミリーの SYSPROTO_CONTROL プロトコルのために使用されます。この文字列は、動的に割り当てられたIDによるカーネルコントロールの名前です。このタプルは、カーネルコントロールのIDとユニット番号が既知の場合、または登録済みIDが使用中の場合に使用することができます。
+
+バージョン 3.3 で追加.
+
+AF_BLUETOOTH は以下のプロトコルとアドレスフォーマットをサポートしています。
+
+BTPROTO_L2CAP は (bdaddr, psm) を受け取ります。 bdaddr は Bluetooth アドレスを表す文字列で、 psm は整数です。
+
+BTPROTO_RFCOMM は (bdaddr, channel) を受け取ります。 bdaddr は Bluetooth アドレスを表す文字列で、 channel は整数です。
+
+BTPROTO_HCI は (device_id,) を受け取ります。 device_id は、数値またはインターフェイスの Bluetooth アドレスを表す文字列です。(OS に依存します。NetBSD と DragonFlyBSD は Bluetooth アドレスを期待しますが、その他すべての OS は、数値を期待します。)
+
+バージョン 3.2 で変更: NetBSD と DragonFlyBSD のサポートが追加されました。
+
+BTPROTO_SCO は bdaddr を受け取ります。ここで、 bdaddr は Bluetooth アドレスを文字列形式で持つ bytes オブジェクトです (例: b'12:23:34:45:56:67')。このプロトコルは、 FreeBSD ではサポートされていません。
+
+AF_ALG はカーネル暗号へのソケットベースのインターフェイスで、Linux でのみ使用できます。アルゴリズムソケットは、2 つから 4 つの要素を持つタプル (type, name [, feat [, mask]]) で構成されます。各要素の意味は、以下の通りです。
+
+type はアルゴリズムタイプを示す文字列です。例: aead, hash, skcipher または rng。
+
+name はアルゴリズム名及び操作モードを示す文字列です。例: sha256, hmac(sha256), cbc(aes) または drbg_nopr_ctr_aes256。
+
+feat と mask は、符号を持たない 32 ビットの整数です。
+
+Availability: Linux 2.6.38, some algorithm types require more recent Kernels.
+
+バージョン 3.6 で追加.
+
+AF_VSOCK allows communication between virtual machines and their hosts. The sockets are represented as a (CID, port) tuple where the context ID or CID and port are integers.
+
+Availability: Linux >= 4.8 QEMU >= 2.8 ESX >= 4.0 ESX Workstation >= 6.5.
+
+バージョン 3.7 で追加.
+
+AF_PACKET is a low-level interface directly to network devices. The packets are represented by the tuple (ifname, proto[, pkttype[, hatype[, addr]]]) where:
+
+ifname - デバイス名を指定する文字列。
+
+proto - An in network-byte-order integer specifying the Ethernet protocol number.
+
+pkttype - パケットタイプを指定するオプションの整数:
+
+PACKET_HOST (the default) - Packet addressed to the local host.
+
+PACKET_BROADCAST - Physical-layer broadcast packet.
+
+PACKET_MULTIHOST - Packet sent to a physical-layer multicast address.
+
+PACKET_OTHERHOST - Packet to some other host that has been caught by a device driver in promiscuous mode.
+
+PACKET_OUTGOING - Packet originating from the local host that is looped back to a packet socket.
+
+hatype - Optional integer specifying the ARP hardware address type.
+
+addr - Optional bytes-like object specifying the hardware physical address, whose interpretation depends on the device.
+
+AF_QIPCRTR is a Linux-only socket based interface for communicating with services running on co-processors in Qualcomm platforms. The address family is represented as a (node, port) tuple where the node and port are non-negative integers.
+
+バージョン 3.8 で追加.
+
+IPPROTO_UDPLITE is a variant of UDP which allows you to specify what portion of a packet is covered with the checksum. It adds two socket options that you can change. self.setsockopt(IPPROTO_UDPLITE, UDPLITE_SEND_CSCOV, length) will change what portion of outgoing packets are covered by the checksum and self.setsockopt(IPPROTO_UDPLITE, UDPLITE_RECV_CSCOV, length) will filter out packets which cover too little of their data. In both cases length should be in range(8, 2**16, 8).
+
+Such a socket should be constructed with socket(AF_INET, SOCK_DGRAM, IPPROTO_UDPLITE) for IPv4 or socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDPLITE) for IPv6.
+
+Availability: Linux >= 2.6.20, FreeBSD >= 10.1-RELEASE
+
+バージョン 3.9 で追加.
+
+IPv4/v6ソケットの host 部にホスト名を指定すると、処理結果が一定ではない場合があります。これはPythonはDNSから取得したアドレスのうち最初のアドレスを使用するので、 DNSの処理やホストの設定によって異なるIPv4/6アドレスを取得する場合があるためです。常に同じ結果が必要であれば、 host に数値のアドレスを指定してください。
+
+全てのエラーは例外を発生させます。引数型のエラーやメモリ不足の場合には通常の例外が発生し、ソケットやアドレス関連のエラーは Python 3.3 からは OSError かそのサブクラスを発生させます (Python 3.3 以前は socket.error を発生させていました)。
+
+setblocking() メソッドで、非ブロッキングモードを使用することができます。また、より汎用的に settimeout() メソッドでタイムアウトを指定する事ができます。
+
+モジュールの内容
+socket モジュールは以下の要素を公開しています。
+
+例外
+exception socket.error
+OSError の非推奨のエイリアスです。
+
+バージョン 3.3 で変更: PEP 3151 に基づき、このクラスは OSError のエイリアスになりました。
+
+exception socket.herror
+OSError のサブクラス。この例外はアドレス関連のエラー、つまり gethostbyname_ex() と gethostbyaddr() などの、 POSIX C API の h_errno を利用する関数のために利用されます。例外に付随する (h_errno, string) ペアはライブラリの呼び出しによって返されたエラーを表します。 h_errno は数値で、 string は、 hstrerror() C関数によって返される h_errno を説明する文字列です。
+
+バージョン 3.3 で変更: このクラスは OSError のサブクラスになりました。
+
+exception socket.gaierror
+OSError のサブクラスです。この例外は getaddrinfo() と getnameinfo() でアドレス関連のエラーが発生した場合に送出されます。例外の値は (error, string) のペアで、ライブラリの呼び出し結果を返します。 string はC関数 gai_strerror() で取得した、 error の意味を示す文字列です。 error の値は、このモジュールで定義される EAI_* 定数のどれかとなります。
+
+バージョン 3.3 で変更: このクラスは OSError のサブクラスになりました。
+
+exception socket.timeout
+OSError のサブクラスです。この例外は、あらかじめ settimeout() を呼び出して (あるいは setdefaulttimeout() を利用して暗黙に) タイムアウトを有効にしてあるソケットでタイムアウトが生じた際に送出されます。 例外に付属する値は文字列で、その内容は現状では常に "timed out" となります。
+
+バージョン 3.3 で変更: このクラスは OSError のサブクラスになりました。
+
+定数
+AF_* 定数と SOCK_* 定数は、 AddressFamily と SocketKind IntEnum collection になりました。
+
+バージョン 3.4 で追加.
+
+socket.AF_UNIX
+socket.AF_INET
+socket.AF_INET6
+アドレス (およびプロトコル) ファミリーを示す定数で、 socket() の 最初の引数に指定することができます。 AF_UNIX ファミリーをサポート しないプラットフォームでは、 AF_UNIX は未定義となります。システムによってはこれら以外の定数が定義されているかもしれません。
+
+socket.SOCK_STREAM
+socket.SOCK_DGRAM
+socket.SOCK_RAW
+socket.SOCK_RDM
+socket.SOCK_SEQPACKET
+ソケットタイプを示す定数で、 socket() の2番目の引数に指定することができます。システムによってはこれら以外の定数が定義されているかもしれません。 (ほとんどの場合、 SOCK_STREAM と SOCK_DGRAM 以外は必要ありません。)
+
+socket.SOCK_CLOEXEC
+socket.SOCK_NONBLOCK
+この2つの定数が定義されていた場合、ソケットタイプと組み合わせていくつかの flags をアトミックに設定することができます (別の呼び出しを不要にして競合状態を避ける事ができます)。
+
+参考 より完全な説明は Secure File Descriptor Handling を参照してください。
+Availability: Linux >= 2.6.27.
+
+バージョン 3.2 で追加.
+
+SO_*
+socket.SOMAXCONN
+MSG_*
+SOL_*
+SCM_*
+IPPROTO_*
+IPPORT_*
+INADDR_*
+IP_*
+IPV6_*
+EAI_*
+AI_*
+NI_*
+TCP_*
+Unixのソケット・IPプロトコルのドキュメントで定義されている各種定数。ソケットオブジェクトの setsockopt() や getsockopt() で使用します。ほとんどのシンボルはUnixのヘッダファイルに従っています。一部のシンボルには、デフォルト値を定義してあります。
+
+バージョン 3.6 で変更: SO_DOMAIN, SO_PROTOCOL, SO_PEERSEC, SO_PASSSEC, TCP_USER_TIMEOUT, TCP_CONGESTION が追加されました。
+
+バージョン 3.6.5 で変更: Windowsでは、実行時のWindowsがサポートしているならば TCP_FASTOPEN、 ``TCP_KEEPCNT``が表示されます。
+
+バージョン 3.7 で変更: TCP_NOTSENT_LOWAT was added.
+
+On Windows, TCP_KEEPIDLE, TCP_KEEPINTVL appear if run-time Windows supports.
+
+socket.AF_CAN
+socket.PF_CAN
+SOL_CAN_*
+CAN_*
+Linux ドキュメントにあるこの形式の定数は socket モジュールでも定義されています。
+
+Availability: Linux >= 2.6.25.
+
+バージョン 3.3 で追加.
+
+socket.CAN_BCM
+CAN_BCM_*
+CANプロトコルファミリーのCAN_BCMは、ブロードキャストマネージャー(BCM)プロトコルです。Linuxドキュメントにあるこの形式の定数は、socketモジュールでも定義されています。
+
+Availability: Linux >= 2.6.25.
+
+注釈 The CAN_BCM_CAN_FD_FRAME flag is only available on Linux >= 4.8.
+バージョン 3.4 で追加.
+
+socket.CAN_RAW_FD_FRAMES
+Enables CAN FD support in a CAN_RAW socket. This is disabled by default. This allows your application to send both CAN and CAN FD frames; however, you must accept both CAN and CAN FD frames when reading from the socket.
+
+この定数は、 Linux のドキュメンテーションで説明されています。
+
+Availability: Linux >= 3.6.
+
+バージョン 3.5 で追加.
+
+socket.CAN_RAW_JOIN_FILTERS
+Joins the applied CAN filters such that only CAN frames that match all given CAN filters are passed to user space.
+
+この定数は、 Linux のドキュメンテーションで説明されています。
+
+Availability: Linux >= 4.1.
+
+バージョン 3.9 で追加.
+
+socket.CAN_ISOTP
+CAN_ISOTP, in the CAN protocol family, is the ISO-TP (ISO 15765-2) protocol. ISO-TP constants, documented in the Linux documentation.
+
+Availability: Linux >= 2.6.25.
+
+バージョン 3.7 で追加.
+
+socket.CAN_J1939
+CAN_J1939, in the CAN protocol family, is the SAE J1939 protocol. J1939 constants, documented in the Linux documentation.
+
+Availability: Linux >= 5.4.
+
+バージョン 3.9 で追加.
+
+socket.AF_PACKET
+socket.PF_PACKET
+PACKET_*
+Linux ドキュメントにあるこの形式の定数は socket モジュールでも定義されています。
+
+Availability: Linux >= 2.2.
+
+socket.AF_RDS
+socket.PF_RDS
+socket.SOL_RDS
+RDS_*
+Linux ドキュメントにあるこの形式の定数は socket モジュールでも定義されています。
+
+Availability: Linux >= 2.6.30.
+
+バージョン 3.3 で追加.
+
+socket.SIO_RCVALL
+socket.SIO_KEEPALIVE_VALS
+socket.SIO_LOOPBACK_FAST_PATH
+RCVALL_*
+Windows の WSAIoctl() のための定数です。この定数はソケットオブジェクトの ioctl() メソッドに引数として渡されます。
+
+バージョン 3.6 で変更: SIO_LOOPBACK_FAST_PATH が追加されました。
+
+TIPC_*
+TIPC 関連の定数で、C のソケットAPIが公開しているものにマッチします。詳しい情報は TIPC のドキュメントを参照してください。
+
+socket.AF_ALG
+socket.SOL_ALG
+ALG_*
+Linux カーネル暗号用の定数です。
+
+Availability: Linux >= 2.6.38.
+
+バージョン 3.6 で追加.
+
+socket.AF_VSOCK
+socket.IOCTL_VM_SOCKETS_GET_LOCAL_CID
+VMADDR*
+SO_VM*
+Constants for Linux host/guest communication.
+
+Availability: Linux >= 4.8.
+
+バージョン 3.7 で追加.
+
+socket.AF_LINK
+Availability: BSD, OSX.
+
+バージョン 3.4 で追加.
+
+socket.has_ipv6
+現在のプラットフォームでIPv6がサポートされているか否かを示す真偽値。
+
+socket.BDADDR_ANY
+socket.BDADDR_LOCAL
+これらは、特別な意味を持つ Bluetooth アドレスを含む文字列定数です。例えば、BDADDR_ANY を使用すると、 BTPROTO_RFCOMM で束縛ソケットを指定する際に、任意のアドレスを指し示すことができます。
+
+socket.HCI_FILTER
+socket.HCI_TIME_STAMP
+socket.HCI_DATA_DIR
+BTPROTO_HCI で使用します。 HCI_FILTER は NetBSD または DragonFlyBSD では使用できません。 HCI_TIME_STAMP と HCI_DATA_DIR は FreeBSD, NetBSD, DragonFlyBSD では使用できません。
+
+socket.AF_QIPCRTR
+Constant for Qualcomm's IPC router protocol, used to communicate with service providing remote processors.
+
+Availability: Linux >= 4.7.
+
+関数
+ソケットの作成
+以下の関数は全て socket object を生成します。
+
+socket.socket(family=AF_INET, type=SOCK_STREAM, proto=0, fileno=None)
+Create a new socket using the given address family, socket type and protocol number. The address family should be AF_INET (the default), AF_INET6, AF_UNIX, AF_CAN, AF_PACKET, or AF_RDS. The socket type should be SOCK_STREAM (the default), SOCK_DGRAM, SOCK_RAW or perhaps one of the other SOCK_ constants. The protocol number is usually zero and may be omitted or in the case where the address family is AF_CAN the protocol should be one of CAN_RAW, CAN_BCM, CAN_ISOTP or CAN_J1939.
+
+If fileno is specified, the values for family, type, and proto are auto-detected from the specified file descriptor. Auto-detection can be overruled by calling the function with explicit family, type, or proto arguments. This only affects how Python represents e.g. the return value of socket.getpeername() but not the actual OS resource. Unlike socket.fromfd(), fileno will return the same socket and not a duplicate. This may help close a detached socket using socket.close().
+
+新たに作成されたソケットは 継承不可 です。
+
+Raises an auditing event socket.__new__ with arguments self, family, type, protocol.
+
+バージョン 3.3 で変更: AF_CAN, AF_RDS ファミリーが追加されました。
+
+バージョン 3.4 で変更: CAN_BCMプロトコルが追加されました。
+
+バージョン 3.4 で変更: 返されるソケットは継承不可になりました。
+
+バージョン 3.7 で変更: The CAN_ISOTP protocol was added.
+
+バージョン 3.7 で変更: When SOCK_NONBLOCK or SOCK_CLOEXEC bit flags are applied to type they are cleared, and socket.type will not reflect them. They are still passed to the underlying system socket() call. Therefore,
+
+sock = socket.socket(
+    socket.AF_INET,
+    socket.SOCK_STREAM | socket.SOCK_NONBLOCK)
+will still create a non-blocking socket on OSes that support SOCK_NONBLOCK, but sock.type will be set to socket.SOCK_STREAM.
+
+バージョン 3.9 で変更: The CAN_J1939 protocol was added.
+
+socket.socketpair([family[, type[, proto]]])
+指定されたアドレスファミリー、ソケットタイプ、プロトコル番号から、接続されたソケットオブジェクトのペアを作成します。アドレスファミリー、ソケットタイプ、プロトコル番号は socket() 関数と同様に指定します。デフォルトのアドレスファミリは、プラットフォームで定義されている場合 AF_UNIX 、そうでなければ AF_INET が使われます。
+
+新たに作成されたソケットは 継承不可 です。
+
+バージョン 3.2 で変更: 返されるソケットオブジェクトが、サブセットではなく完全なソケットAPIを提供するようになりました。
+
+バージョン 3.4 で変更: 返されるソケットの組は、どちらも継承不可になりました。
+
+バージョン 3.5 で変更: Windows のサポートが追加されました。
+
+socket.create_connection(address[, timeout[, source_address]])
+address ((host, port) ペア) で listen しているTCPサービスに接続し、ソケットオブジェクトを返します。これは socket.connect() を高級にした関数です。 host が数値でないホスト名の場合、 AF_INET と AF_INET6 の両方で名前解決を試み、得られた全てのアドレスに対して成功するまで接続を試みます。この関数を使って IPv4 と IPv6 に両対応したクライアントを簡単に書くことができます。
+
+オプションの timeout 引数を指定すると、接続を試みる前にソケットオブジェクトのタイムアウトを設定します。 timeout が指定されない場合、 getdefaulttimeout() が返すデフォルトのタイムアウト設定値を利用します。
+
+source_address は接続する前にバインドするソースアドレスを指定するオプション引数で、指定する場合は (host, port) の2要素タプルでなければなりません。 host や port が '' か 0 だった場合は、OSのデフォルトの動作になります。
+
+バージョン 3.2 で変更: source_address が追加されました。
+
+socket.create_server(address, *, family=AF_INET, backlog=None, reuse_port=False, dualstack_ipv6=False)
+Convenience function which creates a TCP socket bound to address (a 2-tuple (host, port)) and return the socket object.
+
+family should be either AF_INET or AF_INET6. backlog is the queue size passed to socket.listen(); when 0 a default reasonable value is chosen. reuse_port dictates whether to set the SO_REUSEPORT socket option.
+
+If dualstack_ipv6 is true and the platform supports it the socket will be able to accept both IPv4 and IPv6 connections, else it will raise ValueError. Most POSIX platforms and Windows are supposed to support this functionality. When this functionality is enabled the address returned by socket.getpeername() when an IPv4 connection occurs will be an IPv6 address represented as an IPv4-mapped IPv6 address. If dualstack_ipv6 is false it will explicitly disable this functionality on platforms that enable it by default (e.g. Linux). This parameter can be used in conjunction with has_dualstack_ipv6():
+
+import socket
+
+addr = ("", 8080)  # all interfaces, port 8080
+if socket.has_dualstack_ipv6():
+    s = socket.create_server(addr, family=socket.AF_INET6, dualstack_ipv6=True)
+else:
+    s = socket.create_server(addr)
+注釈 On POSIX platforms the SO_REUSEADDR socket option is set in order to immediately reuse previous sockets which were bound on the same address and remained in TIME_WAIT state.
+バージョン 3.8 で追加.
+
+socket.has_dualstack_ipv6()
+Return True if the platform supports creating a TCP socket which can handle both IPv4 and IPv6 connections.
+
+バージョン 3.8 で追加.
+
+socket.fromfd(fd, family, type, proto=0)
+ファイル記述子 (ファイルオブジェクトの fileno() メソッドが返す整数) fd を複製して、ソケットオブジェクトを構築します。アドレスファミリとプロトコル番号は socket() と同様に指定します。ファイル記述子 はソケットを指していなければなりませんが、実際にソケットであるかどうかのチェックは行っていません。このため、ソケット以外のファイル記述子 を指定するとその後の処理が失敗する場合があります。この関数が必要な事はあまりありませんが、 (Unixのinetデーモンに起動されるプログラムのように) ソケットを標準入力や標準出力として使用するプログラムでソケットオプションの取得や設定を行うために使われます。この関数で使用するソケットは、ブロッキングモードと想定しています。
+
+新たに作成されたソケットは 継承不可 です。
+
+バージョン 3.4 で変更: 返されるソケットは継承不可になりました。
+
+socket.fromshare(data)
+socket.share() メソッドから取得した data からソケットオブジェクトを生成します。ソケットはブロッキングモードだと仮定されます。
+
+利用可能な環境: Windows 。
+
+バージョン 3.3 で追加.
+
+socket.SocketType
+ソケットオブジェクトの型を示す型オブジェクト。 type(socket(...)) と同じです。
+
+その他の関数
+socket モジュールはネットワーク関連のサービスを提供しています:
+
+socket.close(fd)
+Close a socket file descriptor. This is like os.close(), but for sockets. On some platforms (most noticeable Windows) os.close() does not work for socket file descriptors.
+
+バージョン 3.7 で追加.
+
+socket.getaddrinfo(host, port, family=0, type=0, proto=0, flags=0)
+host / port 引数の指すアドレス情報を、そのサービスに接続されたソケットを作成するために必要な全ての引数が入った 5 要素のタプルに変換します。 host はドメイン名、IPv4/v6アドレスの文字列、または None です。 port は 'http' のようなサービス名文字列、ポート番号を表す数値、または None です。 host と port に None を指定すると C APIに NULL を渡せます。
+
+オプションの family, type, proto 引数を指定すると、返されるアドレスのリストを絞り込むことができます。これらの引数の値として 0 を渡すと絞り込まない結果を返します。 flags 引数には AI_* 定数のうち 1 つ以上が指定でき、結果の取り方を変えることができます。例えば、 AI_NUMERICHOST を指定するとドメイン名解決を行わないようにし、 host がドメイン名だった場合には例外を送出します。
+
+この関数は以下の構造をとる 5 要素のタプルのリストを返します:
+
+(family, type, proto, canonname, sockaddr)
+
+In these tuples, family, type, proto are all integers and are meant to be passed to the socket() function. canonname will be a string representing the canonical name of the host if AI_CANONNAME is part of the flags argument; else canonname will be empty. sockaddr is a tuple describing a socket address, whose format depends on the returned family (a (address, port) 2-tuple for AF_INET, a (address, port, flowinfo, scope_id) 4-tuple for AF_INET6), and is meant to be passed to the socket.connect() method.
+
+Raises an auditing event socket.getaddrinfo with arguments host, port, family, type, protocol.
+
+次の例では example.org の 80 番ポートポートへの TCP 接続を得るためのアドレス情報を取得しようとしています。 (結果は IPv6 をサポートしているかどうかで変わります):
+
+>>>
+>>> socket.getaddrinfo("example.org", 80, proto=socket.IPPROTO_TCP)
+[(<AddressFamily.AF_INET6: 10>, <SocketType.SOCK_STREAM: 1>,
+ 6, '', ('2606:2800:220:1:248:1893:25c8:1946', 80, 0, 0)),
+ (<AddressFamily.AF_INET: 2>, <SocketType.SOCK_STREAM: 1>,
+ 6, '', ('93.184.216.34', 80))]
+バージョン 3.2 で変更: パラメータをキーワード引数で渡すことができるようになりました。
+
+バージョン 3.7 で変更: for IPv6 multicast addresses, string representing an address will not contain %scope_id part.
+
+socket.getfqdn([name])
+name の完全修飾ドメイン名を返します。 name が空または省略された場合、ローカルホストを指定したとみなします。完全修飾ドメイン名の取得にはまず gethostbyaddr() でチェックし、次に可能であればエイリアスを調べ、名前にピリオドを含む最初の名前を値として返します。完全修飾ドメイン名を取得できない場合、 gethostname() で返されるホスト名を返します。
+
+socket.gethostbyname(hostname)
+ホスト名を '100.50.200.5' のようなIPv4形式のアドレスに変換します。ホスト名としてIPv4アドレスを指定した場合、その値は変換せずにそのまま返ります。 gethostbyname() APIへのより完全なインターフェイスが必要であれば、 gethostbyname_ex() を参照してください。 gethostbyname() は、IPv6名前解決をサポートしていません。IPv4/ v6のデュアルスタックをサポートする場合は getaddrinfo() を使用します。
+
+Raises an auditing event socket.gethostbyname with argument hostname.
+
+socket.gethostbyname_ex(hostname)
+ホスト名から、IPv4形式の各種アドレス情報を取得します。戻り値は (hostname, aliaslist, ipaddrlist) のタプルで、 hostname は ip_address で指定したホストの正式名、 aliaslist は同じアドレスの別名のリスト(空の場合もある)、 ipaddrlist は同じホスト上の同一インターフェイスのIPv4アドレスのリスト(ほとんどの場合は単一のアドレスのみ) を示します。 gethostbyname_ex() は、IPv6名前解決をサポートしていません。IPv4/v6のデュアルスタックをサポートする場合は getaddrinfo() を使用します。
+
+Raises an auditing event socket.gethostbyname with argument hostname.
+
+socket.gethostname()
+Pythonインタープリタを現在実行しているマシンのホスト名を含む文字列を返します。
+
+Raises an auditing event socket.gethostname with no arguments.
+
+注意: gethostname() は完全修飾ドメイン名を返すとは限りません。完全修飾ドメイン名が必要であれば、getfqdn() を使用してください。
+
+socket.gethostbyaddr(ip_address)
+(hostname, aliaslist, ipaddrlist) のタプルを返し、 hostname は ip_address で指定したホストの正式名、 aliaslist は同じアドレスの別名のリスト(空の場合もある)、 ipaddrlist は同じホスト上の同一インターフェイスのIPv4アドレスのリスト(ほとんどの場合は単一のアドレスのみ)を示します。完全修飾ドメイン名が必要であれば、 getfqdn() を使用してください。 gethostbyaddr() は、IPv4/IPv6の両方をサポートしています。
+
+Raises an auditing event socket.gethostbyaddr with argument ip_address.
+
+socket.getnameinfo(sockaddr, flags)
+ソケットアドレス sockaddr から、 (host, port) のタプルを取得します。 flags の設定に従い、 host は完全修飾ドメイン名または数値形式アドレスとなります。同様に、 port は文字列のポート名または数値のポート番号となります。
+
+For IPv6 addresses, %scope_id is appended to the host part if sockaddr contains meaningful scope_id. Usually this happens for multicast addresses.
+
+For more information about flags you can consult getnameinfo(3).
+
+Raises an auditing event socket.getnameinfo with argument sockaddr.
+
+socket.getprotobyname(protocolname)
+('icmp' のような) インターネットプロトコル名を、 socket() の 第三引数として指定する事ができる定数に変換します。これは主にソケットを "raw" モード(SOCK_RAW)でオープンする場合には必要ですが、通常の ソケットモードでは第三引数に0を指定するか省略すれば正しいプロトコルが自動的に選択されます。
+
+socket.getservbyname(servicename[, protocolname])
+インターネットサービス名とプロトコルから、そのサービスのポート番号を取得します。省略可能なプロトコル名として、 'tcp' か 'udp' のどちらかを指定することができます。指定がなければどちらのプロトコルにもマッチします。
+
+Raises an auditing event socket.getservbyname with arguments servicename, protocolname.
+
+socket.getservbyport(port[, protocolname])
+インターネットポート番号とプロトコル名から、サービス名を取得します。省略可能なプロトコル名として、 'tcp' か 'udp' のどちらかを指定することができます。指定がなければどちらのプロトコルにもマッチします。
+
+Raises an auditing event socket.getservbyport with arguments port, protocolname.
+
+socket.ntohl(x)
+32ビットの正の整数のバイトオーダを、ネットワークバイトオーダからホストバイトオーダに変換します。ホストバイトオーダとネットワークバイトオーダが一致するマシンでは、この関数は何もしません。それ以外の場合は4バイトのスワップを行います。
+
+socket.ntohs(x)
+16ビットの正の整数のバイトオーダを、ネットワークバイトオーダからホストバイトオーダに変換します。ホストバイトオーダとネットワークバイトオーダが一致するマシンでは、この関数は何もしません。それ以外の場合は2バイトのスワップを行います。
+
+バージョン 3.7 で非推奨: In case x does not fit in 16-bit unsigned integer, but does fit in a positive C int, it is silently truncated to 16-bit unsigned integer. This silent truncation feature is deprecated, and will raise an exception in future versions of Python.
+
+socket.htonl(x)
+32ビットの正の整数のバイトオーダを、ホストバイトオーダからネットワークバイトオーダに変換します。ホストバイトオーダとネットワークバイトオーダが一致するマシンでは、この関数は何もしません。それ以外の場合は4バイトのスワップを行います。
+
+socket.htons(x)
+16ビットの正の整数のバイトオーダを、ホストバイトオーダからネットワークバイトオーダに変換します。ホストバイトオーダとネットワークバイトオーダが一致するマシンでは、この関数は何もしません。それ以外の場合は2バイトのスワップを行います。
+
+バージョン 3.7 で非推奨: In case x does not fit in 16-bit unsigned integer, but does fit in a positive C int, it is silently truncated to 16-bit unsigned integer. This silent truncation feature is deprecated, and will raise an exception in future versions of Python.
+
+socket.inet_aton(ip_string)
+ドット記法によるIPv4アドレス('123.45.67.89' など)を32ビットにパックしたバイナリ形式に変換し、長さ4のバイト列オブジェクトとして返します。この関数が返す値は、標準Cライブラリの struct in_addr 型を使用する関数に渡す事ができます。
+
+inet_aton() はドットが 3 個以下の文字列も受け取ります; 詳細については Unix のマニュアル inet(3) を参照してください。
+
+IPv4アドレス文字列が不正であれば、 OSError が発生します。このチェックは、この関数で使用しているCの実装 inet_aton() で行われます。
+
+inet_aton() は、IPv6をサポートしません。IPv4/v6のデュアルスタックをサポートする場合は inet_pton() を使用します。
+
+socket.inet_ntoa(packed_ip)
+32 ビットにパックされた IPv4 アドレス (長さ 4 バイトの bytes-like object) を、標準的なドット記法による 4 桁の文字列 ('123.45.67.89' など) に変換します。この関数は、struct in_addr 型を使用する標準 C ライブラリのプログラムとやりとりする場合に便利です。struct in_addr 型は、この関数が引数として受け取る 32 ビットにパックされたバイナリデータに対する C の型です。
+
+この関数に渡すバイトシーケンスの長さが4バイト以外であれば、 OSError が発生します。 inet_ntoa() は、IPv6をサポートしません。IPv4/v6のデュアルスタックをサポートする場合は inet_ntop() を使用します。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+socket.inet_pton(address_family, ip_string)
+IPアドレスを、アドレスファミリ固有の文字列からパックしたバイナリ形式に変換します。 inet_pton() は、 struct in_addr 型 (inet_aton() と同様)や struct in6_addr を使用するライブラリやネットワークプロトコルを呼び出す際に使用することができます。
+
+現在サポートされている address_family は、 AF_INET と AF_INET6 です。 ip_string に不正なIPアドレス文字列を指定すると、 OSError が発生します。有効な ip_string は、 address_family と inet_pton() の実装によって異なります。
+
+Availability: Unix (maybe not all platforms), Windows.
+
+バージョン 3.4 で変更: Windowsで利用可能になりました
+
+socket.inet_ntop(address_family, packed_ip)
+パックしたIPアドレス (数バイトからなる bytes-like オブジェクト ) を、 '7.10.0.5' や '5aef:2b::8' などの標準的な、アドレスファミリ固有の文字列形式に変換します。 inet_ntop() は (inet_ntoa() と同様に)、 struct in_addr 型や struct in6_addr 型のオブジェクトを返すライブラリやネットワークプロトコル等で使用することができます。
+
+現在サポートされている address_family の値は、 AF_INET と AF_INET6 です。バイトオブジェクトの packed_ip の長さが、指定したアドレスファミリで適切な長さでない場合、 ValueError が発生します。 inet_ntop() の呼び出しでエラーが起こると、 OSError が発生します。
+
+Availability: Unix (maybe not all platforms), Windows.
+
+バージョン 3.4 で変更: Windowsで利用可能になりました
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+socket.CMSG_LEN(length)
+指定された length にある制御メッセージ（CMSG）から、末尾のパディングを除いた全体の長さを返します。この値は多くの場合、 recvmsg() が制御メッセージの一連の要素を受信するためのバッファサイズとして使用できますが、バッファの末尾が要素である場合であってもパディングは含まれるので、バッファサイズを取得するには RFC 3542 で求められているように、 CMSG_SPACE() を使用した移植可能なアプリケーションが必要です。通常 length は定数であり、許容範囲外の値が指定された場合は OverflowError 例外が送出されます。
+
+Availability: most Unix platforms, possibly others.
+
+バージョン 3.3 で追加.
+
+socket.CMSG_SPACE(length)
+指定された length の制御メッセージ（CMSG）の要素を recvmsg() が受信するために必要な、パディングを含めたバッファサイズを返します。複数の項目を受信するために必要なバッファスペースは、 CMSG_SPACE() が返すそれぞれの要素の長さの合計です。通常 length は定数であり、許容範囲外の値が指定された場合は OverflowError 例外が送出されます。
+
+一部のシステムではこの関数を提供せずに制御メッセージをサポートする可能性があることに注意してください。また、この関数の返り値を使用して設定するバッファサイズは、受信する制御メッセージの量を正確に規定しないことがあり、その後に受信するデータがパディング領域に合う場合があることに注意してください。
+
+Availability: most Unix platforms, possibly others.
+
+バージョン 3.3 で追加.
+
+socket.getdefaulttimeout()
+新規に生成されたソケットオブジェクトの、デフォルトのタイムアウト値を浮動小数点形式の秒数で返します。タイムアウトを使用しない場合には None を返します。最初に socket モジュールがインポートされた時の初期値は None です。
+
+socket.setdefaulttimeout(timeout)
+新規に生成されるソケットオブジェクトの、デフォルトのタイムアウト値を秒数 (float 型) で設定します。最初に socket モジュールがインポートされた時の初期値は None です。指定可能な値とその意味については settimeout() メソッドを参照してください。
+
+socket.sethostname(name)
+マシンのホスト名を name に設定します。必要な権限がない場合は OSError を送出します。
+
+Raises an auditing event socket.sethostname with argument name.
+
+利用可能な環境: Unix。
+
+バージョン 3.3 で追加.
+
+socket.if_nameindex()
+ネットワークインターフェース情報 (index int, name string)のタプルを返します。システムコールが失敗した場合、 OSError 例外を送出します。
+
+Availability: Unix, Windows。
+
+バージョン 3.3 で追加.
+
+バージョン 3.8 で変更: Windows support was added.
+
+注釈 On Windows network interfaces have different names in different contexts (all names are examples):
+UUID: {FB605B73-AAC2-49A6-9A2F-25416AEA0573}
+
+name: ethernet_32770
+
+friendly name: vEthernet (nat)
+
+description: Hyper-V Virtual Ethernet Adapter
+
+This function returns names of the second form from the list, ethernet_32770 in this example case.
+
+socket.if_nametoindex(if_name)
+インターフェース名 if_name に対応するネットワークインターフェースのインデックス番号を返します。対応するインターフェースが存在しない場合は OSError 例外を送出します。
+
+Availability: Unix, Windows。
+
+バージョン 3.3 で追加.
+
+バージョン 3.8 で変更: Windows support was added.
+
+参考 "Interface name" is a name as documented in if_nameindex().
+socket.if_indextoname(if_index)
+インターフェースインデックス番号 if_index に対応するネットワークインターフェース名を返します。対応するインターフェースが存在しない場合は OSError 例外を送出します。
+
+Availability: Unix, Windows。
+
+バージョン 3.3 で追加.
+
+バージョン 3.8 で変更: Windows support was added.
+
+参考 "Interface name" is a name as documented in if_nameindex().
+socket オブジェクト
+ソケットオブジェクトは以下のメソッドを持ちます。 makefile() 以外のメソッドは、Unixのソケット用システムコールに対応しています。
+
+バージョン 3.2 で変更: context manager プロトコルのサポートが追加されました。コンテキストマネージャを終了することは、 close() を呼ぶことと同一です。
+
+socket.accept()
+接続を受け付けます。ソケットはアドレスにbind済みで、listen中である必要があります。戻り値は (conn, address) のペアで、 conn は接続を通じてデータの送受信を行うための 新しい ソケットオブジェクト、 address は接続先でソケットにbindしているアドレスを示します。
+
+新たに作成されたソケットは 継承不可 です。
+
+バージョン 3.4 で変更: ソケットが 継承不可 になりました。
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.bind(address)
+ソケットを address にbindします。bind済みのソケットを再バインドする事はできません。(address のフォーマットはアドレスファミリによって異なります -- 前述。)
+
+Raises an auditing event socket.bind with arguments self, address.
+
+socket.close()
+ソケットを閉じられたものとしてマークします。 makefile() が返したファイルオブジェクトを閉じる時、対応する下層のシステムリソース（例：ファイル記述子）もすべて閉じます。一度この操作をすると、その後、このソケットオブジェクトに対するすべての操作が失敗します。キューに溜まったデータがフラッシュされた後は、リモート側の端点ではそれ以上のデータを受信しません。
+
+ソケットはガベージコレクション時に自動的にクローズされます。しかし、明示的に close() するか、 with 文の中でソケットを使うことを推奨します。
+
+バージョン 3.6 で変更: 下層の close() が呼び出される時、OSError が送出されるようになりました。
+
+注釈 close() は接続に関連付けられたリソースを解放しますが、接続をすぐに切断するとは限りません。接続を即座に切断したい場合は、 close() の前に shutdown() を呼び出してください。
+socket.connect(address)
+address で示されるリモートソケットに接続します。(address のフォーマットはアドレスファミリによって異なります --- 前述。)
+
+接続が信号によって中断された場合、このメソッドは接続が完了するまで待機するか、タイムアウト時に socket.timeout を送出します。タイムアウトは、信号ハンドラが例外を送出せず、ソケットがブロックするかタイムアウトが設定されている場合に起こります。非ブロックソケットでは、接続が信号によって中断された場合 (あるいは信号ハンドラにより例外が送出された場合)、このメソッドは InterruptedError 例外を送出します。
+
+Raises an auditing event socket.connect with arguments self, address.
+
+バージョン 3.5 で変更: このメソッドは、接続が信号によって中断され、信号ハンドラが例外を送出せず、ソケットがブロックであるかタイムアウトが設定されている場合、InterruptedError 例外を送出する代わりに、接続を完了するまで待機するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.connect_ex(address)
+connect(address) と同様ですが、C言語の connect() 関数の呼び出しでエラーが発生した場合には例外を送出せずにエラーを戻り値として返します。(これ以外の、"host not found,"等のエラーの場合には例外が発生します。)処理が正常に終了した場合には 0 を返し、エラー時には errno の値を返します。この関数は、非同期接続をサポートする場合などに使用することができます。
+
+Raises an auditing event socket.connect with arguments self, address.
+
+socket.detach()
+実際にファイル記述子を閉じることなく、ソケットオブジェクトを閉じた状態にします。ファイル記述子は返却され、他の目的に再利用することができます。
+
+バージョン 3.2 で追加.
+
+socket.dup()
+ソケットを複製します。
+
+新たに作成されたソケットは 継承不可 です。
+
+バージョン 3.4 で変更: ソケットが 継承不可 になりました。
+
+socket.fileno()
+ソケットのファイル記述子を短い整数型で返します。失敗時には、-1 を返します。ファイル記述子は、 select.select() などで使用します。
+
+Windowsではこのメソッドで返された小整数をファイル記述子を扱う箇所 (os.fdopen() など) で利用できません。 Unix にはこの制限はありません。
+
+socket.get_inheritable()
+ソケットのファイル記述子またはソケットのハンドルの 継承可能フラグ を取得します。ソケットが子プロセスへ継承可能なら True 、継承不可なら False を返します。
+
+バージョン 3.4 で追加.
+
+socket.getpeername()
+ソケットが接続しているリモートアドレスを返します。この関数は、リモート IPv4/v6ソケットのポート番号を調べる場合などに使用します。 address のフォーマットはアドレスファミリによって異なります(前述)。この関数をサポートしていないシステムも存在します。
+
+socket.getsockname()
+ソケット自身のアドレスを返します。この関数は、IPv4/v6ソケットのポート番号を調べる場合などに使用します。(address のフォーマットはアドレスファミリによって異なります --- 前述。)
+
+socket.getsockopt(level, optname[, buflen])
+ソケットに指定されたオプションを返します(Unixのマニュアルページ getsockopt(2) を参照)。 SO_* 等のシンボルは、このモジュールで定義しています。 buflen を省略した場合、取得するオブションは整数とみなし、整数型の値を戻り値とします。 buflen を指定した場合、長さ buflen のバッファでオプションを受け取り、このバッファをバイト列オブジェクトとして返します。このバッファは、呼び出し元プログラムで struct モジュール等を利用して内容を読み取ることができます。
+
+socket.getblocking()
+Return True if socket is in blocking mode, False if in non-blocking.
+
+This is equivalent to checking socket.gettimeout() == 0.
+
+バージョン 3.7 で追加.
+
+socket.gettimeout()
+ソケットに指定されたタイムアウト値を取得します。タイムアウト値が設定されている場合には浮動小数点型で秒数が、設定されていなければ None が返ります。この値は、最後に呼び出された setblocking() または settimeout() によって設定されます。
+
+socket.ioctl(control, option)
+プラットフォーム
+Windows
+
+ioctl() メソッドは WSAIoctl システムインタフェースへの制限されたインタフェースです。詳しい情報については、 Win32 documentation を参照してください。
+
+他のプラットフォームでは一般的な fcntl.fcntl() と fcntl.ioctl() が使われるでしょう; これらの関数は第 1 引数としてソケットオブジェクトを取ります。
+
+現在、以下のコントロールコードのみがサポートされています。 SIO_RCVALL, SIO_KEEPALIVE_VALS, SIO_LOOPBACK_FAST_PATH。
+
+バージョン 3.6 で変更: SIO_LOOPBACK_FAST_PATH が追加されました。
+
+socket.listen([backlog])
+サーバーを有効にして、接続を受け付けるようにします。backlog が指定されている場合、少なくとも 0 以上でなければなりません (それより低い場合、0 に設定されます)。システムが新しい接続を拒否するまでに許可する未受付の接続の数を指定します。指定しない場合、デフォルトの妥当な値が選択されます。
+
+バージョン 3.5 で変更: backlog 引数が任意になりました。
+
+socket.makefile(mode='r', buffering=None, *, encoding=None, errors=None, newline=None)
+ソケットに関連付けられた ファイルオブジェクト を返します。戻り値の正確な型は、 makefile() に指定した引数によります。これらの引数は、組み込み関数 open() の引数と同様に解釈されます。ただし、mode の値は 'r' (デフォルト), 'w', 'b' のみがサポートされています。
+
+ソケットはブロッキングモードでなければなりません。タイムアウトを設定することはできますが、タイムアウトが発生すると、ファイルオブジェクトの内部バッファが矛盾した状態になることがあります。
+
+makefile() でファイルオブジェクトにソケットを関連づけた場合、ソケットを閉じるには、関連づけられたすべてのファイルオブジェクトを閉じたあとで、元のソケットの socket.close() を呼び出さなければなりません。
+
+注釈 Windows では subprocess.Popen() の stream 引数などファイルディスクリプタつき file オブジェクトが期待されている場所では、 makefile() によって作成される file-like オブジェクトは使用できません。
+socket.recv(bufsize[, flags])
+ソケットからデータを受信し、結果を bytes オブジェクトで返します。一度に受信するデータは、最大でも bufsize で指定した量です。オプション引数 flags に指定するフラグの意味については、 Unix のマニュアルページ recv(2) を参照してください。 flags のデフォルトは 0 です。
+
+注釈 ハードウェアおよびネットワークの現実に最大限マッチするように、 bufsize の値は比較的小さい2の累乗、たとえば 4096、にすべきです。
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.recvfrom(bufsize[, flags])
+ソケットからデータを受信し、結果をタプル (bytes, address) として返します。 bytes は受信データの bytes オブジェクトで、 address は送信元のアドレスを示します。オプション引数 flags については、 Unix のマニュアルページ recv(2) を参照してください。デフォルトは0です。 (address のフォーマットはアドレスファミリによって異なります(前述))
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+バージョン 3.7 で変更: For multicast IPv6 address, first item of address does not contain %scope_id part anymore. In order to get full IPv6 address use getnameinfo().
+
+socket.recvmsg(bufsize[, ancbufsize[, flags]])
+ソケットから通常のデータ (最大 bufsize バイト) と補助的なデータを受信します。ancbufsize 引数により、補助的なデータの受信に使用される内部バッファのバイト数として、サイズが設定されます。このデフォルトは 0 で、補助的なデータを受信しないことを意味します。CMSG_SPACE() または CMSG_LEN() を使用して、補助的なデータの適切なサイズを計算することができ、バッファ内に収まらないアイテムは、短縮されるか破棄されます。flags 引数はデフォルトでは 0 で、recv() での意味と同じ意味を持ちます。
+
+戻り値は 4 要素のタプル (data, ancdata, msg_flags, address) です。data アイテムは、受信した非付属的データを保持する bytes オブジェクトです。ancdata アイテムは、ゼロ以上のタプル (cmsg_level, cmsg_type, cmsg_data) からなるリストで、受信する付属的なデータ (制御メッセージ) を表します。cmsg_level と cmsg_type はそれぞれ、プロトコルレベルとプロトコル固有のタイプを指定する整数で、cmsg_data は関連するデータを保持する bytes オブジェクトです。msg_flags アイテムは、受信したメッセージの条件を示す様々なフラグのビット OR です。詳細は、システムのドキュメントを参照してください。受信ソケットが接続されていない場合、address は、送信ソケットが利用できる場合にはそのアドレスで、利用できない場合、その値は未指定になります。
+
+一部のシステムでは、sendmsg() と recvmsg() を使用して、プロセス間で AF_UNIX ソケットを経由してファイル記述子を渡すことができます。この機能を使用する場合 (しばしば SOCK_STREAM ソケットに限定されます)、recvmsg() は、付属的なデータ中に、(socket.SOL_SOCKET, socket.SCM_RIGHTS, fds) という形式のアイテムを返します。ここで、fds は、新しいファイル記述子をネイティブ C の int 型のバイナリ配列として表します。システムコールが返った後 recvmsg() が例外を送出する場合、まずこのメカニズムを経由して受信したファイル記述子を全て閉じようと試みます。
+
+一部のシステムでは、部分的に受信した付属的なデータアイテムの短縮された長さが示されません。アイテムがバッファの末尾を超えているようである場合、recvmsg() は RuntimeWarning を送出し、関連するデータの開始位置より前で途切れていない場合、バッファ内の付属的なデータの一部を返します。
+
+SCM_RIGHTS メカニズムをサポートするシステム上では、次の関数が最大 maxfds のファイル記述子を受信し、メッセージデータと記述子を含むリストを返しま(無関係な制御メッセージを受信した場合など、予期しない条件は無視します)。 sendmsg() も参照してください。
+
+import socket, array
+
+def recv_fds(sock, msglen, maxfds):
+    fds = array.array("i")   # Array of ints
+    msg, ancdata, flags, addr = sock.recvmsg(msglen, socket.CMSG_LEN(maxfds * fds.itemsize))
+    for cmsg_level, cmsg_type, cmsg_data in ancdata:
+        if cmsg_level == socket.SOL_SOCKET and cmsg_type == socket.SCM_RIGHTS:
+            # Append data, ignoring any truncated integers at the end.
+            fds.frombytes(cmsg_data[:len(cmsg_data) - (len(cmsg_data) % fds.itemsize)])
+    return msg, list(fds)
+Availability: most Unix platforms, possibly others.
+
+バージョン 3.3 で追加.
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.recvmsg_into(buffers[, ancbufsize[, flags]])
+recvmsg() と同様に動作してソケットから通常のデータと付属的なデータを受信しますが、非付属的データは新しいバイトオブジェクトとして返すのではなく、一連のバッファとして返します。buffers 引数は書き込み可能なバッファをエクスポートするオブジェクトのイテラブルでなければなりません (例: bytearray オブジェクト)。これらは、全てに書き込まれるか、残りバッファがなくなるまで、非付属的データの連続チャンクで埋められます。オペレーティングシステムによって、使用できるバッファの数が制限 (sysconf() 値 SC_IOV_MAX) されている場合があります。ancbufsize 引数と flags 引数は、recvmsg() での意味と同じ意味を持ちます。
+
+戻り値は 4 要素のタプル (nbytes, ancdata, msg_flags, address) です。ここで、nbytes はバッファに書き込まれた非付属的データの総数で、ancdata、msg_flags、address は recvmsg() と同様です。
+
+以下はプログラム例です:
+
+>>>
+>>> import socket
+>>> s1, s2 = socket.socketpair()
+>>> b1 = bytearray(b'----')
+>>> b2 = bytearray(b'0123456789')
+>>> b3 = bytearray(b'--------------')
+>>> s1.send(b'Mary had a little lamb')
+22
+>>> s2.recvmsg_into([b1, memoryview(b2)[2:9], b3])
+(22, [], 0, None)
+>>> [b1, b2, b3]
+[bytearray(b'Mary'), bytearray(b'01 had a 9'), bytearray(b'little lamb---')]
+Availability: most Unix platforms, possibly others.
+
+バージョン 3.3 で追加.
+
+socket.recvfrom_into(buffer[, nbytes[, flags]])
+ソケットからデータを受信し、そのデータを新しいバイト文字列として返す代わりに buffer に書きます。戻り値は (nbytes, address) のペアで、 nbytes は受信したデータのバイト数を、 address はデータを送信したソケットのアドレスです。オプション引数 flags (デフォルト:0) の意味については、 Unix マニュアルページ recv(2) を参照してください。(address のフォーマットは前述のとおりアドレスファミリーに依存します。)
+
+socket.recv_into(buffer[, nbytes[, flags]])
+nbytes バイトまでのデータをソケットから受信して、そのデータを新しいバイト文字列にするのではなく buffer に保存します。 nbytes が指定されない(あるいは0が指定された)場合、 buffer の利用可能なサイズまで受信します。受信したバイト数を返り値として返します。オプション引数 flags (デフォルト:0) の意味については、 Unix マニュアルページ recv(2) を参照してください。
+
+socket.send(bytes[, flags])
+ソケットにデータを送信します。ソケットはリモートソケットに接続済みでなければなりません。オプション引数 flags の意味は、上記 recv() と同じです。戻り値として、送信したバイト数を返します。アプリケーションでは、必ず戻り値をチェックし、全てのデータが送られた事を確認する必要があります。データの一部だけが送信された場合、アプリケーションで残りのデータを再送信してください。 ソケットプログラミング HOWTO に、さらに詳しい情報があります。
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.sendall(bytes[, flags])
+ソケットにデータを送信します。ソケットはリモートソケットに接続済みでなければなりません。オプション引数 flags の意味は、上記 recv() と同じです。 send() と異なり、このメソッドは bytes の全データを送信するか、エラーが発生するまで処理を継続します。正常終了の場合は None を返し、エラー発生時には例外が発生します。エラー発生時、送信されたバイト数を調べる事はできません。
+
+バージョン 3.5 で変更: ソケットのタイムアウトは、データが正常に送信される度にリセットされなくなりました。ソケットのタイムアウトは、すべてのデータを送る最大の合計時間となります。
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.sendto(bytes, address)
+socket.sendto(bytes, flags, address)
+ソケットにデータを送信します。このメソッドでは接続先を address で指定するので、接続済みではいけません。オプション引数 flags の意味は、上記 recv() と同じです。戻り値として、送信したバイト数を返します。(address のフォーマットはアドレスファミリによって異なります --- 前述。)
+
+Raises an auditing event socket.sendto with arguments self, address.
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.sendmsg(buffers[, ancdata[, flags[, address]]])
+非付属的なデータを一連のバッファから集め、単一のメッセージにまとめることで、通常のデータと付属的なデータをソケットに送信します。buffers 引数は、非付属的なデータを bytes-like objects (例: bytes オブジェクト) のイテラブルとして指定します。オペレーティングシステムによって、使用できるバッファの数が制限 (sysconf() 値 SC_IOV_MAX) されている場合があります。ancdata 引数は付属的なデータ (制御メッセージ) をゼロ以上のタプル (cmsg_level, cmsg_type, cmsg_data) のイテラブルとして指定します。ここで、cmsg_level と cmsg_type はそれぞれプロトコルレベルとプロトコル固有のタイプを指定する整数で、cmsg_data は関連データを保持するバイトライクオブジェクトです。一部のシステム (特に CMSG_SPACE() を持たないシステム) では、一度の呼び出しで一つの制御メッセージの送信しかサポートされていない場合があります。flags 引数のデフォルトは 0 であり、send() での意味と同じ意味を持ちます。None 以外の address が渡された場合、メッセージの目的地のアドレスを設定します。戻り値は、送信された非付属的データのバイト数です。
+
+以下の関数は、SCM_RIGHTS メカニズムをサポートするシステムで、ファイル記述子 fds を AF_UNIX ソケット経由で送信します。recvmsg() も参照してください。
+
+import socket, array
+
+def send_fds(sock, msg, fds):
+    return sock.sendmsg([msg], [(socket.SOL_SOCKET, socket.SCM_RIGHTS, array.array("i", fds))])
+Availability: most Unix platforms, possibly others.
+
+Raises an auditing event socket.sendmsg with arguments self, address.
+
+バージョン 3.3 で追加.
+
+バージョン 3.5 で変更: システムコールが中断されシグナルハンドラが例外を送出しなかった場合、このメソッドは InterruptedError 例外を送出する代わりにシステムコールを再試行するようになりました (論拠については PEP 475 を参照してください)。
+
+socket.sendmsg_afalg([msg, ]*, op[, iv[, assoclen[, flags]]])
+sendmsg() の AF_ALG ソケット用に特化したバージョンです。AF_ALG ソケットの、モード、IV、AEAD に関連づけられたデータ長、フラグを設定します。
+
+Availability: Linux >= 2.6.38.
+
+バージョン 3.6 で追加.
+
+socket.send_fds(sock, buffers, fds[, flags[, address]])
+Send the list of file descriptors fds over an AF_UNIX socket. The fds parameter is a sequence of file descriptors. Consult sendmsg() for the documentation of these parameters.
+
+Availability: Unix supporting sendmsg() and SCM_RIGHTS mechanism.
+
+バージョン 3.9 で追加.
+
+socket.recv_fds(sock, bufsize, maxfds[, flags])
+Receive up to maxfds file descriptors. Return (msg, list(fds), flags, addr). Consult recvmsg() for the documentation of these parameters.
+
+Availability: Unix supporting recvmsg() and SCM_RIGHTS mechanism.
+
+バージョン 3.9 で追加.
+
+注釈 Any truncated integers at the end of the list of file descriptors.
+socket.sendfile(file, offset=0, count=None)
+高性能の os.sendfile を使用して、ファイルを EOF まで送信し、送信されたバイトの総数を返します。file は、バイナリモードで開かれた標準的なファイルオブジェクトです。os.sendfile が使用できない場合 (例: Windows)、または file が標準的なファイルでない場合、代わりに send() が使用されます。offset は、ファイルの読み出し開始位置を指定します。count が指定されている場合、ファイルを EOF まで送信するのではなく、転送するバイトの総数を指定します。ファイルの位置は、返る時に更新されます。あるいは、エラー時には file.tell()  を使用して送信されたバイトの数を確認することができます。ソケットは SOCK_STREAM タイプでなければなりません。非ブロックソケットはサポートされていません。
+
+バージョン 3.5 で追加.
+
+socket.set_inheritable(inheritable)
+ソケットのファイル記述子、またはソケットのハンドルの、 継承可能フラグ を立てます。
+
+バージョン 3.4 で追加.
+
+socket.setblocking(flag)
+ソケットをブロッキングモード、または非ブロッキングモードに設定します。flag が False の場合にはソケットは非ブロッキングモードになり、True の場合にはブロッキングモードになります。
+
+このメソッドは、次の settimeout() 呼び出しの省略表記です:
+
+sock.setblocking(True) は sock.settimeout(None) と等価です
+
+sock.setblocking(False) は sock.settimeout(0.0) と等価です
+
+バージョン 3.7 で変更: The method no longer applies SOCK_NONBLOCK flag on socket.type.
+
+socket.settimeout(value)
+ブロッキングソケットの処理のタイムアウト値を指定します。 value には float 型で非負の秒数を指定するか、 None を指定します。ゼロ以外の値を指定した場合、ソケットの処理が完了する前に value で指定した秒数が経過すれば timeout 例外を送出します。ゼロを指定した場合、ソケットは非ブロッキングモード状態に置かれます。 None を指定した場合、ソケットのタイムアウトを無効にします。
+
+詳しくは ソケットタイムアウトの注意事項 を参照してください。
+
+バージョン 3.7 で変更: The method no longer toggles SOCK_NONBLOCK flag on socket.type.
+
+socket.setsockopt(level, optname, value: int)
+socket.setsockopt(level, optname, value: buffer)
+socket.setsockopt(level, optname, None, optlen: int)
+指定されたソケットオプションの値を設定します (Unix のマニュアルページ setsockopt(2) を参照)。必要なシンボリック定数は、socket モジュール (SO_* など) で定義されています。この値は、整数、None、またはバッファを表す bytes-like object のいずれかです。バイトライクオブジェクトの場合、バイト文字列に適切なビットが含まれていることを確認するのは呼び出し元の仕事です (C 構造をバイト文字列としてエンコードする方法については、オプションの組み込みモジュール struct を参照)。値が None に設定されている場合、optlen 引数が必須です。これは、 optval=NULL と optlen=optlen で setsockopt() C 関数を呼び出すのと同一です。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+バージョン 3.6 で変更: setsockopt(level, optname, None, optlen: int) の形式が追加されました。
+
+socket.shutdown(how)
+接続の片方向、または両方向を切断します。 how が SHUT_RD の場合、以降は受信を行えません。 how が SHUT_WR の場合、以降は送信を行えません。 how が SHUT_RDWR の場合、以降は送受信を行えません。
+
+socket.share(process_id)
+ソケットを複製し、対象のプロセスと共有するための bytes オブジェクトを返します。対象のプロセスを process_id で指定しなければなりません。戻り値の bytes オブジェクトは、何らかのプロセス間通信を使って対象のプロセスに伝えます。対象のプロセス側では、 fromshare() を使って複製されたソケットをとらえます。オペレーティング・システムは対象のプロセスに対してソケットを複製するため、このメソッドを呼び出した後であれば、元のソケットをクローズしても、対象のプロセスに渡ったソケットには影響がありません。
+
+利用可能な環境: Windows 。
+
+バージョン 3.3 で追加.
+
+read() メソッドと write() メソッドは存在しませんので注意してください。代わりに flags を省略した recv() と send() を使うことができます。
+
+ソケットオブジェクトには以下の socket コンストラクタに渡された値に対応した (読み出し専用) 属性があります。
+
+socket.family
+ソケットファミリー。
+
+socket.type
+ソケットタイプ。
+
+socket.proto
+ソケットプロトコル。
+
+ソケットタイムアウトの注意事項
+ソケットオブジェクトは、ブロッキングモード、非ブロッキングモード、タイムアウトモードのうち、いずれか1つのモードをとります。デフォルトでは、ソケットは常にブロッキングモードで作成されますが、 setdefaulttimeout() で標準のモードを変更することができます。
+
+ブロッキングモード での操作は、完了するか、または（接続がタイムアウトするなどして）システムがエラーを返すまで、ブロックされます。
+
+非ブロッキングモード での操作は、ただちに完了できない場合、例外を送出して失敗します。この場合の例外の種類は、システムに依存するため、ここに記すことができません。 select モジュールの関数を使って、ソケットの読み書きが利用可能かどうか、可能な場合はいつ利用できるかを調べることができます。
+
+タイムアウトモード での操作は、指定されたタイムアウトの時間内に完了しなければ、 timeout 例外を送出します。タイムアウトの時間内にシステムがエラーを返した場合は、そのエラーを返します。
+
+注釈 オペレーティング・システムのレベルでは、 タイムアウトモード のソケットには、内部的に非ブロッキングモードが設定されています。またブロッキングモードとタイムアウトモードの指定は、ファイル記述子と、「そのファイル記述子と同じネットワーク端点を参照するソケットオブジェクト」との間で共有されます。このことは、例えばソケットの fileno() を使うことにした場合に、明らかな影響を与えます。
+タイムアウトと connect メソッド
+connect() もタイムアウト設定に従います。一般的に、 settimeout() を connect() の前に呼ぶか、 create_connection() にタイムアウト引数を渡すことが推奨されます。ただし、システムのネットワークスタックが Python のソケットタイムアウトの設定を無視して、自身の接続タイムアウトエラーを返すこともあります。
+
+タイムアウトと accept メソッド
+getdefaulttimeout() が None でない場合、 accept() メソッドが返すソケットでは、そのタイムアウトが継承されます。 None である場合、待機中のソケットの設定によって動作は異なります。
+
+待機中のソケットが ブロッキングモード または タイムアウトモード である場合、accept() が返すソケットは、ブロッキングモード になります。
+
+待機中のソケットが 非ブロッキングモード である場合、accept() が返すソケットは、オペレーティングシステムによってブロッキングモードまたは非ブロッキングモードになります。クロスプラットフォームの動作を確保したい場合、この設定を手動でオーバーライドすることをお勧めします。
+
+使用例
+以下は TCP/IP プロトコルの簡単なサンプルとして、受信したデータをクライアントにそのまま返送するサーバ (接続可能なクライアントは一件のみ) と、サーバに接続するクライアントの例を示します。サーバでは、 socket() ・ bind() ・ listen() ・ accept() を実行し (複数のクライアントからの接続を受け付ける場合、 accept() を複数回呼び出します)、クライアントでは socket() と connect() だけを呼び出しています。サーバでは sendall() / recv() メソッドは listen 中のソケットで実行するのではなく、 accept() で取得したソケットに対して実行している点にも注意してください。
+
+次のクライアントとサーバは、IPv4 のみをサポートしています。
+
+# Echo server program
+import socket
+
+HOST = ''                 # Symbolic name meaning all available interfaces
+PORT = 50007              # Arbitrary non-privileged port
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.bind((HOST, PORT))
+    s.listen(1)
+    conn, addr = s.accept()
+    with conn:
+        print('Connected by', addr)
+        while True:
+            data = conn.recv(1024)
+            if not data: break
+            conn.sendall(data)
+# Echo client program
+import socket
+
+HOST = 'daring.cwi.nl'    # The remote host
+PORT = 50007              # The same port as used by the server
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect((HOST, PORT))
+    s.sendall(b'Hello, world')
+    data = s.recv(1024)
+print('Received', repr(data))
+次のサンプルは上記のサンプルとほとんど同じですが、IPv4 と IPv6 の両方をサポートしています。サーバでは、IPv4/v6 の両方ではなく、利用可能な最初のアドレスファミリだけを listen しています。ほとんどの IPv6 対応システムでは IPv6 が先に現れるため、サーバは IPv4 には応答しません。クライアントでは名前解決の結果として取得したアドレスに順次接続を試み、最初に接続に成功したソケットにデータを送信しています。
+
+# Echo server program
+import socket
+import sys
+
+HOST = None               # Symbolic name meaning all available interfaces
+PORT = 50007              # Arbitrary non-privileged port
+s = None
+for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC,
+                              socket.SOCK_STREAM, 0, socket.AI_PASSIVE):
+    af, socktype, proto, canonname, sa = res
+    try:
+        s = socket.socket(af, socktype, proto)
+    except OSError as msg:
+        s = None
+        continue
+    try:
+        s.bind(sa)
+        s.listen(1)
+    except OSError as msg:
+        s.close()
+        s = None
+        continue
+    break
+if s is None:
+    print('could not open socket')
+    sys.exit(1)
+conn, addr = s.accept()
+with conn:
+    print('Connected by', addr)
+    while True:
+        data = conn.recv(1024)
+        if not data: break
+        conn.send(data)
+# Echo client program
+import socket
+import sys
+
+HOST = 'daring.cwi.nl'    # The remote host
+PORT = 50007              # The same port as used by the server
+s = None
+for res in socket.getaddrinfo(HOST, PORT, socket.AF_UNSPEC, socket.SOCK_STREAM):
+    af, socktype, proto, canonname, sa = res
+    try:
+        s = socket.socket(af, socktype, proto)
+    except OSError as msg:
+        s = None
+        continue
+    try:
+        s.connect(sa)
+    except OSError as msg:
+        s.close()
+        s = None
+        continue
+    break
+if s is None:
+    print('could not open socket')
+    sys.exit(1)
+with s:
+    s.sendall(b'Hello, world')
+    data = s.recv(1024)
+print('Received', repr(data))
+次の例は、Windowsで raw socket を利用して非常にシンプルなネットワークスニファーを書きます。このサンプルを実行するには、インタフェースを操作するための管理者権限が必要です:
+
+import socket
+
+# the public network interface
+HOST = socket.gethostbyname(socket.gethostname())
+
+# create a raw socket and bind it to the public interface
+s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
+s.bind((HOST, 0))
+
+# Include IP headers
+s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
+
+# receive all packages
+s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
+
+# receive a package
+print(s.recvfrom(65565))
+
+# disabled promiscuous mode
+s.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+The next example shows how to use the socket interface to communicate to a CAN network using the raw socket protocol. To use CAN with the broadcast manager protocol instead, open a socket with:
+
+socket.socket(socket.AF_CAN, socket.SOCK_DGRAM, socket.CAN_BCM)
+ソケットの束縛 (CAN_RAW) または (CAN_BCM) 接続を行ったあと、ソケットオブジェクトで socket.send() と socket.recv() 操作 (とそのカウンターパート) を通常通りに使用することができます。
+
+This last example might require special privileges:
+
+import socket
+import struct
+
+
+# CAN frame packing/unpacking (see 'struct can_frame' in <linux/can.h>)
+
+can_frame_fmt = "=IB3x8s"
+can_frame_size = struct.calcsize(can_frame_fmt)
+
+def build_can_frame(can_id, data):
+    can_dlc = len(data)
+    data = data.ljust(8, b'\x00')
+    return struct.pack(can_frame_fmt, can_id, can_dlc, data)
+
+def dissect_can_frame(frame):
+    can_id, can_dlc, data = struct.unpack(can_frame_fmt, frame)
+    return (can_id, can_dlc, data[:can_dlc])
+
+
+# create a raw socket and bind it to the 'vcan0' interface
+s = socket.socket(socket.AF_CAN, socket.SOCK_RAW, socket.CAN_RAW)
+s.bind(('vcan0',))
+
+while True:
+    cf, addr = s.recvfrom(can_frame_size)
+
+    print('Received: can_id=%x, can_dlc=%x, data=%s' % dissect_can_frame(cf))
+
+    try:
+        s.send(cf)
+    except OSError:
+        print('Error sending CAN frame')
+
+    try:
+        s.send(build_can_frame(0x01, b'\x01\x02\x03'))
+    except OSError:
+        print('Error sending CAN frame')
+この例を、ほとんど間を空けずに複数回実行すると、以下のエラーが発生する場合があります:
+
+OSError: [Errno 98] Address already in use
+これは以前の実行がソケットを TIME_WAIT 状態のままにし、すぐには再利用できないことで起こります。
+
+これを防ぐのに、 socket フラグの socket.SO_REUSEADDR があります:
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+s.bind((HOST, PORT))
+SO_REUSEADDR フラグは、 TIME_WAIT 状態にあるローカルソケットをそのタイムアウト期限が自然に切れるのを待つことなく再利用することをカーネルに伝えます。
+
+参考 C 言語によるソケットプログラミングの基礎については、以下の資料を参照してください。
+An Introductory 4.3BSD Interprocess Communication Tutorial, by Stuart Sechrest
+
+An Advanced 4.3BSD Interprocess Communication Tutorial, by Samuel J. Leffler et al,
+
+両書とも UNIX Programmer's Manual, Supplementary Documents 1 (PS1:7章 PS1:8章)。ソケットの詳細については、各プラットフォームのソケット関連システムコールに関するドキュメントも参照してください。Unix ではマニュアルページ、WindowsではWinSock (または WinSock2) 仕様書をご覧ください。IPv6 対応の API については、 RFC 3493 "Basic Socket Interface Extensions for IPv6" を参照してください。
+
+ssl --- ソケットオブジェクトに対する TLS/SSL ラッパー
+Source code: Lib/ssl.py
+
+このモジュールは Transport Layer Security ( "Secure Sockets Layer" という名前でよく知られています) 暗号化と、クライアントサイド、サーバサイド両方のネットワークソケットのためのピア認証の仕組みを提供しています。このモジュールは OpenSSL ライブラリを利用しています。 OpenSSL は、すべてのモダンな Unix システム、 Windows 、 Mac OS X 、その他幾つかの OpenSSL がインストールされているプラットフォームで利用できます。
+
+注釈 OSのソケットAPIに対して実装されているので、幾つかの挙動はプラットフォーム依存になるかもしれません。インストールされているOpenSSLのバージョンの違いも挙動の違いの原因になるかもしれません。例えば、TLSv1.1, TLSv1.2 は openssl version 1.0.1 以降でのみ利用できます。
+警告 セキュリティで考慮すべき点 を読まずにこのモジュールを使用しないでください。SSL のデフォルト設定はアプリケーションに十分ではないので、読まない場合はセキュリティに誤った意識を持ってしまうかもしれません。
+このセクションでは、 ssl モジュールのオブジェクトと関数を解説します。 TLS, SSL, 証明書に関するより一般的な情報は、末尾にある "See Also" のセクションを参照してください。
+
+このモジュールは ssl.SSLSocket クラスを提供します。このクラスは socket.socket 型を継承していて、ソケットで通信されるデータをSSLで暗号化・復号するソケットに似たラッパーになります。また、このクラスは、接続の相手側からの証明書を取得する getpeercert() メソッドや、セキュア接続で使うための暗号方式を取得する cipher() メソッドのような追加のメソッドをサポートしています。
+
+より洗練されたアプリケーションのために、 ssl.SSLContext クラスが設定と証明書の管理の助けとなるでしょう。それは SSLContext.wrap_socket() メソッドを通して SSL ソケットを作成することで引き継がれます。
+
+バージョン 3.5.3 で変更: Updated to support linking with OpenSSL 1.1.0
+
+バージョン 3.6 で変更: OpenSSL 0.9.8, 1.0.0, 1.0.1 は廃止されており、もはやサポートされていません。ssl モジュールは、将来的に OpenSSL 1.0.2 または 1.1.0 を必要とするようになります。
+
+関数、定数、例外
+ソケットの作成
+Since Python 3.2 and 2.7.9, it is recommended to use the SSLContext.wrap_socket() of an SSLContext instance to wrap sockets as SSLSocket objects. The helper functions create_default_context() returns a new context with secure default settings. The old wrap_socket() function is deprecated since it is both inefficient and has no support for server name indication (SNI) and hostname matching.
+
+Client socket example with default context and IPv4/IPv6 dual stack:
+
+import socket
+import ssl
+
+hostname = 'www.python.org'
+context = ssl.create_default_context()
+
+with socket.create_connection((hostname, 443)) as sock:
+    with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+        print(ssock.version())
+Client socket example with custom context and IPv4:
+
+hostname = 'www.python.org'
+# PROTOCOL_TLS_CLIENT requires valid cert chain and hostname
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+context.load_verify_locations('path/to/cabundle.pem')
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+    with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+        print(ssock.version())
+Server socket example listening on localhost IPv4:
+
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.load_cert_chain('/path/to/certchain.pem', '/path/to/private.key')
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+    sock.bind(('127.0.0.1', 8443))
+    sock.listen(5)
+    with context.wrap_socket(sock, server_side=True) as ssock:
+        conn, addr = ssock.accept()
+        ...
+コンテキストの作成
+コンビニエンス関数が、共通の目的で使用される SSLContext オブジェクトを作成するのに役立ちます。
+
+ssl.create_default_context(purpose=Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
+新規の SSLContext オブジェクトを、与えられた purpose のデフォルト設定で返します。設定は ssl モジュールで選択され、通常は SSLContext のコンストラクタを直接呼び出すよりも高いセキュリティレベルを表現します。
+
+cafile, capath, cadata は証明書の検証で信用するオプションの CA 証明書で、 SSLContext.load_verify_locations() のものと同じです。これら 3 つすべてが None であれば、この関数は代わりにシステムのデフォルトの CA 証明書を信用して選択することができます。
+
+設定は、 PROTOCOL_TLS, OP_NO_SSLv2, RC4 と非認証暗号化スイート以外の、高度暗号化スイートを利用した OP_NO_SSLv3 です。SERVER_AUTH を purpose として渡すと、verify_mode を CERT_REQUIRED に設定し、 CA 証明書をロードする (cafile, capath, cadata の少なくとも1つが与えられている場合) か、SSLContext.load_default_certs() を使用してデフォルトの CA 証明書をロードします。
+
+When keylog_filename is supported and the environment variable SSLKEYLOGFILE is set, create_default_context() enables key logging.
+
+注釈 プロトコル、オプション、暗号方式その他の設定は、事前に非推奨の状態にすることなく、もっと制限の強い値に変更される場合があります。これらの値は、互換性と安全性との妥当なバランスをとって決められます。
+もしもあなたのアプリケーションが特定の設定を必要とする場合、 SSLContext を作って自分自身で設定を適用すべきです。
+
+注釈 ある種の古いクライアントやサーバが接続しようと試みてきた場合に、この関数で作られた SSLContext が "Protocol or cipher suite mismatch" で始まるエラーを起こすのを目撃したらそれは、この関数が OP_NO_SSLv3 を使って除外している SSL 3.0 しかサポートしていないのでしょう。SSL 3.0 は 完璧にぶっ壊れている ことが広く知られています。それでもまだこの関数を使って、ただし SSL 3.0 接続を許可したいと望むならば、これをこのように再有効化できます:
+ctx = ssl.create_default_context(Purpose.CLIENT_AUTH)
+ctx.options &= ~ssl.OP_NO_SSLv3
+バージョン 3.4 で追加.
+
+バージョン 3.4.4 で変更: デフォルトの暗号設定から RC4 が除かれました。
+
+バージョン 3.6 で変更: デフォルトの暗号化文字列に ChaCha20/Poly1305 が追加されました。
+
+デフォルトの暗号化文字列から 3DES が除かれました。
+
+バージョン 3.8 で変更: Support for key logging to SSLKEYLOGFILE was added.
+
+例外
+exception ssl.SSLError
+(現在のところ OpenSSL ライブラリによって提供されている)下層の SSL 実装からのエラーを伝えるための例外です。このエラーは、低レベルなネットワークの上に載っている、高レベルな暗号化と認証レイヤーでの問題を通知します。このエラーは OSError のサブタイプです。 SSLError インスタンスのエラーコードとメッセージは OpenSSL ライブラリによるものです。
+
+バージョン 3.3 で変更: SSLError は以前は socket.error のサブタイプでした。
+
+library
+エラーが起こった OpenSSL サブモジュールを示すニーモニック文字列で、 SSL, PEM, X509 などです。取り得る値は OpenSSL のバージョンに依存します。
+
+バージョン 3.3 で追加.
+
+reason
+エラーが起こった原因を示すニーモニック文字列で、 CERTIFICATE_VERIFY_FAILED などです。取り得る値は OpenSSL のバージョンに依存します。
+
+バージョン 3.3 で追加.
+
+exception ssl.SSLZeroReturnError
+読み出しあるいは書き込みを試みようとした際に SSL コネクションが行儀よく閉じられてしまった場合に送出される SSLError サブクラス例外です。これは下層の転送(read TCP)が閉じたことは意味しないことに注意してください。
+
+バージョン 3.3 で追加.
+
+exception ssl.SSLWantReadError
+読み出しあるいは書き込みを試みようとした際に、リクエストが遂行される前に下層の TCP 転送で受け取る必要があるデータが不足した場合に non-blocking SSL socket によって送出される SSLError サブクラス例外です。
+
+バージョン 3.3 で追加.
+
+exception ssl.SSLWantWriteError
+読み出しあるいは書き込みを試みようとした際に、リクエストが遂行される前に下層の TCP 転送が送信する必要があるデータが不足した場合に non-blocking SSL socket によって送出される SSLError サブクラス例外です。
+
+バージョン 3.3 で追加.
+
+exception ssl.SSLSyscallError
+SSL ソケット上で操作を遂行しようとしていてシステムエラーが起こった場合に送出される SSLError サブクラス例外です。残念ながら元となった errno 番号を調べる簡単な方法はありません。
+
+バージョン 3.3 で追加.
+
+exception ssl.SSLEOFError
+SSL コネクションが唐突に打ち切られた際に送出される SSLError サブクラス例外です。一般的に、このエラーが起こったら下層の転送を再利用しようと試みるべきではありません。
+
+バージョン 3.3 で追加.
+
+exception ssl.SSLCertVerificationError
+A subclass of SSLError raised when certificate validation has failed.
+
+バージョン 3.7 で追加.
+
+verify_code
+A numeric error number that denotes the verification error.
+
+verify_message
+A human readable string of the verification error.
+
+exception ssl.CertificateError
+An alias for SSLCertVerificationError.
+
+バージョン 3.7 で変更: The exception is now an alias for SSLCertVerificationError.
+
+乱数生成
+ssl.RAND_bytes(num)
+暗号学的に強固な擬似乱数の num バイトを返します。擬似乱数生成器に十分なデータでシードが与えられていない場合や、現在の RANDOM メソッドに操作がサポートされていない場合は SSLError を送出します。 RAND_status() を使って擬似乱数生成器の状態をチェックできます。 RAND_add() を使って擬似乱数生成器にシードを与えることができます。
+
+ほとんどすべてのアプリケーションでは os.urandom() が望ましいです。
+
+Read the Wikipedia article, Cryptographically secure pseudorandom number generator (CSPRNG), to get the requirements of a cryptographically strong generator.
+
+バージョン 3.3 で追加.
+
+ssl.RAND_pseudo_bytes(num)
+(bytes, is_cryptographic) タプルを返却: bytes は長さ num の擬似乱数バイト列、 is_cryptographic は、生成されたバイト列が暗号として強ければ True 。 操作が現在使われている RAND メソッドでサポートされていなければ、 SSLError が送出されます。
+
+生成される擬似乱数バイトシーケンスは十分な長さであれば一意にはなるでしょうが、必ずしも予測不可能とは言えません。これは非暗号目的、あるいは暗号化プロトコルでの若干の用途に使われますが、普通は鍵生成などには使いません。
+
+ほとんどすべてのアプリケーションでは os.urandom() が望ましいです。
+
+バージョン 3.3 で追加.
+
+バージョン 3.6 で非推奨: OpenSSL は ssl.RAND_pseudo_bytes() を廃止しました。代わりに ssl.RAND_bytes() を使用してください。
+
+ssl.RAND_status()
+SSL 擬似乱数生成器が十分なランダム性(randomness)を受け取っている時に True を、それ以外の場合は False を返します。 ssl.RAND_egd() と ssl.RAND_add() を使って擬似乱数生成機にランダム性を加えることができます。
+
+ssl.RAND_egd(path)
+もしエントロピー収集デーモン(EGD=entropy-gathering daemon)が動いていて、 path がEGDへのソケットのパスだった場合、この関数はそのソケットから 256バイトのランダム性を読み込み、SSL擬似乱数生成器にそれを渡すことで、生成される暗号鍵のセキュリティを向上させることができます。これは、より良いランダム性のソースが無いシステムでのみ必要です。
+
+エントロピー収集デーモンについては、 http://egd.sourceforge.net/ や http://prngd.sourceforge.net/ を参照してください。
+
+Availability: not available with LibreSSL and OpenSSL > 1.1.0.
+
+ssl.RAND_add(bytes, entropy)
+与えられた bytes をSSL擬似乱数生成器に混ぜます。 entropy 引数(float値)は、その文字列に含まれるエントロピーの下限(lower bound)です。 (なので、いつでも 0.0 を使うことができます。) エントロピーのソースについてのより詳しい情報は、 RFC 1750 を参照してください。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+証明書の取り扱い
+ssl.match_hostname(cert, hostname)
+Verify that cert (in decoded format as returned by SSLSocket.getpeercert()) matches the given hostname. The rules applied are those for checking the identity of HTTPS servers as outlined in RFC 2818, RFC 5280 and RFC 6125. In addition to HTTPS, this function should be suitable for checking the identity of servers in various SSL-based protocols such as FTPS, IMAPS, POPS and others.
+
+失敗すれば CertificateError が送出されます。成功すれば、この関数は何も返しません:
+
+>>>
+>>> cert = {'subject': ((('commonName', 'example.com'),),)}
+>>> ssl.match_hostname(cert, "example.com")
+>>> ssl.match_hostname(cert, "example.org")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/home/py3k/Lib/ssl.py", line 130, in match_hostname
+ssl.CertificateError: hostname 'example.org' doesn't match 'example.com'
+バージョン 3.2 で追加.
+
+バージョン 3.3.3 で変更: この関数は RFC 6125 の section 6.4.3 に従うようになりましたので、マルチプルワイルドカード(例. *.*.com や *a*.example.org) にも国際化ドメイン名 (IDN=internationalized domain name)フラグメント内部に含まれるワイルドカードのどちらにも合致しません。 www*.xn--pthon-kva.org のような IDN A-labels はまだサポートしますが、 x*.python.org はもはや xn--tda.python.org には合致しません。
+
+バージョン 3.5 で変更: 認定書の subjectAltName フィールドで提示されている場合、IP アドレスの一致がサポートされるようになりました。
+
+バージョン 3.7 で変更: The function is no longer used to TLS connections. Hostname matching is now performed by OpenSSL.
+
+Allow wildcard when it is the leftmost and the only character in that segment. Partial wildcards like www*.example.com are no longer supported.
+
+バージョン 3.7 で非推奨.
+
+ssl.cert_time_to_seconds(cert_time)
+cert_time として証明書内の "notBefore" や "notAfter" の "%b %d %H:%M:%S %Y %Z" strptime フォーマット (C locale) 日付を渡すと、エポックからの積算秒を返します。
+
+例です。 :
+
+>>> import ssl
+>>> timestamp = ssl.cert_time_to_seconds("Jan  5 09:34:43 2018 GMT")
+>>> timestamp  
+1515144883
+>>> from datetime import datetime
+>>> print(datetime.utcfromtimestamp(timestamp))  
+2018-01-05 09:34:43
+"notBefore" や "notAfter" の日付には GMT を使わなければなりません(RFC 5280)。
+
+バージョン 3.5 で変更: 入力文字列に指定された 'GMT' タイムゾーンを UTC として解釈するようになりました。以前はローカルタイムで解釈していました。また、整数を返すようになりました(入力に含まれる秒の端数を含まない)。
+
+ssl.get_server_certificate(addr, ssl_version=PROTOCOL_TLS, ca_certs=None)
+Given the address addr of an SSL-protected server, as a (hostname, port-number) pair, fetches the server's certificate, and returns it as a PEM-encoded string. If ssl_version is specified, uses that version of the SSL protocol to attempt to connect to the server. If ca_certs is specified, it should be a file containing a list of root certificates, the same format as used for the same parameter in SSLContext.wrap_socket(). The call will attempt to validate the server certificate against that set of root certificates, and will fail if the validation attempt fails.
+
+バージョン 3.3 で変更: この関数はIPv6互換になりました。
+
+バージョン 3.5 で変更: ssl_version のデフォルトが、最近のサーバへの最大限の互換性のために PROTOCOL_SSLv3 から PROTOCOL_TLS に変更されました。
+
+ssl.DER_cert_to_PEM_cert(DER_cert_bytes)
+DERエンコードされたバイト列として与えられた証明書から、 PEMエンコードされたバージョンの同じ証明書を返します。
+
+ssl.PEM_cert_to_DER_cert(PEM_cert_string)
+PEM 形式のASCII文字列として与えられた証明書から、同じ証明書をDERエンコードしたバイト列を返します。
+
+ssl.get_default_verify_paths()
+OpenSSL デフォルトの cafile, capath を指すパスを名前付きタプルで返します。パスは SSLContext.set_default_verify_paths() で使われるものと同じです。戻り値は named tuple DefaultVerifyPaths です:
+
+cafile - cafile の解決済みパス、またはファイルが存在しない場合は None
+
+capath - capath の解決済みパス、またはディレクトリが存在しない場合は None
+
+openssl_cafile_env - cafile を指す OpenSSL の環境変数
+
+openssl_cafile - OpenSSL にハードコードされた cafile のパス
+
+openssl_capath_env - capath を指す OpenSSL の環境変数
+
+openssl_capath - OpenSSL にハードコードされた capath のパス
+
+Availability: LibreSSL ignores the environment vars openssl_cafile_env and openssl_capath_env.
+
+バージョン 3.4 で追加.
+
+ssl.enum_certificates(store_name)
+Windows のシステム証明書ストアより証明書を抽出します。 store_name は CA, ROOT, MY のうちどれか一つでしょう。Windows は追加の証明書ストアを提供しているかもしれません。
+
+この関数はタプル (cert_bytes, encoding_type, trust) のリストで返します。encoding_type は cert_bytes のエンコーディングを表します。X.509 ASN.1 に対する x509_asn か PKCS#7 ASN.1 データに対する pkcs_7_asn のいずれかです。trust は、証明書の目的を、OIDS を内容に持つ set として表すか、または証明書がすべての目的で信頼できるならば True です。
+
+以下はプログラム例です:
+
+>>>
+>>> ssl.enum_certificates("CA")
+[(b'data...', 'x509_asn', {'1.3.6.1.5.5.7.3.1', '1.3.6.1.5.5.7.3.2'}),
+ (b'data...', 'x509_asn', True)]
+利用可能な環境: Windows 。
+
+バージョン 3.4 で追加.
+
+ssl.enum_crls(store_name)
+Windows のシステム証明書ストアより CRLs を抽出します。 store_name は CA, ROOT, MY のうちどれか一つでしょう。Windows は追加の証明書ストアを提供しているかもしれません。
+
+この関数はタプル (cert_bytes, encoding_type, trust) のリストで返します。encoding_type は cert_bytes のエンコーディングを表します。X.509 ASN.1 に対する x509_asn か PKCS#7 ASN.1 データに対する pkcs_7_asn のいずれかです。
+
+利用可能な環境: Windows 。
+
+バージョン 3.4 で追加.
+
+ssl.wrap_socket(sock, keyfile=None, certfile=None, server_side=False, cert_reqs=CERT_NONE, ssl_version=PROTOCOL_TLS, ca_certs=None, do_handshake_on_connect=True, suppress_ragged_eofs=True, ciphers=None)
+socket.socket のインスタンス sock を受け取り、 socket.socket のサブタイプである ssl.SSLSocket のインスタンスを返します。 ssl.SSLSocket は低レイヤのソケットをSSLコンテキストでラップします。 sock は SOCK_STREAM ソケットでなければなりません; ほかのタイプのソケットはサポートされていません。
+
+Internally, function creates a SSLContext with protocol ssl_version and SSLContext.options set to cert_reqs. If parameters keyfile, certfile, ca_certs or ciphers are set, then the values are passed to SSLContext.load_cert_chain(), SSLContext.load_verify_locations(), and SSLContext.set_ciphers().
+
+The arguments server_side, do_handshake_on_connect, and suppress_ragged_eofs have the same meaning as SSLContext.wrap_socket().
+
+バージョン 3.7 で非推奨: Since Python 3.2 and 2.7.9, it is recommended to use the SSLContext.wrap_socket() instead of wrap_socket(). The top-level function is limited and creates an insecure client socket without server name indication or hostname matching.
+
+定数
+すべての定数が enum.IntEnum コレクションまたは enum.IntFlag コレクションになりました。
+
+バージョン 3.6 で追加.
+
+ssl.CERT_NONE
+Possible value for SSLContext.verify_mode, or the cert_reqs parameter to wrap_socket(). Except for PROTOCOL_TLS_CLIENT, it is the default mode. With client-side sockets, just about any cert is accepted. Validation errors, such as untrusted or expired cert, are ignored and do not abort the TLS/SSL handshake.
+
+In server mode, no certificate is requested from the client, so the client does not send any for client cert authentication.
+
+このドキュメントの下の方の、 セキュリティで考慮すべき点 に関する議論を参照してください。
+
+ssl.CERT_OPTIONAL
+Possible value for SSLContext.verify_mode, or the cert_reqs parameter to wrap_socket(). In client mode, CERT_OPTIONAL has the same meaning as CERT_REQUIRED. It is recommended to use CERT_REQUIRED for client-side sockets instead.
+
+In server mode, a client certificate request is sent to the client. The client may either ignore the request or send a certificate in order perform TLS client cert authentication. If the client chooses to send a certificate, it is verified. Any verification error immediately aborts the TLS handshake.
+
+この設定では、正当なCA証明書のセットを SSLContext.load_verify_locations() または wrap_socket() の ca_certs パラメータのどちらかに渡す必要があります。
+
+ssl.CERT_REQUIRED
+Possible value for SSLContext.verify_mode, or the cert_reqs parameter to wrap_socket(). In this mode, certificates are required from the other side of the socket connection; an SSLError will be raised if no certificate is provided, or if its validation fails. This mode is not sufficient to verify a certificate in client mode as it does not match hostnames. check_hostname must be enabled as well to verify the authenticity of a cert. PROTOCOL_TLS_CLIENT uses CERT_REQUIRED and enables check_hostname by default.
+
+With server socket, this mode provides mandatory TLS client cert authentication. A client certificate request is sent to the client and the client must provide a valid and trusted certificate.
+
+この設定では、正当なCA証明書のセットを SSLContext.load_verify_locations() または wrap_socket() の ca_certs パラメータのどちらかに渡す必要があります。
+
+class ssl.VerifyMode
+CERT_* 定数の enum.IntEnum コレクションです。
+
+バージョン 3.6 で追加.
+
+ssl.VERIFY_DEFAULT
+SSLContext.verify_flags に渡せる値です。このモードでは、証明書失効リスト(CRLs)はチェックされません。デフォルトでは OpenSSL は CRLs を必要ともしませんし検証にも使いません。
+
+バージョン 3.4 で追加.
+
+ssl.VERIFY_CRL_CHECK_LEAF
+Possible value for SSLContext.verify_flags. In this mode, only the peer cert is checked but none of the intermediate CA certificates. The mode requires a valid CRL that is signed by the peer cert's issuer (its direct ancestor CA). If no proper CRL has been loaded with SSLContext.load_verify_locations, validation will fail.
+
+バージョン 3.4 で追加.
+
+ssl.VERIFY_CRL_CHECK_CHAIN
+SSLContext.verify_flags に渡せる値です。このモードでは、接続先の証明書チェイン内のすべての証明書についての CRLs がチェックされます。
+
+バージョン 3.4 で追加.
+
+ssl.VERIFY_X509_STRICT
+SSLContext.verify_flags に渡せる値で、壊れた X.509 証明書に対するワークアラウンドを無効にします。
+
+バージョン 3.4 で追加.
+
+ssl.VERIFY_X509_TRUSTED_FIRST
+SSLContext.verify_flags に渡せる値です。OpenSSL に対し、証明書検証のために信頼チェインを構築する際、信頼できる証明書を選ぶように指示します。これはデフォルトで有効にされています。
+
+バージョン 3.4.4 で追加.
+
+class ssl.VerifyFlags
+VERIFY_* 定数の enum.IntFlag コレクションです。
+
+バージョン 3.6 で追加.
+
+ssl.PROTOCOL_TLS
+Selects the highest protocol version that both the client and server support. Despite the name, this option can select both "SSL" and "TLS" protocols.
+
+バージョン 3.6 で追加.
+
+ssl.PROTOCOL_TLS_CLIENT
+Auto-negotiate the highest protocol version like PROTOCOL_TLS, but only support client-side SSLSocket connections. The protocol enables CERT_REQUIRED and check_hostname by default.
+
+バージョン 3.6 で追加.
+
+ssl.PROTOCOL_TLS_SERVER
+Auto-negotiate the highest protocol version like PROTOCOL_TLS, but only support server-side SSLSocket connections.
+
+バージョン 3.6 で追加.
+
+ssl.PROTOCOL_SSLv23
+Alias for PROTOCOL_TLS.
+
+バージョン 3.6 で非推奨: 代わりに PROTOCOL_TLS を使用してください。
+
+ssl.PROTOCOL_SSLv2
+チャンネル暗号化プロトコルとして SSL バージョン2を選択します。
+
+このプロトコルは、 OpenSSL が OPENSSL_NO_SSL2 フラグが有効な状態でコンパイルされている場合には利用できません。
+
+警告 SSL version 2 は非セキュアです。このプロトコルは強く非推奨です。
+バージョン 3.6 で非推奨: OpenSSL は SSLv2 へのサポートを打切りました。
+
+ssl.PROTOCOL_SSLv3
+チャンネル暗号化プロトコルとしてSSLバージョン3を選択します。
+
+このプロトコルは、 OpenSSL が OPENSSL_NO_SSLv3 フラグが有効な状態でコンパイルされている場合には利用できません。
+
+警告 SSL version 3 は非セキュアです。このプロトコルは強く非推奨です。
+バージョン 3.6 で非推奨: OpenSSL は全てのバージョン固有のプロトコルを廃止しました。デフォルトプロトコルの PROTOCOL_TLS に OP_NO_SSLv3 などのフラグをつけて使用してください。
+
+ssl.PROTOCOL_TLSv1
+チャンネル暗号化プロトコルとしてTLSバージョン1.0を選択します。
+
+バージョン 3.6 で非推奨: OpenSSL は全てのバージョン固有のプロトコルを廃止しました。デフォルトプロトコルの PROTOCOL_TLS に OP_NO_SSLv3 などのフラグをつけて使用してください。
+
+ssl.PROTOCOL_TLSv1_1
+チャンネル暗号化プロトコルとしてTLSバージョン1.1を選択します。 openssl version 1.0.1+ のみで利用可能です。
+
+バージョン 3.4 で追加.
+
+バージョン 3.6 で非推奨: OpenSSL は全てのバージョン固有のプロトコルを廃止しました。デフォルトプロトコルの PROTOCOL_TLS に OP_NO_SSLv3 などのフラグをつけて使用してください。
+
+ssl.PROTOCOL_TLSv1_2
+チャンネル暗号化プロトコルとしてTLSバージョン1.2を選択します。これは最も現代的で、接続の両サイドが利用できる場合は、たぶん最も安全な選択肢です。 openssl version 1.0.1+ のみで利用可能です。
+
+バージョン 3.4 で追加.
+
+バージョン 3.6 で非推奨: OpenSSL は全てのバージョン固有のプロトコルを廃止しました。デフォルトプロトコルの PROTOCOL_TLS に OP_NO_SSLv3 などのフラグをつけて使用してください。
+
+ssl.OP_ALL
+相手にする SSL 実装のさまざまなバグを回避するためのワークアラウンドを有効にします。このオプションはデフォルトで有効です。これを有効にする場合 OpenSSL 用の同じ意味のフラグ SSL_OP_ALL をセットする必要はありません。
+
+バージョン 3.2 で追加.
+
+ssl.OP_NO_SSLv2
+SSLv2 接続が行われないようにします。このオプションは PROTOCOL_TLS と組み合わされている場合にのみ適用されます。ピアがプロトコルバージョンとして SSLv2 を選択しないようにします。
+
+バージョン 3.2 で追加.
+
+バージョン 3.6 で非推奨: SSLv2 は非推奨です
+
+ssl.OP_NO_SSLv3
+SSLv3 接続が行われないようにします。このオプションは PROTOCOL_TLS と組み合わされている場合にのみ適用されます。ピアがプロトコルバージョンとして SSLv3 を選択しないようにします。
+
+バージョン 3.2 で追加.
+
+バージョン 3.6 で非推奨: SSLv3 は非推奨です
+
+ssl.OP_NO_TLSv1
+TLSv1 接続が行われないようにします。このオプションは PROTOCOL_TLS と組み合わされている場合にのみ適用されます。ピアがプロトコルバージョンとして TLSv1 を選択しないようにします。
+
+バージョン 3.2 で追加.
+
+バージョン 3.7 で非推奨: The option is deprecated since OpenSSL 1.1.0, use the new SSLContext.minimum_version and SSLContext.maximum_version instead.
+
+ssl.OP_NO_TLSv1_1
+TLSv1.1 接続が行われないようにします。このオプションは PROTOCOL_TLS と組み合わされている場合にのみ適用されます。ピアがプロトコルバージョンとして TLSv1.1 を選択しないようにします。openssl バージョン 1.0.1 以降でのみ利用できます。
+
+バージョン 3.4 で追加.
+
+バージョン 3.7 で非推奨: The option is deprecated since OpenSSL 1.1.0.
+
+ssl.OP_NO_TLSv1_2
+TLSv1.2 接続が行われないようにします。このオプションは PROTOCOL_TLS と組み合わされている場合にのみ適用されます。ピアがプロトコルバージョンとして TLSv1.2 を選択しないようにします。openssl バージョン 1.0.1 以降でのみ利用できます。
+
+バージョン 3.4 で追加.
+
+バージョン 3.7 で非推奨: The option is deprecated since OpenSSL 1.1.0.
+
+ssl.OP_NO_TLSv1_3
+Prevents a TLSv1.3 connection. This option is only applicable in conjunction with PROTOCOL_TLS. It prevents the peers from choosing TLSv1.3 as the protocol version. TLS 1.3 is available with OpenSSL 1.1.1 or later. When Python has been compiled against an older version of OpenSSL, the flag defaults to 0.
+
+バージョン 3.7 で追加.
+
+バージョン 3.7 で非推奨: The option is deprecated since OpenSSL 1.1.0. It was added to 2.7.15, 3.6.3 and 3.7.0 for backwards compatibility with OpenSSL 1.0.2.
+
+ssl.OP_NO_RENEGOTIATION
+Disable all renegotiation in TLSv1.2 and earlier. Do not send HelloRequest messages, and ignore renegotiation requests via ClientHello.
+
+This option is only available with OpenSSL 1.1.0h and later.
+
+バージョン 3.7 で追加.
+
+ssl.OP_CIPHER_SERVER_PREFERENCE
+暗号の優先順位として、クライアントのものではなくサーバのものを使います。このオプションはクライアントソケットと SSLv2 のサーバソケットでは効果はありません。
+
+バージョン 3.3 で追加.
+
+ssl.OP_SINGLE_DH_USE
+SSL セッションを区別するのに同じ DH 鍵を再利用しないようにします。これはセキュリティを向上させますが、より多くの計算機リソースを必要とします。このオプションはサーバソケットに適用されます。
+
+バージョン 3.3 で追加.
+
+ssl.OP_SINGLE_ECDH_USE
+SSL セッションを区別するのに同じ ECDH 鍵を再利用しないようにします。これはセキュリティを向上させますが、より多くの計算機リソースを必要とします。このオプションはサーバソケットに適用されます。
+
+バージョン 3.3 で追加.
+
+ssl.OP_ENABLE_MIDDLEBOX_COMPAT
+Send dummy Change Cipher Spec (CCS) messages in TLS 1.3 handshake to make a TLS 1.3 connection look more like a TLS 1.2 connection.
+
+This option is only available with OpenSSL 1.1.1 and later.
+
+バージョン 3.8 で追加.
+
+ssl.OP_NO_COMPRESSION
+SSL チャネルでの圧縮を無効にします。これはアプリケーションのプロトコルが自身の圧縮方法をサポートする場合に有用です。
+
+このオプションは OpenSSL 1.0.0以降のみで使用できます。
+
+バージョン 3.3 で追加.
+
+class ssl.Options
+OP_* 定数の enum.IntFlag コレクションです。
+
+ssl.OP_NO_TICKET
+クライアントサイドがセッションチケットをリクエストしないようにします。
+
+バージョン 3.6 で追加.
+
+ssl.HAS_ALPN
+OpenSSL ライブラリが、組み込みで RFC 7301 で記述されている Application-Layer Protocol Negotiation TLS 拡張をサポートしているかどうか。
+
+バージョン 3.5 で追加.
+
+ssl.HAS_NEVER_CHECK_COMMON_NAME
+Whether the OpenSSL library has built-in support not checking subject common name and SSLContext.hostname_checks_common_name is writeable.
+
+バージョン 3.7 で追加.
+
+ssl.HAS_ECDH
+Whether the OpenSSL library has built-in support for the Elliptic Curve-based Diffie-Hellman key exchange. This should be true unless the feature was explicitly disabled by the distributor.
+
+バージョン 3.3 で追加.
+
+ssl.HAS_SNI
+Whether the OpenSSL library has built-in support for the Server Name Indication extension (as defined in RFC 6066).
+
+バージョン 3.2 で追加.
+
+ssl.HAS_NPN
+Whether the OpenSSL library has built-in support for the Next Protocol Negotiation as described in the Application Layer Protocol Negotiation. When true, you can use the SSLContext.set_npn_protocols() method to advertise which protocols you want to support.
+
+バージョン 3.3 で追加.
+
+ssl.HAS_SSLv2
+Whether the OpenSSL library has built-in support for the SSL 2.0 protocol.
+
+バージョン 3.7 で追加.
+
+ssl.HAS_SSLv3
+Whether the OpenSSL library has built-in support for the SSL 3.0 protocol.
+
+バージョン 3.7 で追加.
+
+ssl.HAS_TLSv1
+Whether the OpenSSL library has built-in support for the TLS 1.0 protocol.
+
+バージョン 3.7 で追加.
+
+ssl.HAS_TLSv1_1
+Whether the OpenSSL library has built-in support for the TLS 1.1 protocol.
+
+バージョン 3.7 で追加.
+
+ssl.HAS_TLSv1_2
+Whether the OpenSSL library has built-in support for the TLS 1.2 protocol.
+
+バージョン 3.7 で追加.
+
+ssl.HAS_TLSv1_3
+Whether the OpenSSL library has built-in support for the TLS 1.3 protocol.
+
+バージョン 3.7 で追加.
+
+ssl.CHANNEL_BINDING_TYPES
+サポートされている TLS のチャネルバインディングのタイプのリスト。リスト内の文字列は SSLSocket.get_channel_binding() の引数に渡せます。
+
+バージョン 3.3 で追加.
+
+ssl.OPENSSL_VERSION
+インタプリタによってロードされた OpenSSL ライブラリのバージョン文字列:
+
+>>>
+>>> ssl.OPENSSL_VERSION
+'OpenSSL 1.0.2k  26 Jan 2017'
+バージョン 3.2 で追加.
+
+ssl.OPENSSL_VERSION_INFO
+OpenSSL ライブラリのバージョン情報を表す5つの整数のタプル:
+
+>>>
+>>> ssl.OPENSSL_VERSION_INFO
+(1, 0, 2, 11, 15)
+バージョン 3.2 で追加.
+
+ssl.OPENSSL_VERSION_NUMBER
+1つの整数の形式の、 OpenSSL ライブラリの生のバージョン番号:
+
+>>>
+>>> ssl.OPENSSL_VERSION_NUMBER
+268443839
+>>> hex(ssl.OPENSSL_VERSION_NUMBER)
+'0x100020bf'
+バージョン 3.2 で追加.
+
+ssl.ALERT_DESCRIPTION_HANDSHAKE_FAILURE
+ssl.ALERT_DESCRIPTION_INTERNAL_ERROR
+ALERT_DESCRIPTION_*
+RFC 5246 その他からのアラートの種類です。 IANA TLS Alert Registry にはこのリストとその意味が定義された RFC へのリファレンスが含まれています。
+
+SSLContext.set_servername_callback() でのコールバック関数の戻り値として使われます。
+
+バージョン 3.4 で追加.
+
+class ssl.AlertDescription
+ALERT_DESCRIPTION_* 定数の enum.IntEnum コレクションです。
+
+バージョン 3.6 で追加.
+
+Purpose.SERVER_AUTH
+create_default_context() と SSLContext.load_default_certs() に渡すオプションです。この値はコンテキストが Web サーバの認証に使われることを示します (ですので、クライアントサイドのソケットを作るのに使うことになるでしょう)。
+
+バージョン 3.4 で追加.
+
+Purpose.CLIENT_AUTH
+create_default_context() と SSLContext.load_default_certs() に渡すオプションです。この値はコンテキストが Web クライアントの認証に使われることを示します (ですので、サーバサイドのソケットを作るのに使うことになるでしょう)。
+
+バージョン 3.4 で追加.
+
+class ssl.SSLErrorNumber
+SSL_ERROR_* 定数の enum.IntEnum コレクションです。
+
+バージョン 3.6 で追加.
+
+class ssl.TLSVersion
+enum.IntEnum collection of SSL and TLS versions for SSLContext.maximum_version and SSLContext.minimum_version.
+
+バージョン 3.7 で追加.
+
+TLSVersion.MINIMUM_SUPPORTED
+TLSVersion.MAXIMUM_SUPPORTED
+The minimum or maximum supported SSL or TLS version. These are magic constants. Their values don't reflect the lowest and highest available TLS/SSL versions.
+
+TLSVersion.SSLv3
+TLSVersion.TLSv1
+TLSVersion.TLSv1_1
+TLSVersion.TLSv1_2
+TLSVersion.TLSv1_3
+SSL 3.0 to TLS 1.3.
+
+SSL ソケット
+class ssl.SSLSocket(socket.socket)
+SSL ソケットは socket オブジェクト の以下のメソッドを提供します:
+
+accept()
+
+bind()
+
+close()
+
+connect()
+
+detach()
+
+fileno()
+
+getpeername(), getsockname()
+
+getsockopt(), setsockopt()
+
+gettimeout(), settimeout(), setblocking()
+
+listen()
+
+makefile()
+
+recv(), recv_into() (非ゼロの flags は渡せません)
+
+send(), sendall() (非ゼロの flags は渡せません)
+
+sendfile() (ただし、 os.sendfile は平文ソケットにのみ使用されます。それ以外の場合には、 send() が使用されます。)
+
+shutdown()
+
+SSL(およびTLS)プロトコルは TCP の上に独自の枠組みを持っているので、SSLソケットの抽象化は、いくつかの点で通常の OSレベルのソケットの仕様から逸脱することがあります。特に ノンブロッキングソケットについての注釈 を参照してください。
+
+Instances of SSLSocket must be created using the SSLContext.wrap_socket() method.
+
+バージョン 3.5 で変更: sendfile() メソッドが追加されました。
+
+バージョン 3.5 で変更: shutdown() は、バイトが送受信されるたびにソケットのタイムアウトをリセットしません。ソケットのタイムアウトは、シャットダウンの最大合計時間になりました。
+
+バージョン 3.6 で非推奨: SSLSocket インスタンスを直接作成することは非推奨です。ソケットをラップするために SSLContext.wrap_socket() を使用してください。
+
+バージョン 3.7 で変更: SSLSocket instances must to created with wrap_socket(). In earlier versions, it was possible to create instances directly. This was never documented or officially supported.
+
+SSL ソケットには、以下に示す追加のメソッドと属性もあります:
+
+SSLSocket.read(len=1024, buffer=None)
+SSL ソケットからデータの len バイトまでを読み出し、読み出した結果を bytes インスタンスで返します。 buffer を指定すると、結果は代わりに buffer に読み込まれ、読み込んだバイト数を返します。
+
+ソケットが non-blocking で読み出しがブロックすると、 SSLWantReadError もしくは SSLWantWriteError が送出されます。
+
+再ネゴシエーションがいつでも可能なので、 read() の呼び出しは書き込み操作も引き起こしえます。
+
+バージョン 3.5 で変更: ソケットのタイムアウトは、バイトが送受信されるたびにリセットされません。ソケットのタイムアウトは、最大 len バイトを読むのにかかる最大合計時間になりました。
+
+バージョン 3.6 で非推奨: read() の代わりに recv() を使用してください。
+
+SSLSocket.write(buf)
+buf を SSL ソケットに書き込み、書き込んだバイト数を返します。 buf 引数はバッファインターフェイスをサポートするオブジェクトでなければなりません。
+
+ソケットが non-blocking で書き込みがブロックすると、 SSLWantReadError もしくは SSLWantWriteError が送出されます。
+
+再ネゴシエーションがいつでも可能なので、 write() の呼び出しは読み出し操作も引き起こしえます。
+
+バージョン 3.5 で変更: ソケットのタイムアウトは、バイトが送受信されるたびにリセットされません。ソケットのタイムアウトは、buf を書き込むのにかかる最大合計時間になりました。
+
+バージョン 3.6 で非推奨: write() の代わりに send() を使用してください。
+
+注釈 read(), write() メソッドは下位レベルのメソッドであり、暗号化されていないアプリケーションレベルのデータを読み書きし、それを復号/暗号化して暗号化された書き込みレベルのデータにします。これらのメソッドはアクティブな SSL 接続つまり、ハンドシェイクが完了していて、 SSLSocket.unwrap() が呼ばれていないことを必要とします。
+通常はこれらのメソッドの代わりに recv() や send() のようなソケット API メソッドを使うべきです。
+
+SSLSocket.do_handshake()
+SSL セットアップのハンドシェイクを実行します。
+
+バージョン 3.4 で変更: ソケットの context の属性 check_hostname が真の場合に、ハンドシェイクメソッドが match_hostname() を実行するようになりました。
+
+バージョン 3.5 で変更: ソケットのタイムアウトは、バイトが送受信されるたびにリセットされません。ソケットのタイムアウトは、ハンドシェイクにかかる最大合計時間になりました。
+
+バージョン 3.7 で変更: Hostname or IP address is matched by OpenSSL during handshake. The function match_hostname() is no longer used. In case OpenSSL refuses a hostname or IP address, the handshake is aborted early and a TLS alert message is send to the peer.
+
+SSLSocket.getpeercert(binary_form=False)
+接続先に証明書が無い場合、 None を返します。SSL ハンドシェイクがまだ行われていない場合は、 ValueError が送出されます。
+
+binary_form が False で接続先から証明書を取得した場合、このメソッドは dict のインスタンスを返します。証明書が認証されていない場合、辞書は空です。証明書が認証されていた場合いくつかのキーを持った辞書を返し、 subject (証明書が発行された principal), issuer (証明書を発行した principal) を含みます。証明書が Subject Alternative Name 拡張(RFC 3280 を参照)のインスタンスを格納していた場合、 subjectAltName キーも辞書に含まれます。
+
+subject, issuer フィールドは、証明書のそれぞれのフィールドについてのデータ構造で与えられる RDN (relative distinguishued name) のシーケンスを格納したタプルで、各 RDN は name-value ペアのシーケンスです。現実世界での例をお見せします:
+
+{'issuer': ((('countryName', 'IL'),),
+            (('organizationName', 'StartCom Ltd.'),),
+            (('organizationalUnitName',
+              'Secure Digital Certificate Signing'),),
+            (('commonName',
+              'StartCom Class 2 Primary Intermediate Server CA'),)),
+ 'notAfter': 'Nov 22 08:15:19 2013 GMT',
+ 'notBefore': 'Nov 21 03:09:52 2011 GMT',
+ 'serialNumber': '95F0',
+ 'subject': ((('description', '571208-SLe257oHY9fVQ07Z'),),
+             (('countryName', 'US'),),
+             (('stateOrProvinceName', 'California'),),
+             (('localityName', 'San Francisco'),),
+             (('organizationName', 'Electronic Frontier Foundation, Inc.'),),
+             (('commonName', '*.eff.org'),),
+             (('emailAddress', 'hostmaster@eff.org'),)),
+ 'subjectAltName': (('DNS', '*.eff.org'), ('DNS', 'eff.org')),
+ 'version': 3}
+注釈 特定のサービスのために証明書の検証がしたければ、 match_hostname() 関数を使うことができます。
+binary_form 引数が True だった場合、証明書が渡されていればこのメソッドはDERエンコードされた証明書全体をバイト列として返し、接続先が証明書を提示しなかった場合は None を返します。接続先が証明書を提供するかどうかは SSL ソケットの役割に依存します:
+
+クライアント SSL ソケットでは、認証が要求されているかどうかに関わらず、サーバは常に証明書を提供します。
+
+サーバ SSL ソケットでは、クライアントはサーバによって認証が要求されている場合にのみ証明書を提供します。したがって、 (CERT_OPTIONAL や CERT_REQUIRED ではなく) CERT_NONE を使用した場合 getpeercert() は None を返します。
+
+バージョン 3.2 で変更: 返される辞書に issuer, notBefore のような追加アイテムを含むようになりました。
+
+バージョン 3.4 で変更: ハンドシェイクが済んでいなければ ValueError を投げるようになりました。返される辞書に crlDistributionPoints, caIssuers, OCSP URI のような X509v3 拡張アイテムを含むようになりました。
+
+バージョン 3.9 で変更: IPv6 address strings no longer have a trailing new line.
+
+SSLSocket.cipher()
+利用されている暗号の名前、その暗号の利用を定義しているSSLプロトコルのバージョン、利用されている鍵のbit長の3つの値を含むタプルを返します。もし接続が確立されていない場合、 None を返します。
+
+SSLSocket.shared_ciphers()
+ハンドシェイク中にクライアントにより共有される暗号方式のリストを返します。返されるリストの各要素は 3つの値を含むタプルで、その値はそれぞれ、暗号方式の名前、その暗号の利用を定義している SSL プロトコルのバージョン、暗号で使用される秘密鍵のビット長です。接続が確立されていないか、ソケットがクライアントソケットである場合、meth:~SSLSocket.shared_ciphers は None を返します。
+
+バージョン 3.5 で追加.
+
+SSLSocket.compression()
+使われている圧縮アルゴリズムを文字列で返します。接続が圧縮されていなければ None を返します。
+
+上位レベルのプロトコルが自身で圧縮メカニズムをサポートする場合、SSL レベルでの圧縮を OP_NO_COMPRESSION を使って無効にできます。
+
+バージョン 3.3 で追加.
+
+SSLSocket.get_channel_binding(cb_type="tls-unique")
+現在の接続におけるチャネルバインディングのデータを取得します。未接続あるいはハンドシェイクが完了していなければ None を返します。
+
+cb_type パラメータにより、望みのチャネルバインディングのタイプを選択できます。チャネルバインディングのタイプの妥当なものは CHANNEL_BINDING_TYPES でリストされています。現在のところは RFC 5929 で定義されている 'tls-unique' のみがサポートされています。未サポートのチャネルバインディングのタイプが要求された場合、 ValueError を送出します。
+
+バージョン 3.3 で追加.
+
+SSLSocket.selected_alpn_protocol()
+TLS ハンドシェイクで選択されたプロトコルを返します。 SSLContext.set_alpn_protocols() が呼ばれていない場合、相手側が ALPN をサポートしていない場合、クライアントが提案したプロトコルのどれもソケットがサポートしない場合、あるいはハンドシェイクがまだ行われていない場合には、 None が返されます。
+
+バージョン 3.5 で追加.
+
+SSLSocket.selected_npn_protocol()
+TLS/SSL ハンドシェイクで選択された上位レベルのプロトコルを返します。 SSLContext.set_npn_protocols() が呼ばれていない場合、相手側が NPN をサポートしていない場合、あるいはハンドシェイクがまだ行われていない場合には、 None が返されます。
+
+バージョン 3.3 で追加.
+
+SSLSocket.unwrap()
+SSLシャットダウンハンドシェイクを実行します。これは下位レイヤーのソケットからTLSレイヤーを取り除き、下位レイヤーのソケットオブジェクトを返します。これは暗号化されたオペレーションから暗号化されていない接続に移行するときに利用されます。以降の通信には、オリジナルのソケットではなくこのメソッドが返したソケットのみを利用するべきです。
+
+SSLSocket.verify_client_post_handshake()
+Requests post-handshake authentication (PHA) from a TLS 1.3 client. PHA can only be initiated for a TLS 1.3 connection from a server-side socket, after the initial TLS handshake and with PHA enabled on both sides, see SSLContext.post_handshake_auth.
+
+The method does not perform a cert exchange immediately. The server-side sends a CertificateRequest during the next write event and expects the client to respond with a certificate on the next read event.
+
+If any precondition isn't met (e.g. not TLS 1.3, PHA not enabled), an SSLError is raised.
+
+注釈 Only available with OpenSSL 1.1.1 and TLS 1.3 enabled. Without TLS 1.3 support, the method raises NotImplementedError.
+バージョン 3.8 で追加.
+
+SSLSocket.version()
+コネクションによって実際にネゴシエイトされた SSL プロトコルバージョンを文字列で、または、セキュアなコネクションが確立していなければ None を返します。これを書いている時点では、 "SSLv2", "SSLv3", "TLSv1", "TLSv1.1", "TLSv1.2" などが返ります。最新の OpenSSL はもっと色々な値を定義しているかもしれません。
+
+バージョン 3.5 で追加.
+
+SSLSocket.pending()
+接続において既に復号済みで読み出し可能で保留になっているバイト列の数を返します。
+
+SSLSocket.context
+The SSLContext object this SSL socket is tied to. If the SSL socket was created using the deprecated wrap_socket() function (rather than SSLContext.wrap_socket()), this is a custom context object created for this SSL socket.
+
+バージョン 3.2 で追加.
+
+SSLSocket.server_side
+サーバサイドのソケットに対して True 、クライアントサイドのソケットに対して False となる真偽値です。
+
+バージョン 3.2 で追加.
+
+SSLSocket.server_hostname
+サーバのホスト名: str 型、またはサーバサイドのソケットの場合とコンストラクタで hostname が指定されなかった場合は None
+
+バージョン 3.2 で追加.
+
+バージョン 3.7 で変更: The attribute is now always ASCII text. When server_hostname is an internationalized domain name (IDN), this attribute now stores the A-label form ("xn--pythn-mua.org"), rather than the U-label form ("pythön.org").
+
+SSLSocket.session
+この SSL 接続に対する SSLSession です。このセッションは、TLS ハンドシェイクの実行後、クライアントサイドとサーバサイドのソケットで使用できます。クライアントソケットでは、このセッションを do_handshake() が呼ばれる前に設定して、セッションを再利用できます。
+
+バージョン 3.6 で追加.
+
+SSLSocket.session_reused
+バージョン 3.6 で追加.
+
+SSL コンテキスト
+バージョン 3.2 で追加.
+
+SSL コンテキストは、SSL 構成オプション、証明書(群)や秘密鍵(群)などのような、一回の SSL 接続よりも長生きするさまざまなデータを保持します。これはサーバサイドソケットの SSL セッションのキャッシュも管理し、同じクライアントからの繰り返しの接続時の速度向上に一役買います。
+
+class ssl.SSLContext(protocol=PROTOCOL_TLS)
+Create a new SSL context. You may pass protocol which must be one of the PROTOCOL_* constants defined in this module. The parameter specifies which version of the SSL protocol to use. Typically, the server chooses a particular protocol version, and the client must adapt to the server's choice. Most of the versions are not interoperable with the other versions. If not specified, the default is PROTOCOL_TLS; it provides the most compatibility with other versions.
+
+次のテーブルは、どのクライアントのバージョンがどのサーバのバージョンに接続できるかを示しています:
+
+client / server
+
+SSLv2
+
+SSLv3
+
+TLS 3
+
+TLSv1
+
+TLSv1.1
+
+TLSv1.2
+
+SSLv2
+
+yes
+
+no
+
+no 1
+
+no
+
+no
+
+no
+
+SSLv3
+
+no
+
+yes
+
+no 2
+
+no
+
+no
+
+no
+
+TLS (SSLv23) 3
+
+no 1
+
+no 2
+
+yes
+
+yes
+
+yes
+
+yes
+
+TLSv1
+
+no
+
+no
+
+yes
+
+yes
+
+no
+
+no
+
+TLSv1.1
+
+no
+
+no
+
+yes
+
+no
+
+yes
+
+no
+
+TLSv1.2
+
+no
+
+no
+
+yes
+
+no
+
+no
+
+yes
+
+脚注
+
+1(1,2)
+SSLContext では、デフォルトで OP_NO_SSLv2 によりSSLv2 が無効になっています。
+
+2(1,2)
+SSLContext では、デフォルトで OP_NO_SSLv3 により SSLv3 が無効になっています。
+
+3(1,2)
+TLS 1.3 protocol will be available with PROTOCOL_TLS in OpenSSL >= 1.1.1. There is no dedicated PROTOCOL constant for just TLS 1.3.
+
+参考 create_default_context() は ssl モジュールに、目的に合ったセキュリティ設定を選ばせます。
+バージョン 3.6 で変更: このコンテキストは、安全性の高いデフォルト値で作成されます。デフォルト設定されるオプションは、 OP_NO_COMPRESSION, OP_CIPHER_SERVER_PREFERENCE, OP_SINGLE_DH_USE, OP_SINGLE_ECDH_USE, OP_NO_SSLv2 (PROTOCOL_SSLv2 以外), OP_NO_SSLv3 (PROTOCOL_SSLv3 以外) です。初期の暗号方式スイートリストには HIGH 暗号のみが含まれており、 NULL 暗号および MD5 暗号は含まれません (PROTOCOL_SSLv2 以外)。
+
+SSLContext オブジェクトは以下のメソッドと属性を持っています:
+
+SSLContext.cert_store_stats()
+ロードされた X.509 証明書の数、CA 証明書で活性の X.509 証明書の数、証明書失効リストの数、についての統計情報を辞書として取得します。
+
+一つの CA と他の一つの証明書を持ったコンテキストでの例です:
+
+>>>
+>>> context.cert_store_stats()
+{'crl': 0, 'x509_ca': 1, 'x509': 2}
+バージョン 3.4 で追加.
+
+SSLContext.load_cert_chain(certfile, keyfile=None, password=None)
+秘密鍵と対応する証明書をロードします。 certfile は、証明書と、証明書認証で必要とされる任意の数の CA 証明書を含む、PEM フォーマットの単一ファイルへのパスでなければなりません。 keyfile 文字列を指定する場合、秘密鍵が含まれるファイルを指すものでなければなりません。指定しない場合、秘密鍵も certfile から取得されます。 certfile への証明書の格納についての詳細は、 証明書 の議論を参照してください。
+
+password 引数に、秘密鍵を復号するためのパスワードを返す関数を与えることができます。その関数は秘密鍵が暗号化されていて、なおかつパスワードが必要な場合にのみ呼び出されます。その関数は引数なしで呼び出され、string, bytes, または bytearray を返さなければなりません。戻り値が string の場合は鍵を復号化するのに使う前に UTF-8 でエンコードされます。string の代わりに bytes や bytearray を返した場合は password 引数に直接供給されます。秘密鍵が暗号化されていなかったりパスワードを必要としない場合は、指定は無視されます。
+
+password が与えられず、そしてパスワードが必要な場合には、OpenSSL 組み込みのパスワード問い合わせメカニズムが、ユーザに対話的にパスワードを問い合わせます。
+
+秘密鍵が証明書に合致しなければ、 SSLError が送出されます。
+
+バージョン 3.3 で変更: 新しいオプション引数 password。
+
+SSLContext.load_default_certs(purpose=Purpose.SERVER_AUTH)
+デフォルトの場所から "認証局" (CA=certification authority) 証明書ファイル一式をロードします。Windows では、CA 証明書はシステム記憶域の CA と ROOT からロードします。それ以外のシステムでは、この関数は SSLContext.set_default_verify_paths() を呼び出します。将来的にはこのメソッドは、他の場所からも CA 証明書をロードするかもしれません。
+
+purpose フラグでどの種類の CA 証明書をロードするかを指定します。デフォルトの Purpose.SERVER_AUTH は TLS web サーバの認証のために活性かつ信頼された証明書をロードします(クライアントサイドのソケット)。 Purpose.CLIENT_AUTH はクライアント証明書の正当性検証をサーバサイドで行うための CA 証明書をロードします。
+
+バージョン 3.4 で追加.
+
+SSLContext.load_verify_locations(cafile=None, capath=None, cadata=None)
+verify_mode が CERT_NONE でない場合に接続先の証明書ファイルの正当性検証に使われる "認証局" (CA=certification authority) 証明書ファイル一式をロードします。少なくとも cafile か capath のどちらかは指定しなければなりません。
+
+このメソッドは PEM または DER フォーマットの証明書失効リスト (CRLs=certification revocation lists)もロードできます。CRLs のために使うには、 SSLContext.verify_flags を適切に設定しなければなりません。
+
+cafile を指定する場合は、PEM フォーマットで CA 証明書が結合されたファイルへのパスを指定してください。このファイル内で証明書をどのように編成すれば良いのかについての詳しい情報については、 証明書 の議論を参照してください。
+
+The capath string, if present, is the path to a directory containing several CA certificates in PEM format, following an OpenSSL specific layout.
+
+cadata オブジェクトを指定する場合は、PEM エンコードの証明書一つ以上の ASCII 文字列か、DER エンコードの証明書の bytes-like object オブジェクトのどちらかを指定してください。PEM エンコードの証明書の周囲の余分な行は無視されますが、少なくとも一つの証明書が含まれている必要があります。
+
+バージョン 3.4 で変更: 新しいオプション引数 cadata 。
+
+SSLContext.get_ca_certs(binary_form=False)
+ロードされた "認証局" (CA=certification authority) 証明書のリストを取得します。 binary_form 引数が False である場合、リストのそれぞれのエントリは SSLSocket.getpeercert() が出力するような辞書になります。True である場合、このメソッドは、DER エンコード形式の証明書のリストを返します。返却されるリストには、 SSL 接続によって証明書がリクエストおよびロードされない限り、 capath からの証明書は含まれません。
+
+注釈 capath ディレクトリ内の証明書は一度でも使われない限りはロードされません。
+バージョン 3.4 で追加.
+
+SSLContext.get_ciphers()
+有効な暗号化のリストを取得します。リストは暗号化優先度順に並びます。SSLContext.set_ciphers() を参照してください。
+
+以下はプログラム例です:
+
+>>>
+>>> ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+>>> ctx.set_ciphers('ECDHE+AESGCM:!ECDSA')
+>>> ctx.get_ciphers()  # OpenSSL 1.0.x
+[{'alg_bits': 256,
+  'description': 'ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2 Kx=ECDH     Au=RSA  '
+                 'Enc=AESGCM(256) Mac=AEAD',
+  'id': 50380848,
+  'name': 'ECDHE-RSA-AES256-GCM-SHA384',
+  'protocol': 'TLSv1/SSLv3',
+  'strength_bits': 256},
+ {'alg_bits': 128,
+  'description': 'ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 Kx=ECDH     Au=RSA  '
+                 'Enc=AESGCM(128) Mac=AEAD',
+  'id': 50380847,
+  'name': 'ECDHE-RSA-AES128-GCM-SHA256',
+  'protocol': 'TLSv1/SSLv3',
+  'strength_bits': 128}]
+OpenSSL 1.1 以降では、暗号化辞書に以下のフィールドが追加されました。
+
+>>>
+>>> ctx.get_ciphers()  # OpenSSL 1.1+
+[{'aead': True,
+  'alg_bits': 256,
+  'auth': 'auth-rsa',
+  'description': 'ECDHE-RSA-AES256-GCM-SHA384 TLSv1.2 Kx=ECDH     Au=RSA  '
+                 'Enc=AESGCM(256) Mac=AEAD',
+  'digest': None,
+  'id': 50380848,
+  'kea': 'kx-ecdhe',
+  'name': 'ECDHE-RSA-AES256-GCM-SHA384',
+  'protocol': 'TLSv1.2',
+  'strength_bits': 256,
+  'symmetric': 'aes-256-gcm'},
+ {'aead': True,
+  'alg_bits': 128,
+  'auth': 'auth-rsa',
+  'description': 'ECDHE-RSA-AES128-GCM-SHA256 TLSv1.2 Kx=ECDH     Au=RSA  '
+                 'Enc=AESGCM(128) Mac=AEAD',
+  'digest': None,
+  'id': 50380847,
+  'kea': 'kx-ecdhe',
+  'name': 'ECDHE-RSA-AES128-GCM-SHA256',
+  'protocol': 'TLSv1.2',
+  'strength_bits': 128,
+  'symmetric': 'aes-128-gcm'}]
+Availability: OpenSSL 1.0.2+.
+
+バージョン 3.6 で追加.
+
+SSLContext.set_default_verify_paths()
+デフォルトの "認証局" (CA=certification authority) 証明書を、OpenSSL ライブラリがビルドされた際に定義されたファイルシステム上のパスからロードします。残念ながらこのメソッドが成功したかどうかを知るための簡単な方法はありません: 証明書が見つからなくてもエラーは返りません。OpenSSL ライブラリがオペレーティングシステムの一部として提供されている際にはどうやら適切に構成できるようですが。
+
+SSLContext.set_ciphers(ciphers)
+Set the available ciphers for sockets created with this context. It should be a string in the OpenSSL cipher list format. If no cipher can be selected (because compile-time options or other configuration forbids use of all the specified ciphers), an SSLError will be raised.
+
+注釈 接続時に SSL ソケットの SSLSocket.cipher() メソッドが、現在選択されているその暗号を使います。
+OpenSSL 1.1.1 has TLS 1.3 cipher suites enabled by default. The suites cannot be disabled with set_ciphers().
+
+SSLContext.set_alpn_protocols(protocols)
+SSL/TLS ハンドシェイク時にソケットが提示すべきプロトコルを指定します。 ['http/1.1', 'spdy/2'] のような推奨順に並べた ASCII 文字列のリストでなければなりません。プロトコルの選択は RFC 7301 に従いハンドシェイク中に行われます。ハンドシェイクが正常に終了した後、 SSLSocket.selected_alpn_protocol() メソッドは合意されたプロトコルを返します。
+
+This method will raise NotImplementedError if HAS_ALPN is False.
+
+OpenSSL 1.1.0 to 1.1.0e will abort the handshake and raise SSLError when both sides support ALPN but cannot agree on a protocol. 1.1.0f+ behaves like 1.0.2, SSLSocket.selected_alpn_protocol() returns None.
+
+バージョン 3.5 で追加.
+
+SSLContext.set_npn_protocols(protocols)
+Specify which protocols the socket should advertise during the SSL/TLS handshake. It should be a list of strings, like ['http/1.1', 'spdy/2'], ordered by preference. The selection of a protocol will happen during the handshake, and will play out according to the Application Layer Protocol Negotiation. After a successful handshake, the SSLSocket.selected_npn_protocol() method will return the agreed-upon protocol.
+
+This method will raise NotImplementedError if HAS_NPN is False.
+
+バージョン 3.3 で追加.
+
+SSLContext.sni_callback
+TLS クライアントがサーバ名表示を指定した際の、SSL/TLS サーバによって TLS Client Hello ハンドシェイクメッセージが受け取られたあとで呼び出されるコールバック関数を登録します。サーバ名表示メカニズムは RFC 6066 セクション 3 - Server Name Indication で述べられています。
+
+Only one callback can be set per SSLContext. If sni_callback is set to None then the callback is disabled. Calling this function a subsequent time will disable the previously registered callback.
+
+The callback function will be called with three arguments; the first being the ssl.SSLSocket, the second is a string that represents the server name that the client is intending to communicate (or None if the TLS Client Hello does not contain a server name) and the third argument is the original SSLContext. The server name argument is text. For internationalized domain name, the server name is an IDN A-label ("xn--pythn-mua.org").
+
+このコールバックの典型的な利用方法は、 ssl.SSLSocket の SSLSocket.context 属性を、サーバ名に合致する証明書チェインを持つ新しい SSLContext オブジェクトに変更することです。
+
+TLS 接続の初期ネゴシエーションのフェーズなので、 SSLSocket.selected_alpn_protocol(), SSLSocket.context のような限られたメソッドと属性のみ使えます。 SSLSocket.getpeercert(), SSLSocket.getpeercert(), SSLSocket.cipher(), SSLSocket.compress() メソッドは TLS 接続が TLS Client Hello よりも先に進行していることを必要としますから、これらは意味のある値を返しませんし、安全に呼び出すこともできません。
+
+The sni_callback function must return None to allow the TLS negotiation to continue. If a TLS failure is required, a constant ALERT_DESCRIPTION_* can be returned. Other return values will result in a TLS fatal error with ALERT_DESCRIPTION_INTERNAL_ERROR.
+
+If an exception is raised from the sni_callback function the TLS connection will terminate with a fatal TLS alert message ALERT_DESCRIPTION_HANDSHAKE_FAILURE.
+
+このメソッドは OpenSSL ライブラリが OPENSSL_NO_TLSEXT を定義してビルドされている場合、 NotImplementedError を送出します。
+
+バージョン 3.7 で追加.
+
+SSLContext.set_servername_callback(server_name_callback)
+This is a legacy API retained for backwards compatibility. When possible, you should use sni_callback instead. The given server_name_callback is similar to sni_callback, except that when the server hostname is an IDN-encoded internationalized domain name, the server_name_callback receives a decoded U-label ("pythön.org").
+
+If there is an decoding error on the server name, the TLS connection will terminate with an ALERT_DESCRIPTION_INTERNAL_ERROR fatal TLS alert message to the client.
+
+バージョン 3.4 で追加.
+
+SSLContext.load_dh_params(dhfile)
+Load the key generation parameters for Diffie-Hellman (DH) key exchange. Using DH key exchange improves forward secrecy at the expense of computational resources (both on the server and on the client). The dhfile parameter should be the path to a file containing DH parameters in PEM format.
+
+この設定はクライアントソケットには適用されません。さらにセキュリティを改善するのに OP_SINGLE_DH_USE オプションも利用できます。
+
+バージョン 3.3 で追加.
+
+SSLContext.set_ecdh_curve(curve_name)
+楕円曲線ディフィー・ヘルマン(ECDH)鍵交換の曲線名を指定します。ECDH はもとの DH に較べて、ほぼ間違いなく同程度に安全である一方で、顕著に高速です。 curve_name パラメータは既知の楕円曲線を表す文字列でなければなりません。例えば prime256v1 が広くサポートされている曲線です。
+
+この設定はクライアントソケットには適用されません。さらにセキュリティを改善するのに OP_SINGLE_ECDH_USE オプションも利用できます。
+
+このメソッドは HAS_ECDH が False の場合は利用できません。
+
+バージョン 3.3 で追加.
+
+参考
+SSL/TLS & Perfect Forward Secrecy
+Vincent Bernat.
+
+SSLContext.wrap_socket(sock, server_side=False, do_handshake_on_connect=True, suppress_ragged_eofs=True, server_hostname=None, session=None)
+Wrap an existing Python socket sock and return an instance of SSLContext.sslsocket_class (default SSLSocket). The returned SSL socket is tied to the context, its settings and certificates. sock must be a SOCK_STREAM socket; other socket types are unsupported.
+
+server_side 引数は真偽値で、このソケットがサーバサイドとクライアントサイドのどちらの動作をするのかを指定します。
+
+For client-side sockets, the context construction is lazy; if the underlying socket isn't connected yet, the context construction will be performed after connect() is called on the socket. For server-side sockets, if the socket has no remote peer, it is assumed to be a listening socket, and the server-side SSL wrapping is automatically performed on client connections accepted via the accept() method. The method may raise SSLError.
+
+クライアントからの接続では、 server_hostname で接続先サービスのホスト名を指定できます。これは HTTP バーチャルホストにかなり似て、シングルサーバで複数の SSL ベースのサービスを別々の証明書でホストしているようなサーバに対して使えます。 server_side が True の場合に server_hostname を指定すると ValueError を送出します。
+
+do_handshake_on_connect 引数は、 socket.connect() の後に自動的に SSLハンドシェイクを行うか、それともアプリケーションが明示的に SSLSocket.do_handshake() メソッドを実行するかを指定します。 SSLSocket.do_handshake() を明示的に呼びだすことで、ハンドシェイクによるソケットI/Oのブロッキング動作を制御できます。
+
+suppress_ragged_eofs 引数は、 SSLSocket.recv() メソッドが、接続先から予期しないEOF を受け取った時に通知する方法を指定します。 True (デフォルト) の場合、下位のソケットレイヤーから予期せぬEOFエラーが来た場合、通常のEOF (空のバイト列オブジェクト)を返します。 False の場合、呼び出し元に例外を投げて通知します。
+
+session, session を参照してください。
+
+バージョン 3.5 で変更: OpenSSL が SNI をサポートしなくても server_hostname を許容するようになりました。
+
+バージョン 3.6 で変更: session 引数が追加されました。
+
+バージョン 3.7 で変更: The method returns on instance of SSLContext.sslsocket_class instead of hard-coded SSLSocket.
+
+SSLContext.sslsocket_class
+The return type of SSLContext.wrap_socket(), defaults to SSLSocket. The attribute can be overridden on instance of class in order to return a custom subclass of SSLSocket.
+
+バージョン 3.7 で追加.
+
+SSLContext.wrap_bio(incoming, outgoing, server_side=False, server_hostname=None, session=None)
+Wrap the BIO objects incoming and outgoing and return an instance of SSLContext.sslobject_class (default SSLObject). The SSL routines will read input data from the incoming BIO and write data to the outgoing BIO.
+
+server_side、 server_hostname 、 session 引数は、 SSLContext.wrap_socket() での意味と同じ意味を持ちます。
+
+バージョン 3.6 で変更: session 引数が追加されました。
+
+バージョン 3.7 で変更: The method returns on instance of SSLContext.sslobject_class instead of hard-coded SSLObject.
+
+SSLContext.sslobject_class
+The return type of SSLContext.wrap_bio(), defaults to SSLObject. The attribute can be overridden on instance of class in order to return a custom subclass of SSLObject.
+
+バージョン 3.7 で追加.
+
+SSLContext.session_stats()
+Get statistics about the SSL sessions created or managed by this context. A dictionary is returned which maps the names of each piece of information to their numeric values. For example, here is the total number of hits and misses in the session cache since the context was created:
+
+>>>
+>>> stats = context.session_stats()
+>>> stats['hits'], stats['misses']
+(0, 0)
+SSLContext.check_hostname
+Whether to match the peer cert's hostname in SSLSocket.do_handshake(). The context's verify_mode must be set to CERT_OPTIONAL or CERT_REQUIRED, and you must pass server_hostname to wrap_socket() in order to match the hostname. Enabling hostname checking automatically sets verify_mode from CERT_NONE to CERT_REQUIRED. It cannot be set back to CERT_NONE as long as hostname checking is enabled. The PROTOCOL_TLS_CLIENT protocol enables hostname checking by default. With other protocols, hostname checking must be enabled explicitly.
+
+以下はプログラム例です:
+
+import socket, ssl
+
+context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context.verify_mode = ssl.CERT_REQUIRED
+context.check_hostname = True
+context.load_default_certs()
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+ssl_sock = context.wrap_socket(s, server_hostname='www.verisign.com')
+ssl_sock.connect(('www.verisign.com', 443))
+バージョン 3.4 で追加.
+
+バージョン 3.7 で変更: verify_mode is now automatically changed to CERT_REQUIRED when hostname checking is enabled and verify_mode is CERT_NONE. Previously the same operation would have failed with a ValueError.
+
+注釈 この機能にはOpenSSL0.9.8f以降が必要です。
+SSLContext.keylog_filename
+Write TLS keys to a keylog file, whenever key material is generated or received. The keylog file is designed for debugging purposes only. The file format is specified by NSS and used by many traffic analyzers such as Wireshark. The log file is opened in append-only mode. Writes are synchronized between threads, but not between processes.
+
+バージョン 3.8 で追加.
+
+注釈 This features requires OpenSSL 1.1.1 or newer.
+SSLContext.maximum_version
+A TLSVersion enum member representing the highest supported TLS version. The value defaults to TLSVersion.MAXIMUM_SUPPORTED. The attribute is read-only for protocols other than PROTOCOL_TLS, PROTOCOL_TLS_CLIENT, and PROTOCOL_TLS_SERVER.
+
+The attributes maximum_version, minimum_version and SSLContext.options all affect the supported SSL and TLS versions of the context. The implementation does not prevent invalid combination. For example a context with OP_NO_TLSv1_2 in options and maximum_version set to TLSVersion.TLSv1_2 will not be able to establish a TLS 1.2 connection.
+
+注釈 This attribute is not available unless the ssl module is compiled with OpenSSL 1.1.0g or newer.
+バージョン 3.7 で追加.
+
+SSLContext.minimum_version
+Like SSLContext.maximum_version except it is the lowest supported version or TLSVersion.MINIMUM_SUPPORTED.
+
+注釈 This attribute is not available unless the ssl module is compiled with OpenSSL 1.1.0g or newer.
+バージョン 3.7 で追加.
+
+SSLContext.num_tickets
+Control the number of TLS 1.3 session tickets of a TLS_PROTOCOL_SERVER context. The setting has no impact on TLS 1.0 to 1.2 connections.
+
+注釈 This attribute is not available unless the ssl module is compiled with OpenSSL 1.1.1 or newer.
+バージョン 3.8 で追加.
+
+SSLContext.options
+このコンテキストで有効になっている SSL オプションを表す整数。デフォルトの値は OP_ALL ですが、 OP_NO_SSLv2 のような他の値をビット OR 演算で指定できます。
+
+注釈 With versions of OpenSSL older than 0.9.8m, it is only possible to set options, not to clear them. Attempting to clear an option (by resetting the corresponding bits) will raise a ValueError.
+バージョン 3.6 で変更: SSLContext.options は次のように Options のフラグを返します。
+
+>>>
+ssl.create_default_context().options  
+<Options.OP_ALL|OP_NO_SSLv3|OP_NO_SSLv2|OP_NO_COMPRESSION: 2197947391>
+SSLContext.post_handshake_auth
+Enable TLS 1.3 post-handshake client authentication. Post-handshake auth is disabled by default and a server can only request a TLS client certificate during the initial handshake. When enabled, a server may request a TLS client certificate at any time after the handshake.
+
+When enabled on client-side sockets, the client signals the server that it supports post-handshake authentication.
+
+When enabled on server-side sockets, SSLContext.verify_mode must be set to CERT_OPTIONAL or CERT_REQUIRED, too. The actual client cert exchange is delayed until SSLSocket.verify_client_post_handshake() is called and some I/O is performed.
+
+注釈 Only available with OpenSSL 1.1.1 and TLS 1.3 enabled. Without TLS 1.3 support, the property value is None and can't be modified
+バージョン 3.8 で追加.
+
+SSLContext.protocol
+コンテキストの構築時に選択されたプロトコルバージョン。この属性は読み出し専用です。
+
+SSLContext.hostname_checks_common_name
+Whether check_hostname falls back to verify the cert's subject common name in the absence of a subject alternative name extension (default: true).
+
+注釈 Only writeable with OpenSSL 1.1.0 or higher.
+バージョン 3.7 で追加.
+
+SSLContext.verify_flags
+証明書の検証操作のためのフラグです。 VERIFY_CRL_CHECK_LEAF などのフラグをビット OR 演算でセットできます。デフォルトでは OpenSSL は証明書失効リスト (CRLs) を必要としませんし検証にも使いません。openssl version 0.9.8+ でのみ利用可能です。
+
+バージョン 3.4 で追加.
+
+バージョン 3.6 で変更: SSLContext.verify_flags は次のように VerifyFlags のフラグを返します。
+
+>>>
+ssl.create_default_context().verify_flags  
+<VerifyFlags.VERIFY_X509_TRUSTED_FIRST: 32768>
+SSLContext.verify_mode
+接続先の証明書の検証を試みるかどうか、また、検証が失敗した場合にどのように振舞うべきかを制御します。この属性は CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED のうちどれか一つでなければなりません。
+
+バージョン 3.6 で変更: SSLContext.verify_mode は次のように VerifyMode enum (列挙) を返します。
+
+>>>
+ssl.create_default_context().verify_mode
+<VerifyMode.CERT_REQUIRED: 2>
+証明書
+証明書を大まかに説明すると、公開鍵/秘密鍵システムの一種です。このシステムでは、各 principal (これはマシン、人、組織などです) は、ユニークな2つの暗号鍵を割り当てられます。1つは公開され、 公開鍵(public key) と呼ばれます。もう一方は秘密にされ、 秘密鍵(private key) と呼ばれます。 2つの鍵は関連しており、片方の鍵で暗号化したメッセージは、もう片方の鍵 のみ で復号できます。
+
+A certificate contains information about two principals. It contains the name of a subject, and the subject's public key. It also contains a statement by a second principal, the issuer, that the subject is who they claim to be, and that this is indeed the subject's public key. The issuer's statement is signed with the issuer's private key, which only the issuer knows. However, anyone can verify the issuer's statement by finding the issuer's public key, decrypting the statement with it, and comparing it to the other information in the certificate. The certificate also contains information about the time period over which it is valid. This is expressed as two fields, called "notBefore" and "notAfter".
+
+Python において証明書を利用する場合、クライアントもサーバーも自分を証明するために証明書を利用することができます。ネットワーク接続の相手側に証明書の提示を要求する事ができ、そのクライアントやサーバーが認証を必要とするならその証明書を認証することができます。認証が失敗した場合、接続は例外を発生させます。認証は下位層のOpenSSLフレームワークが自動的に行います。アプリケーションは認証機構について意識する必要はありません。しかし、アプリケーションは認証プロセスのために幾つかの証明書を提供する必要があるかもしれません。
+
+Python は証明書を格納したファイルを利用します。そのファイルは "PEM" (RFC 1422 参照) フォーマットという、ヘッダー行とフッター行の間にbase-64エンコードされた形をとっている必要があります。
+
+-----BEGIN CERTIFICATE-----
+... (certificate in base64 PEM encoding) ...
+-----END CERTIFICATE-----
+証明書チェイン
+Pythonが利用する証明書を格納したファイルは、ときには 証明書チェイン(certificate chain) と呼ばれる証明書のシーケンスを格納します。このチェインの先頭には、まずクライアントやサーバーである principal の証明書を置き、それ以降には、その証明書の発行者(issuer)の証明書などを続け、最後に証明対象(subject)と発行者が同じ 自己署名(self-signed) 証明書で終わります。この最後の証明書は ルート証明書(root certificate と呼ばれます。これらの証明書チェインは単純に1つの証明書ファイルに結合してください。例えば、3つの証明書からなる証明書チェインがある場合、私たちのサーバーの証明書から、私たちのサーバーに署名した認証局の証明書、そして認証局の証明書を発行した機関のルート証明書と続きます:
+
+-----BEGIN CERTIFICATE-----
+... (certificate for your server)...
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+... (the certificate for the CA)...
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+... (the root certificate for the CA's issuer)...
+-----END CERTIFICATE-----
+CA 証明書
+もし相手から送られてきた証明書の認証をしたい場合、信頼している各発行者の証明書チェインが入った "CA certs" ファイルを提供する必要があります。繰り返しますが、このファイルは単純に、各チェインを結合しただけのものです。認証のために、Pythonはそのファイルの中の最初にマッチしたチェインを利用します。SSLContext.load_default_certs() を呼び出すことでプラットフォームの証明書ファイルも使われますが、これは create_default_context() によって自動的に行われます。
+
+秘密鍵と証明書の組み合わせ
+多くの場合、証明書と同じファイルに秘密鍵も格納されています。この場合、 SSLContext.load_cert_chain(), wrap_socket() には certfile 引数だけが必要とされます。秘密鍵が証明書ファイルに格納されている場合、秘密鍵は証明書チェインの最初の証明書よりも先にないといけません。
+
+-----BEGIN RSA PRIVATE KEY-----
+... (private key in base64 encoding) ...
+-----END RSA PRIVATE KEY-----
+-----BEGIN CERTIFICATE-----
+... (certificate in base64 PEM encoding) ...
+-----END CERTIFICATE-----
+自己署名証明書
+SSL暗号化接続サービスを提供するサーバーを建てる場合、適切な証明書を取得するには、認証局から買うなどの幾つかの方法があります。また、自己署名証明書を作るケースもあります。 OpenSSLを使って自己署名証明書を作るには、次のようにします。
+
+% openssl req -new -x509 -days 365 -nodes -out cert.pem -keyout cert.pem
+Generating a 1024 bit RSA private key
+.......++++++
+.............................++++++
+writing new private key to 'cert.pem'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]:US
+State or Province Name (full name) [Some-State]:MyState
+Locality Name (eg, city) []:Some City
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:My Organization, Inc.
+Organizational Unit Name (eg, section) []:My Group
+Common Name (eg, YOUR name) []:myserver.mygroup.myorganization.com
+Email Address []:ops@myserver.mygroup.myorganization.com
+%
+自己署名証明書の欠点は、それ自身がルート証明書であり、他の人はその証明書を持っていない (そして信頼しない)ことです。
+
+使用例
+SSLサポートをテストする
+インストールされているPythonがSSLをサポートしているかどうかをテストするために、ユーザーコードは次のイディオムを利用することができます。
+
+try:
+    import ssl
+except ImportError:
+    pass
+else:
+    ...  # do something that requires SSL support
+クライアントサイドの処理
+この例では、自動的に証明書の検証を行うことを含む望ましいセキュリティ設定でクライアントソケットの SSL コンテキストを作ります:
+
+>>>
+>>> context = ssl.create_default_context()
+自分自身でセキュリティ設定を調整したい場合、コンテキストを一から作ることはできます (ただし、正しくない設定をしてしまいがちなことに注意してください):
+
+>>>
+>>> context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+>>> context.load_verify_locations("/etc/ssl/certs/ca-bundle.crt")
+(このスニペットはすべての CA 証明書が /etc/ssl/certs/ca-bundle.crt にバンドルされていることを仮定しています; もし違っていればエラーになりますので、適宜修正してください)
+
+The PROTOCOL_TLS_CLIENT protocol configures the context for cert validation and hostname verification. verify_mode is set to CERT_REQUIRED and check_hostname is set to True. All other protocols create SSL contexts with insecure defaults.
+
+When you use the context to connect to a server, CERT_REQUIRED and check_hostname validate the server certificate: it ensures that the server certificate was signed with one of the CA certificates, checks the signature for correctness, and verifies other properties like validity and identity of the hostname:
+
+>>>
+>>> conn = context.wrap_socket(socket.socket(socket.AF_INET),
+...                            server_hostname="www.python.org")
+>>> conn.connect(("www.python.org", 443))
+そして証明書を持ってくることができます:
+
+>>>
+>>> cert = conn.getpeercert()
+証明書が、期待しているサービス (つまり、 HTTPS ホスト www.python.org) の身元を特定していることを視覚的に点検してみましょう:
+
+>>>
+>>> pprint.pprint(cert)
+{'OCSP': ('http://ocsp.digicert.com',),
+ 'caIssuers': ('http://cacerts.digicert.com/DigiCertSHA2ExtendedValidationServerCA.crt',),
+ 'crlDistributionPoints': ('http://crl3.digicert.com/sha2-ev-server-g1.crl',
+                           'http://crl4.digicert.com/sha2-ev-server-g1.crl'),
+ 'issuer': ((('countryName', 'US'),),
+            (('organizationName', 'DigiCert Inc'),),
+            (('organizationalUnitName', 'www.digicert.com'),),
+            (('commonName', 'DigiCert SHA2 Extended Validation Server CA'),)),
+ 'notAfter': 'Sep  9 12:00:00 2016 GMT',
+ 'notBefore': 'Sep  5 00:00:00 2014 GMT',
+ 'serialNumber': '01BB6F00122B177F36CAB49CEA8B6B26',
+ 'subject': ((('businessCategory', 'Private Organization'),),
+             (('1.3.6.1.4.1.311.60.2.1.3', 'US'),),
+             (('1.3.6.1.4.1.311.60.2.1.2', 'Delaware'),),
+             (('serialNumber', '3359300'),),
+             (('streetAddress', '16 Allen Rd'),),
+             (('postalCode', '03894-4801'),),
+             (('countryName', 'US'),),
+             (('stateOrProvinceName', 'NH'),),
+             (('localityName', 'Wolfeboro'),),
+             (('organizationName', 'Python Software Foundation'),),
+             (('commonName', 'www.python.org'),)),
+ 'subjectAltName': (('DNS', 'www.python.org'),
+                    ('DNS', 'python.org'),
+                    ('DNS', 'pypi.org'),
+                    ('DNS', 'docs.python.org'),
+                    ('DNS', 'testpypi.org'),
+                    ('DNS', 'bugs.python.org'),
+                    ('DNS', 'wiki.python.org'),
+                    ('DNS', 'hg.python.org'),
+                    ('DNS', 'mail.python.org'),
+                    ('DNS', 'packaging.python.org'),
+                    ('DNS', 'pythonhosted.org'),
+                    ('DNS', 'www.pythonhosted.org'),
+                    ('DNS', 'test.pythonhosted.org'),
+                    ('DNS', 'us.pycon.org'),
+                    ('DNS', 'id.python.org')),
+ 'version': 3}
+SSL チャネルは今や確立されて証明書が検証されているので、サーバとのお喋りを続けることができます:
+
+>>>
+>>> conn.sendall(b"HEAD / HTTP/1.0\r\nHost: linuxfr.org\r\n\r\n")
+>>> pprint.pprint(conn.recv(1024).split(b"\r\n"))
+[b'HTTP/1.1 200 OK',
+ b'Date: Sat, 18 Oct 2014 18:27:20 GMT',
+ b'Server: nginx',
+ b'Content-Type: text/html; charset=utf-8',
+ b'X-Frame-Options: SAMEORIGIN',
+ b'Content-Length: 45679',
+ b'Accept-Ranges: bytes',
+ b'Via: 1.1 varnish',
+ b'Age: 2188',
+ b'X-Served-By: cache-lcy1134-LCY',
+ b'X-Cache: HIT',
+ b'X-Cache-Hits: 11',
+ b'Vary: Cookie',
+ b'Strict-Transport-Security: max-age=63072000; includeSubDomains',
+ b'Connection: close',
+ b'',
+ b'']
+このドキュメントの下の方の、 セキュリティで考慮すべき点 に関する議論を参照してください。
+
+サーバサイドの処理
+サーバサイドの処理では、通常、サーバー証明書と秘密鍵がそれぞれファイルに格納された形で必要です。最初に秘密鍵と証明書が保持されたコンテキストを作成し、クライアントがあなたの信憑性をチェックできるようにします。そののちにソケットを開き、ポートにバインドし、そのソケットの listen() を呼び、クライアントからの接続を待ちます。
+
+import socket, ssl
+
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.load_cert_chain(certfile="mycertfile", keyfile="mykeyfile")
+
+bindsocket = socket.socket()
+bindsocket.bind(('myaddr.mydomain.com', 10023))
+bindsocket.listen(5)
+クライアントが接続してきた場合、 accept() を呼んで新しいソケットを作成し、接続のためにサーバサイドの SSL ソケットを、コンテキストの SSLContext.wrap_socket() メソッドで作ります:
+
+while True:
+    newsocket, fromaddr = bindsocket.accept()
+    connstream = context.wrap_socket(newsocket, server_side=True)
+    try:
+        deal_with_client(connstream)
+    finally:
+        connstream.shutdown(socket.SHUT_RDWR)
+        connstream.close()
+そして、 connstream からデータを読み、クライアントと切断する(あるいはクライアントが切断してくる)まで何か処理をします。
+
+def deal_with_client(connstream):
+    data = connstream.recv(1024)
+    # empty data means the client is finished with us
+    while data:
+        if not do_something(connstream, data):
+            # we'll assume do_something returns False
+            # when we're finished with client
+            break
+        data = connstream.recv(1024)
+    # finished with client
+そして新しいクライアント接続のために listen に戻ります。 (もちろん現実のサーバは、おそらく個々のクライアント接続ごとに別のスレッドで処理するか、ソケットを ノンブロッキングモード にし、イベントループを使うでしょう。)
+
+ノンブロッキングソケットについての注意事項
+SSL ソケットはノンブロッキングモードにおいては、普通のソケットとは少し違った振る舞いをします。ですのでノンブロッキングソケットとともに使う場合、いくつか気をつけなければならない事項があります:
+
+ほとんどの SSLSocket のメソッドは I/O 操作がブロックすると BlockingIOError ではなく SSLWantWriteError か SSLWantReadError のどちらかを送出します。 SSLWantReadError は下層のソケットで読み出しが必要な場合に送出され、 SSLWantWriteError は下層のソケットで書き込みが必要な場合に送出されます。SSL ソケットに対して 書き込み を試みると下層のソケットから最初に 読み出す 必要があるかもしれず、SSL ソケットに対して 読み出し を試みると下層のソケットに先に 書き込む 必要があるかもしれないことに注意してください。
+
+バージョン 3.5 で変更: 以前の Python バージョンでは、 SSLSocket.send() メソッドは SSLWantWriteError または SSLWantReadError を送出するのではなく、ゼロを返していました。
+
+select() 呼び出しは OS レベルでのソケットが読み出し可能(または書き込み可能)になったことを教えてくれますが、上位の SSL レイヤーでの十分なデータがあることを意味するわけではありません。例えば、SSL フレームの一部が届いただけかもしれません。ですから、 SSLSocket.recv() と SSLSocket.send() の失敗を処理することに備え、ほかの select() 呼び出し後にリトライしなければなりません。
+
+反対に、SSL レイヤーは独自の枠組みを持っているため、select() が気付かない読み出し可能なデータを SSL ソケットが持っている場合があります。したがって、入手可能な可能性のあるデータをすべて引き出すために最初に SSLSocket.recv() を呼び出し、次にそれでもまだ必要な場合にだけ select() 呼び出しでブロックすべきです。
+
+(当然のことながら、ほかのプリミティブ、例えば poll() や selectors モジュール内のものを使う際にも似た但し書きが付きます)
+
+SSL ハンドシェイクそのものがノンブロッキングになります: SSLSocket.do_handshake() メソッドは成功するまでリトライしなければなりません。 select() を用いてソケットの準備が整うのを待つためには、およそ以下のようにします:
+
+while True:
+    try:
+        sock.do_handshake()
+        break
+    except ssl.SSLWantReadError:
+        select.select([sock], [], [])
+    except ssl.SSLWantWriteError:
+        select.select([], [sock], [])
+参考 asyncio モジュールは ノンブロッキング SSL ソケット をサポートし、より高いレベルの API を提供しています。 selectors モジュールを使ってイベントを poll し、 SSLWantWriteError, SSLWantReadError, BlockingIOError 例外を処理します。SSL ハンドシェイクも非同期に実行します。
+メモリ BIO サポート
+バージョン 3.5 で追加.
+
+Python 2.6 で SSL モジュールが導入されて以降、SSLSocket クラスは、以下の互いに関連するが別々の機能を提供してきました。
+
+SSL プロトコル処理
+
+ネットワーク IO
+
+ネットワーク IO API は、socket.socket が提供するものと同じです。SSLSocket も、そのクラスから継承しています。これにより、SSL ソケットは標準のソケットをそっくりそのまま置き換えるものとして使用できるため、既存のアプリケーションを SSL に対応させるのが非常に簡単になります。
+
+SSL プロトコルの処理とネットワーク IO を組み合わせた場合、通常は問題なく動作しますが、問題が発生する場合があります。一例を挙げると、非同期 IO フレームワークが別の多重化モデルを使用する場合、これは socket.socket と内部 OpenSSL ソケット IO ルーティンが想定する「ファイル記述子上の select/poll」モデル（準備状態ベース）とは異なります。これは、このモデルが非効率的になる Windows などのプラットフォームに主に該当します。そのため、スコープを限定した SSLSocket の変種、 SSLObject が提供されています。
+
+class ssl.SSLObject
+ネットワーク IO メソッドを含まない SSL プロトコルインスタンスを表す、スコープを限定した SSLSocket の変種です。一般的にこ、のクラスを使用するのは、メモリバッファを通じて SSL のための非同期 IO を実装するフレームワーク作成者です。
+
+このクラスは、OpenSSL が実装する低水準 SSL オブジェクトの上にインターフェースを実装します。このオブジェクトは SSL 接続の状態をキャプチャしますが、ネットワーク IO 自体は提供しません。IO は、OpenSSL の IO 抽象レイヤである別の「BIO」オブジェクトを通じて実行する必要があります。
+
+This class has no public constructor. An SSLObject instance must be created using the wrap_bio() method. This method will create the SSLObject instance and bind it to a pair of BIOs. The incoming BIO is used to pass data from Python to the SSL protocol instance, while the outgoing BIO is used to pass data the other way around.
+
+次のメソッドがサポートされています:
+
+context
+
+server_side
+
+server_hostname
+
+session
+
+session_reused
+
+read()
+
+write()
+
+getpeercert()
+
+selected_alpn_protocol()
+
+selected_npn_protocol()
+
+cipher()
+
+shared_ciphers()
+
+compression()
+
+pending()
+
+do_handshake()
+
+verify_client_post_handshake()
+
+unwrap()
+
+get_channel_binding()
+
+version()
+
+SSLSocket と比較すると、このオブジェクトでは以下の機能が不足しています。
+
+Any form of network IO; recv() and send() read and write only to the underlying MemoryBIO buffers.
+
+do_handshake_on_connect 機構はありません。必ず手動で do_handshake() を呼んで、ハンドシェイクを開始する必要があります。
+
+suppress_ragged_eofs は処理されません。プロトコルに違反するファイル末尾状態は、 SSLEOFError 例外を通じて報告されます。
+
+unwrap() メソッドの呼び出しは、下層のソケットを返す SSL ソケットとは異なり、何も返しません。
+
+SSLContext.set_servername_callback() に渡される server_name_callback コールバックは、1 つ目の引数として SSLSocket インスタンスではなく SSLObject インスタンスを受け取ります。
+
+SSLObject の使用に関する注意:
+
+SSLObject 上のすべての IO は non-blocking です。例えば、read() は入力 BIO が持つデータよりも多くのデータを必要とする場合、SSLWantReadError を送出します。
+
+wrap_socket() に対して存在するような、モジュールレベルの wrap_bio() 呼び出しは存在しません。SSLObject は、常に SSLContext を経由して作成されます。
+
+バージョン 3.7 で変更: SSLObject instances must to created with wrap_bio(). In earlier versions, it was possible to create instances directly. This was never documented or officially supported.
+
+SSLObject は、メモリバッファを使用して外界と通信します。MemoryBIO クラスは、以下のように OpenSSL メモリ BIO (Basic IO) オブジェクトをラップし、この目的に使用できるメモリバッファを提供します。
+
+class ssl.MemoryBIO
+Python と SSL プロトコルインスタンス間でデータをやり取りするために使用できるメモリバッファ。
+
+pending
+現在メモリバッファ中にあるバイト数を返します。
+
+eof
+メモリ BIOが現在ファイルの末尾にあるかを表す真偽値です。
+
+read(n=-1)
+メモリバッファから最大 n 読み取ります。n が指定されていないか、負値の場合、すべてのバイトが返されます。
+
+write(buf)
+buf からメモリ BIO にバイトを書き込みます。buf 引数は、バッファプロトコルをサポートするオブジェクトでなければなりません。
+
+戻り値は、書き込まれるバイト数であり、常に buf の長さと等しくなります。
+
+write_eof()
+EOF マーカーをメモリ BIO に書き込みます。このメソッドが呼び出された後に write() を呼ぶことはできません。eof 属性は、バッファ内のすべてのデータが読み出された後に True になります。
+
+SSL セッション
+バージョン 3.6 で追加.
+
+class ssl.SSLSession
+session が使用するセッションオブジェクトです。
+
+id
+time
+timeout
+ticket_lifetime_hint
+has_ticket
+セキュリティで考慮すべき点
+最善のデフォルト値
+クライアントでの使用 では、セキュリティポリシーによる特殊な要件がない限りは、 create_default_context() 関数を使用して SSL コンテキストを作成することを強くお勧めします。この関数は、システムの信頼済み CA 証明書をロードし、証明書の検証とホスト名のチェックを有効化し、十分にセキュアなプロトコルと暗号を選択しようとします。
+
+例として、 smtplib.SMTP クラスを使用して SMTP サーバーに対して信頼できるセキュアな接続を行う方法を以下に示します:
+
+>>>
+>>> import ssl, smtplib
+>>> smtp = smtplib.SMTP("mail.python.org", port=587)
+>>> context = ssl.create_default_context()
+>>> smtp.starttls(context=context)
+(220, b'2.0.0 Ready to start TLS')
+接続にクライアントの証明書が必要な場合、 SSLContext.load_cert_chain() によって追加できます。
+
+対照的に、自分自身で SSLContext クラスのコンストラクタを呼び出すことによって SSL コンテキストを作ると、デフォルトでは証明書検証もホスト名チェックも有効になりません。自分で設定を行う場合は、十分なセキュリティレベルを達成するために、以下のパラグラフをお読みください。
+
+手動での設定
+証明書の検証
+SSLContext のコンストラクタを直接呼び出した場合、 CERT_NONE がデフォルトとして使われます。これは接続先の身元特定をしないので安全ではありませんし、特にクライアントモードでは大抵相手となるサーバの信憑性を保障したいでしょう。ですから、クライアントモードでは CERT_REQUIRED を強くお勧めします。ですが、それだけでは不十分です; SSLSocket.getpeercert() を呼び出してサーバ証明書が望んだサービスと合致するかのチェックもしなければなりません。多くのプロトコルとアプリケーションにとって、サービスはホスト名で特定されます; この場合、 match_hostname() が使えます。これらの共通的なチェックは SSLContext.check_hostname が有効な場合、自動的に行われます。
+
+バージョン 3.7 で変更: Hostname matchings is now performed by OpenSSL. Python no longer uses match_hostname().
+
+サーバモードにおいて、(より上位のレベルでの認証メカニズムではなく) SSL レイヤーを使ってあなたのクライアントを認証したいならば、 CERT_REQUIRED を指定して同じようにクライアントの証明書を検証すべきでしょう。
+
+プロトコルのバージョン
+SSL バージョン 2 と 3 は安全性に欠けると考えられており、使用するのは危険です。クライアントとサーバ間の互換性を最大限に確保したい場合、プロトコルバージョンとして PROTOCOL_TLS_CLIENT または PROTOCOL_TLS_SERVER を使用してください。 SSLv2 と SSLv3 はデフォルトで無効になっています。
+
+>>>
+>>> client_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+>>> client_context.options |= ssl.OP_NO_TLSv1
+>>> client_context.options |= ssl.OP_NO_TLSv1_1
+上記で作成した SSL コンテキストは、TLSv1.2 以降 (システムでサポートされている場合) でのサーバへの接続のみを許可します。PROTOCOL_TLS_CLIENT は、デフォルトで証明書の検証とホスト名のチェックを意味します。コンテキスト中に証明書をロードする必要があります。
+
+暗号の選択
+If you have advanced security requirements, fine-tuning of the ciphers enabled when negotiating a SSL session is possible through the SSLContext.set_ciphers() method. Starting from Python 3.2.3, the ssl module disables certain weak ciphers by default, but you may want to further restrict the cipher choice. Be sure to read OpenSSL's documentation about the cipher list format. If you want to check which ciphers are enabled by a given cipher list, use SSLContext.get_ciphers() or the openssl ciphers command on your system.
+
+マルチプロセス化
+(例えば multiprocessing や concurrent.futures を使って、)マルチプロセスアプリケーションの一部としてこのモジュールを使う場合、OpenSSL の内部の乱数発生器は fork したプロセスを適切に処理しないことに気を付けて下さい。SSL の機能を os.fork() とともに使う場合、アプリケーションは親プロセスの PRNG 状態を変更しなければなりません。 RAND_add(), RAND_bytes(), RAND_pseudo_bytes() のいずれかの呼び出し成功があれば十分です。
+
+TLS 1.3
+バージョン 3.7 で追加.
+
+Python has provisional and experimental support for TLS 1.3 with OpenSSL 1.1.1. The new protocol behaves slightly differently than previous version of TLS/SSL. Some new TLS 1.3 features are not yet available.
+
+TLS 1.3 uses a disjunct set of cipher suites. All AES-GCM and ChaCha20 cipher suites are enabled by default. The method SSLContext.set_ciphers() cannot enable or disable any TLS 1.3 ciphers yet, but SSLContext.get_ciphers() returns them.
+
+Session tickets are no longer sent as part of the initial handshake and are handled differently. SSLSocket.session and SSLSession are not compatible with TLS 1.3.
+
+Client-side certificates are also no longer verified during the initial handshake. A server can request a certificate at any time. Clients process certificate requests while they send or receive application data from the server.
+
+TLS 1.3 features like early data, deferred TLS client cert request, signature algorithm configuration, and rekeying are not supported yet.
+
+LibreSSL support
+LibreSSL is a fork of OpenSSL 1.0.1. The ssl module has limited support for LibreSSL. Some features are not available when the ssl module is compiled with LibreSSL.
+
+LibreSSL >= 2.6.1 no longer supports NPN. The methods SSLContext.set_npn_protocols() and SSLSocket.selected_npn_protocol() are not available.
+
+SSLContext.set_default_verify_paths() ignores the env vars SSL_CERT_FILE and SSL_CERT_PATH although get_default_verify_paths() still reports them.
+
+参考
+socket.socket クラス
+下位レイヤーの socket クラスのドキュメント
+
+SSL/TLS Strong Encryption: An Introduction
+Intro from the Apache HTTP Server documentation
+
+RFC 1422: Privacy Enhancement for Internet Electronic Mail: Part II: Certificate-Based Key Management
+Steve Kent
+
+RFC 4086: Randomness Requirements for Security
+Donald E., Jeffrey I. Schiller
+
+RFC 5280: Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile
+D. Cooper
+
+RFC 5246: The Transport Layer Security (TLS) Protocol Version 1.2
+T. Dierks et. al.
+
+RFC 6066: Transport Layer Security (TLS) Extensions
+D. Eastlake
+
+IANA TLS: Transport Layer Security (TLS) Parameters
+IANA
+
+select --- I/O 処理の完了を待機する
+このモジュールでは、ほとんどのオペレーティングシステムで利用可能な select() および poll() 関数、Solaris やその派生で利用可能な devpoll() 、Linux 2.5+ で利用可能な epoll() 、多くのBSDで利用可能な kqueue() 関数に対するアクセスを提供しています。 Windows 上ではソケットに対してしか動作しないので注意してください; その他のオペレーティングシステムでは、他のファイル形式でも (特に Unixではパイプにも) 動作します。通常のファイルに対して適用し、最後にファイルを読み出した時から内容が増えているかを決定するために使うことはできません。
+
+注釈 selectors モジュールにより、select モジュールプリミティブに基づく高水準かつ効率的な I/O の多重化が行うことが出来ます。 OS レベルプリミティブを使用した正確な制御を求めない限り、このモジュールの使用が推奨されます。
+このモジュールは以下を定義します:
+
+exception select.error
+OSError の非推奨のエイリアスです。
+
+バージョン 3.3 で変更: PEP 3151 に基づき、このクラスは OSError のエイリアスになりました。
+
+select.devpoll()
+(Solaris およびその派生でのみサポートされています) /dev/poll ポーリングオブジェクトを返します。 ポーリングオブジェクトが提供しているメソッドについては ポーリングオブジェクト 節を参照してください。
+
+devpoll() オブジェクトはインスタンス化時に許されるファイル記述子の数にリンクされます。 プログラムがこの値を減らす場合 devpoll() は失敗します。 プログラムがこの値を増やす場合 devpoll() は有効なファイル記述子の不完全なリストを返すことがあります。
+
+新しいファイル記述子は 継承不可 です。
+
+バージョン 3.3 で追加.
+
+バージョン 3.4 で変更: 新しいファイル記述子が継承不可になりました。
+
+select.epoll(sizehint=-1, flags=0)
+(Only supported on Linux 2.5.44 and newer.) Return an edge polling object, which can be used as Edge or Level Triggered interface for I/O events.
+
+sizehint informs epoll about the expected number of events to be registered. It must be positive, or -1 to use the default. It is only used on older systems where epoll_create1() is not available; otherwise it has no effect (though its value is still checked).
+
+flags is deprecated and completely ignored. However, when supplied, its value must be 0 or select.EPOLL_CLOEXEC, otherwise OSError is raised.
+
+エッジポーリングオブジェクトが提供しているメソッドについては エッジおよびレベルトリガポーリング (epoll) オブジェクト 節を参照してください。
+
+epoll オブジェクトはコンテキストマネジメントプロトコルをサポートしています。 with 文内で使用された場合、新たなファイル記述子はブロックの最後で自動的に閉じられます。
+
+新しいファイル記述子は 継承不可 です。
+
+バージョン 3.3 で変更: flags 引数が追加されました。
+
+バージョン 3.4 で変更: with 文のサポートが追加されました。新しいファイル記述子が継承不可になりました。
+
+バージョン 3.4 で非推奨: flags パラメータ。 現在ではデフォルトで select.EPOLL_CLOEXEC が使われます。 ファイルディスクリプタを継承可能にするには os.set_inheritable() を使ってください。
+
+select.poll()
+(全てのオペレーティングシステムでサポートされているわけではありません) ポーリングオブジェクトを返します。このオブジェクトはファイル記述子を登録したり登録解除したりすることができ、ファイル記述子に対する I/O イベント発生をポーリングすることができます; ポーリングオブジェクトが提供しているメソッドについては ポーリングオブジェクト 節を参照してください。
+
+select.kqueue()
+(BSD でのみサポート) カーネルキュー(kernel queue)オブジェクトを返します。カーネルキューオブジェクトが提供しているメソッドについては、 kqueue オブジェクト 節を参照してください。
+
+新しいファイル記述子は 継承不可 です。
+
+バージョン 3.4 で変更: 新しいファイル記述子が継承不可になりました。
+
+select.kevent(ident, filter=KQ_FILTER_READ, flags=KQ_EV_ADD, fflags=0, data=0, udata=0)
+(BSD でのみサポート) カーネルイベント(kernel event)オブジェクトを返します。カーネルイベントオブジェクトが提供しているメソッドについては、 kevent オブジェクト 節を参照してください。
+
+select.select(rlist, wlist, xlist[, timeout])
+This is a straightforward interface to the Unix select() system call. The first three arguments are iterables of 'waitable objects': either integers representing file descriptors or objects with a parameterless method named fileno() returning such an integer:
+
+rlist: 読み込み可能になるまで待機
+
+wlist: 書き込み可能になるまで待機
+
+xlist: "例外状態 (exceptional condition)" になるまで待機 ("例外状態" については、システムのマニュアルページを参照してください)
+
+Empty iterables are allowed, but acceptance of three empty iterables is platform-dependent. (It is known to work on Unix but not on Windows.) The optional timeout argument specifies a time-out as a floating point number in seconds. When the timeout argument is omitted the function blocks until at least one file descriptor is ready. A time-out value of zero specifies a poll and never blocks.
+
+戻り値は準備完了状態のオブジェクトからなる 3 つのリストです: したがってこのリストはそれぞれ関数の最初の 3 つの引数のサブセットになります。ファイル記述子のいずれも準備完了にならないままタイムアウトした場合、3 つの空のリストが返されます。
+
+Among the acceptable object types in the iterables are Python file objects (e.g. sys.stdin, or objects returned by open() or os.popen()), socket objects returned by socket.socket(). You may also define a wrapper class yourself, as long as it has an appropriate fileno() method (that really returns a file descriptor, not just a random integer).
+
+注釈 select() は Windows のファイルオブジェクトを受理しませんが、ソケットは受理します。 Windows では、背後の select() 関数は WinSock ライブラリで提供されており、 WinSock によって生成されたものではないファイル記述子を扱うことができないのです。
+バージョン 3.5 で変更: この関数は、シグナルによって中断された時に、 InterruptedError を上げる代わりに再計算されたタイムアウトによってリトライするようになりました。ただし、シグナルハンドラが例外を起こした場合を除きます (この論理的根拠については PEP 475 を見てください)。
+
+select.PIPE_BUF
+select(), poll() またはこのモジュールの別のインタフェースによってパイプが書き込む準備ができていると報告された時に、ブロックせずにパイプに書き込むことのできる最小のバイト数。これはソケットなどの他の種類の file-like オブジェクトには適用されません。
+
+This value is guaranteed by POSIX to be at least 512.
+
+Availability: Unix
+
+バージョン 3.2 で追加.
+
+/dev/poll ポーリングオブジェクト
+Solaris とその派生は、/dev/poll を持っています。 select() が O(最大のファイル記述子) 、 poll() が O(ファイル記述子の数) である一方、 /dev/poll は O(アクティブなファイル記述子) です。
+
+/dev/poll の挙動は標準的な poll() オブジェクトに非常に近いです。
+
+devpoll.close()
+ポーリングオブジェクトのファイル記述子を閉じます。
+
+バージョン 3.4 で追加.
+
+devpoll.closed
+ポーリングオブジェクトが閉じている場合 True です。
+
+バージョン 3.4 で追加.
+
+devpoll.fileno()
+ポーリングオブジェクトのファイル記述子番号を返します。
+
+バージョン 3.4 で追加.
+
+devpoll.register(fd[, eventmask])
+ファイル記述子をポーリングオブジェクトに登録します。これ以降の poll() メソッド呼び出しでは、そのファイル記述子に処理待ち中の I/O イベントがあるかどうかを監視します。 fd は整数か、整数値を返す fileno() メソッドを持つオブジェクトを取ります。ファイルオブジェクトも fileno() を実装しているので、引数として使うことができます。
+
+eventmask はオプションのビットマスクで、どの種類の I/O イベントを監視したいかを記述します。 poll() オブジェクトと同じ定数が使われます。デフォルト値は定数 POLLIN 、 POLLPRI 、および POLLOUT の組み合わせです。
+
+警告 登録済みのファイル記述子を登録してもエラーにはなりませんが、結果は未定義です。適切なアクションは、最初に unregister するか modify することです。これは poll() と比較した場合の重要な違いです。
+devpoll.modify(fd[, eventmask])
+このメソッドは unregister() に続いて register() を行います。 同じことを明示的に行うよりも (少し) 効率的です。
+
+devpoll.unregister(fd)
+ポーリングオブジェクトによって追跡中のファイル記述子を登録解除します。 register() メソッドと同様に、 fd は整数か、整数値を返す fileno() メソッドを持つオブジェクトを取ります。
+
+登録されていないファイル記述子の削除を試みるのは安全に無視されます。
+
+devpoll.poll([timeout])
+登録されたファイル記述子に対してポーリングを行い、報告すべき I/O イベントまたはエラーの発生したファイル記述子毎に 2 要素のタプル (fd, event) からなるリストを返します。リストは空になることもあります。 fd はファイル記述子で、 event は該当するファイル記述子について報告されたイベントを表すビットマスクです --- 例えば POLLIN は入力待ちを示し、 POLLOUT はファイル記述子に対する書き込みが可能を示す、などです。空のリストは呼び出しがタイムアウトしたか、報告すべきイベントがどのファイル記述子でも発生しなかったことを示します。 timeout が与えられた場合、処理を戻すまで待機する時間の長さをミリ秒単位で指定します。 timeout が省略されたり、 -1 であったり、あるいは None の場合、そのポーリングオブジェクトが監視している何らかのイベントが発生するまでブロックします。
+
+バージョン 3.5 で変更: この関数は、シグナルによって中断された時に、 InterruptedError を上げる代わりに再計算されたタイムアウトによってリトライするようになりました。ただし、シグナルハンドラが例外を起こした場合を除きます (この論理的根拠については PEP 475 を見てください)。
+
+エッジおよびレベルトリガポーリング (epoll) オブジェクト
+https://linux.die.net/man/4/epoll
+
+eventmask
+
+定数
+
+意味
+
+EPOLLIN
+
+読み込み可能
+
+EPOLLOUT
+
+書き込み可能
+
+EPOLLPRI
+
+緊急の読み出しデータ
+
+EPOLLERR
+
+設定された fd にエラー状態が発生した
+
+EPOLLHUP
+
+設定された fd がハングアップした
+
+EPOLLET
+
+エッジトリガ動作に設定する。デフォルトではレベルトリガ動作
+
+EPOLLONESHOT
+
+1ショット動作に設定する。1回イベントが取り出されたら、その fd が内部で無効になる
+
+EPOLLEXCLUSIVE
+
+関連づけられた fd にイベントがある場合、1 つの epoll オブジェクトのみを起こします。デフォルトでは (このフラグが設定されていない場合には)、fd に対してポーリングするすべての epoll オブジェクトを起こします。
+
+EPOLLRDHUP
+
+ストリームソケットの他端が接続を切断したか、接続の書き込み側のシャットダウンを行った。
+
+EPOLLRDNORM
+
+EPOLLIN と同じ
+
+EPOLLRDBAND
+
+優先データバンドを読み込める。
+
+EPOLLWRNORM
+
+EPOLLOUT と同じ
+
+EPOLLWRBAND
+
+優先データに書き込みできる。
+
+EPOLLMSG
+
+無視される。
+
+バージョン 3.6 で追加: EPOLLEXCLUSIVE was added. It's only supported by Linux Kernel 4.5 or later.
+
+epoll.close()
+epoll オブジェクトの制御用ファイル記述子を閉じます。
+
+epoll.closed
+epoll オブジェクトが閉じている場合 True です。
+
+epoll.fileno()
+制御用ファイル記述子の番号を返します。
+
+epoll.fromfd(fd)
+fd から epoll オブジェクトを作成します。
+
+epoll.register(fd[, eventmask])
+epoll オブジェクトにファイル記述子 fd を登録します。
+
+epoll.modify(fd, eventmask)
+登録されたファイル記述子変更します。
+
+epoll.unregister(fd)
+epoll オブジェクトから登録されたファイル記述子 fd を削除します。
+
+バージョン 3.9 で変更: The method no longer ignores the EBADF error.
+
+epoll.poll(timeout=None, maxevents=-1)
+イベントを待機します。timeout はタイムアウト時間で、単位は秒 (float型) です。
+
+バージョン 3.5 で変更: この関数は、シグナルによって中断された時に、 InterruptedError を上げる代わりに再計算されたタイムアウトによってリトライするようになりました。ただし、シグナルハンドラが例外を起こした場合を除きます (この論理的根拠については PEP 475 を見てください)。
+
+ポーリングオブジェクト
+poll() システムコールはほとんどの Unix システムでサポートされており、非常に多数のクライアントに同時にサービスを提供するようなネットワークサーバが高いスケーラビリティを持てるようにしています。 poll() は対象のファイル記述子を列挙するだけでよいため、良くスケールします。一方、 select() はビット対応表を構築し、対象ファイルの記述子に対応するビットを立て、その後全ての対応表の全てのビットを線形探索します。 select() は O(最大のファイル記述子番号) なのに対し、 poll() は O(対象とするファイル記述子の数) で済みます。
+
+poll.register(fd[, eventmask])
+ファイル記述子をポーリングオブジェクトに登録します。これ以降の poll() メソッド呼び出しでは、そのファイル記述子に処理待ち中の I/O イベントがあるかどうかを監視します。 fd は整数か、整数値を返す fileno() メソッドを持つオブジェクトを取ります。ファイルオブジェクトも fileno() を実装しているので、引数として使うことができます。
+
+eventmask はオプションのビットマスクで、どの種類の I/O イベントを監視したいかを記述します。この値は以下の表で述べる定数 POLLIN 、 POLLPRI 、および POLLOUT の組み合わせにすることができます。ビットマスクを指定しない場合、標準の値が使われ、 3 種類のイベント全てに対して監視が行われます。
+
+定数
+
+意味
+
+POLLIN
+
+読み出し可能なデータが存在する
+
+POLLPRI
+
+緊急の読み出し可能なデータが存在する
+
+POLLOUT
+
+書き出しの準備ができている: 書き出し処理がブロックしない
+
+POLLERR
+
+何らかのエラー状態
+
+POLLHUP
+
+ハングアップ
+
+POLLRDHUP
+
+ストリームソケットの他端が接続を切断したか、接続の書き込み側のシャットダウンを行った。
+
+POLLNVAL
+
+無効な要求: 記述子が開かれていない
+
+登録済みのファイル記述子を登録してもエラーにはならず、一度だけ登録した場合と同じ効果になります。
+
+poll.modify(fd, eventmask)
+登録されているファイル記述子 fd を変更する。これは、 register(fd, eventmask) と同じ効果を持ちます。登録されていないファイル記述子に対してこのメソッドを呼び出すと、 errno ENOENT で OSError 例外が発生します。
+
+poll.unregister(fd)
+ポーリングオブジェクトによって追跡中のファイル記述子を登録解除します。 register() メソッドと同様に、 fd は整数か、整数値を返す fileno() メソッドを持つオブジェクトを取ります。
+
+登録されていないファイル記述子を登録解除しようとすると KeyError 例外が送出されます。
+
+poll.poll([timeout])
+登録されたファイル記述子に対してポーリングを行い、報告すべき I/O イベントまたはエラーの発生したファイル記述子毎に 2 要素のタプル (fd, event) からなるリストを返します。リストは空になることもあります。 fd はファイル記述子で、 event は該当するファイル記述子について報告されたイベントを表すビットマスクです --- 例えば POLLIN は入力待ちを示し、 POLLOUT はファイル記述子に対する書き込みが可能を示す、などです。空のリストは呼び出しがタイムアウトしたか、報告すべきイベントがどのファイル記述子でも発生しなかったことを示します。 timeout が与えられた場合、処理を戻すまで待機する時間の長さをミリ秒単位で指定します。 timeout が省略されたり、負の値であったり、あるいは None の場合、そのポーリングオブジェクトが監視している何らかのイベントが発生するまでブロックします。
+
+バージョン 3.5 で変更: この関数は、シグナルによって中断された時に、 InterruptedError を上げる代わりに再計算されたタイムアウトによってリトライするようになりました。ただし、シグナルハンドラが例外を起こした場合を除きます (この論理的根拠については PEP 475 を見てください)。
+
+kqueue オブジェクト
+kqueue.close()
+kqueue オブジェクトの制御用ファイル記述子を閉じる。
+
+kqueue.closed
+kqueue オブジェクトが閉じている場合 True です。
+
+kqueue.fileno()
+制御用ファイル記述子の番号を返します。
+
+kqueue.fromfd(fd)
+与えられたファイル記述子から、kqueue オブジェクトを作成する。
+
+kqueue.control(changelist, max_events[, timeout]) → eventlist
+kevent に対する低水準のインタフェース
+
+changelist must be an iterable of kevent objects or None
+
+max_events は 0 または正の整数
+
+timeout in seconds (floats possible); the default is None, to wait forever
+
+バージョン 3.5 で変更: この関数は、シグナルによって中断された時に、 InterruptedError を上げる代わりに再計算されたタイムアウトによってリトライするようになりました。ただし、シグナルハンドラが例外を起こした場合を除きます (この論理的根拠については PEP 475 を見てください)。
+
+kevent オブジェクト
+https://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
+
+kevent.ident
+イベントを特定するための値。この値は、フィルタにもよりますが、大抵の場合はファイル記述子です。コンストラクタでは、 ident として、整数値か fileno() メソッドを持ったオブジェクトを渡せます。 kevent は内部で整数値を保存します。
+
+kevent.filter
+カーネルフィルタの名前。
+
+定数
+
+意味
+
+KQ_FILTER_READ
+
+記述子を受け取り、読み込めるデータが存在する時に戻る
+
+KQ_FILTER_WRITE
+
+記述子を受け取り、書き込み可能な時に戻る
+
+KQ_FILTER_AIO
+
+AIO リクエスト
+
+KQ_FILTER_VNODE
+
+fflag で監視されたイベントが1つ以上発生したときに戻る
+
+KQ_FILTER_PROC
+
+プロセスID上のイベントを監視する
+
+KQ_FILTER_NETDEV
+
+ネットワークデバイス上のイベントを監視する (Mac OS X では利用不可)
+
+KQ_FILTER_SIGNAL
+
+監視しているシグナルがプロセスに届いたときに戻る
+
+KQ_FILTER_TIMER
+
+任意のタイマを設定する
+
+kevent.flags
+フィルタアクション。
+
+定数
+
+意味
+
+KQ_EV_ADD
+
+イベントを追加または修正する
+
+KQ_EV_DELETE
+
+キューからイベントを取り除く
+
+KQ_EV_ENABLE
+
+control() がイベントを返すのを許可する
+
+KQ_EV_DISABLE
+
+イベントを無効にする
+
+KQ_EV_ONESHOT
+
+イベントを最初の発生後無効にする
+
+KQ_EV_CLEAR
+
+イベントを受け取った後で状態をリセットする
+
+KQ_EV_SYSFLAGS
+
+内部イベント
+
+KQ_EV_FLAG1
+
+内部イベント
+
+KQ_EV_EOF
+
+フィルタ依存のEOF状態
+
+KQ_EV_ERROR
+
+戻り値を参照
+
+kevent.fflags
+フィルタ依存のフラグ。
+
+KQ_FILTER_READ と KQ_FILTER_WRITE フィルタのフラグ:
+
+定数
+
+意味
+
+KQ_NOTE_LOWAT
+
+ソケットバッファの最低基準値
+
+KQ_FILTER_VNODE フィルタのフラグ:
+
+定数
+
+意味
+
+KQ_NOTE_DELETE
+
+unlink() が呼ばれた
+
+KQ_NOTE_WRITE
+
+書き込みが発生した
+
+KQ_NOTE_EXTEND
+
+ファイルのサイズが拡張された
+
+KQ_NOTE_ATTRIB
+
+属性が変更された
+
+KQ_NOTE_LINK
+
+リンクカウントが変更された
+
+KQ_NOTE_RENAME
+
+ファイル名が変更された
+
+KQ_NOTE_REVOKE
+
+ファイルアクセスが破棄された
+
+KQ_FILTER_PROC フィルタフラグ:
+
+定数
+
+意味
+
+KQ_NOTE_EXIT
+
+プロセスが終了した
+
+KQ_NOTE_FORK
+
+プロセスが fork() を呼び出した
+
+KQ_NOTE_EXEC
+
+プロセスが新しいプロセスを実行した
+
+KQ_NOTE_PCTRLMASK
+
+内部フィルタフラグ
+
+KQ_NOTE_PDATAMASK
+
+内部フィルタフラグ
+
+KQ_NOTE_TRACK
+
+fork() の呼び出しを超えてプロセスを監視する
+
+KQ_NOTE_CHILD
+
+NOTE_TRACK に対して子プロセスに渡される
+
+KQ_NOTE_TRACKERR
+
+子プロセスにアタッチできなかった
+
+KQ_FILTER_NETDEV フィルタフラグ (Mac OS X では利用不可):
+
+定数
+
+意味
+
+KQ_NOTE_LINKUP
+
+リンクアップしている
+
+KQ_NOTE_LINKDOWN
+
+リンクダウンしている
+
+KQ_NOTE_LINKINV
+
+リンク状態が不正
+
+kevent.data
+フィルタ固有のデータ。
+
+kevent.udata
+ユーザー定義値。
+
+selectors --- 高水準の I/O 多重化
+バージョン 3.4 で追加.
+
+ソースコード: Lib/selectors.py
+
+はじめに
+このモジュールにより、select モジュールプリミティブに基づく高水準かつ効率的な I/O の多重化が行えます。OS 水準のプリミティブを使用した正確な制御を求めない限り、このモジュールの使用が推奨されます。
+
+このモジュールは BaseSelector 抽象基底クラスと、いくつかの具象実装 (KqueueSelector, EpollSelector...) を定義しており、これらは複数のファイルオブジェクトの I/O の準備状況の通知の待機に使用できます。以下では、 "ファイルオブジェクト" は、fileno() メソッドを持つあらゆるオブジェクトか、あるいは Raw ファイル記述子を意味します。ファイルオブジェクト を参照してください。
+
+DefaultSelector は、現在のプラットフォームで利用できる、もっとも効率的な実装の別名になります: これはほとんどのユーザーにとってのデフォルトの選択になるはずです。
+
+注釈 プラットフォームごとにサポートされているファイルオブジェクトのタイプは異なります: Windows ではソケットはサポートされますが、パイプはされません。Unix では両方がサポートされます (その他の fifo やスペシャルファイルデバイスなどのタイプもサポートされます)。
+参考
+select
+低水準の I/O 多重化モジュールです。
+
+クラス
+クラス階層:
+
+BaseSelector
++-- SelectSelector
++-- PollSelector
++-- EpollSelector
++-- DevpollSelector
++-- KqueueSelector
+以下では、events は与えられたファイルオブジェクトを待機すべき I/O イベントを示すビット単位のマスクになります。これには以下のモジュール定数の組み合わせを設定できます:
+
+定数
+
+意味
+
+EVENT_READ
+
+読み込み可能
+
+EVENT_WRITE
+
+書き込み可能
+
+class selectors.SelectorKey
+SelectorKey はそれの下層のファイルディスクリプタ、選択したイベントマスク、および付属データへのファイルオブジェクトの関連付けに使用される namedtuple です。いくつかの BaseSelector メソッドを返します。
+
+fileobj
+登録されたファイルオブジェクトです。
+
+fd
+下層のファイル記述子です。
+
+events
+このファイルオブジェクトで待機しなければならないイベントです。
+
+data
+このファイルオブジェクトに関連付けられたオプションの不透明型 (Opaque) データです。例えば、これはクライアントごとのセッション ID を格納するために使用できます。
+
+class selectors.BaseSelector
+BaseSelector は複数のファイルオブジェクトの I/O イベントの準備状況の待機に使用されます。これはファイルストリームを登録、登録解除、およびこれらのストリームでの I/O イベントを待機 (オプションでタイムアウト) するメソッドをサポートします。これは抽象基底クラスであるため、インスタンスを作成できません。使用する実装を明示的に指定したい、そしてプラットフォームがそれをサポートしている場合は、代わりに DefaultSelector を使用するか、SelectSelector や KqueueSelector などの一つを使用します。BaseSelector とその具象実装は コンテキストマネージャー プロトコルをサポートしています。
+
+abstractmethod register(fileobj, events, data=None)
+I/O イベントを監視するファイルオブジェクトをセレクションに登録します。
+
+fileobj は監視するファイルオブジェクトです。これは整数のファイル記述子か、fileno() メソッドを持つオブジェクトのどちらかになります。events は監視するイベントのビット幅マスクになります。data は不透明型 (Opaque) オブジェクトです。
+
+これは新しい SelectorKey インスタンスを返します。不正なイベントマスク化ファイル記述子のときは ValueError が、ファイルオブジェクトがすでに登録済みのときは KeyError が送出されます。
+
+abstractmethod unregister(fileobj)
+ファイルオブジェクトのセレクション登録を解除し、監視対象から外します。ファイルオブジェクトの登録解除はそのクローズより前に行われます。
+
+fileobj は登録済みのファイルオブジェクトでなければなりません。
+
+関連付けられた SelectorKey インスタンスを返します。fileobj が登録されていない場合 KeyError を送出します。fileobj が不正な場合 (例えば fileobj に fileno() メソッドが無い場合や fileno() メソッドの戻り値が不正な場合) ValueError を送出します。
+
+modify(fileobj, events, data=None)
+登録されたファイルオブジェクトの監視されたイベントや付属データを変更します。
+
+より効率的に実装できる点を除けば、 BaseSelector.unregister(fileobj)() に続けて BaseSelector.register(fileobj, events, data)() を行うのと等価です。
+
+新たな SelectorKey インスタンスを返します。 イベントマスクやファイル記述子が不正な場合は ValueError を、ファイルオブジェクトが登録されていない場合は KeyError を送出します。
+
+abstractmethod select(timeout=None)
+登録されたいくつかのファイルオブジェクトが準備できたか、タイムアウトするまで待機します。
+
+timeout > 0 の場合、最大待機時間を秒で指定します。 timeout <= 0 の場合、この関数の呼び出しはブロックせず、 現在準備できているファイルオブジェクトを報告します。 timeout が None の場合、監視しているファイルオブジェクトの一つが準備できるまでブロックします。
+
+この関数は (key, events) タプルのリストを返します。準備できたファイルオブジェクトにつき1タプルです。
+
+key は準備状態のファイルオブジェクトに対応する SelectorKey インスタンスです。 events はそのファイルオブジェクトで準備が完了したイベントのビットマスクです。
+
+注釈 このメソッドは、現在のプロセスで信号を受信した場合、どのファイルオブジェクトも準備完了にならないうちに、またはタイムアウトが経過する前に返ることがあります。その場合、空のリストが返されます。
+バージョン 3.5 で変更: このセレクタは、シグナルによって中断された時に、シグナルハンドラが例外を起こさなかった場合、空のイベントリストを返すのではなく、再計算されたタイムアウトによってリトライするようになりました (この論拠については PEP 475 を参照してください)。
+
+close()
+セレクタを閉じます。
+
+下層のリソースがすべて解放されたことを確かめるために呼ばれなければなりません。一旦閉じられたセレクタは使ってはいけません。
+
+get_key(fileobj)
+登録されたファイルオブジェクトに関連付けられたキーを返します。
+
+そのファイルオブジェクトに関連付けられた SelectorKey インスタンスを返します。そのファイルオブジェクトが登録されていない場合 KeyError を送出します。
+
+abstractmethod get_map()
+ファイルオブジェクトからセレクタキーへのマッピングを返します。
+
+これは、登録済みのファイルオブジェクトを、それらに関連づけられた SelectorKey インスタンスにマッピングする Mapping のインスタンスを返します。
+
+class selectors.DefaultSelector
+デフォルトの selector クラスで、現在のプラットフォームで利用できる最も効率的な実装を使用しています。大半のユーザはこれをデフォルトにすべきです。
+
+class selectors.SelectSelector
+select.select() を基底とするセレクタです。
+
+class selectors.PollSelector
+select.poll() を基底とするセレクタです。
+
+class selectors.EpollSelector
+select.epoll() を基底とするセレクタです。
+
+fileno()
+下層の select.epoll() オブジェクトが使用しているファイル記述子を返します。
+
+class selectors.DevpollSelector
+select.devpoll() を基底とするセレクタです。
+
+fileno()
+下層の select.devpoll() オブジェクトが使用しているファイル記述子を返します。
+
+バージョン 3.5 で追加.
+
+class selectors.KqueueSelector
+select.kqueue() を基底とするセレクタです。
+
+fileno()
+下層の select.kqueue() オブジェクトが使用しているファイル記述子を返します。
+
+使用例
+簡単なエコーサーバの実装です:
+
+import selectors
+import socket
+
+sel = selectors.DefaultSelector()
+
+def accept(sock, mask):
+    conn, addr = sock.accept()  # Should be ready
+    print('accepted', conn, 'from', addr)
+    conn.setblocking(False)
+    sel.register(conn, selectors.EVENT_READ, read)
+
+def read(conn, mask):
+    data = conn.recv(1000)  # Should be ready
+    if data:
+        print('echoing', repr(data), 'to', conn)
+        conn.send(data)  # Hope it won't block
+    else:
+        print('closing', conn)
+        sel.unregister(conn)
+        conn.close()
+
+sock = socket.socket()
+sock.bind(('localhost', 1234))
+sock.listen(100)
+sock.setblocking(False)
+sel.register(sock, selectors.EVENT_READ, accept)
+
+while True:
+    events = sel.select()
+    for key, mask in events:
+        callback = key.data
+        callback(key.fileobj, mask)
+
+asyncore --- 非同期ソケットハンドラ
+ソースコード: Lib/asyncore.py
+
+バージョン 3.6 で非推奨: 代わりに asyncio を使ってください。
+
+注釈 このモジュールは後方互換性のためだけに存在します。新しいコードでは asyncio を利用することを推奨します。
+このモジュールは、非同期ソケットサービスのクライアント・サーバを開発するための基盤として使われます。
+
+CPUが一つしかない場合、プログラムが"二つのことを同時に"実行する方法は二つしかありません。もっとも簡単で一般的なのはマルチスレッドを利用する方法ですが、これとはまったく異なるテクニックで、一つのスレッドだけでマルチスレッドと同じような効果を得られるテクニックがあります。このテクニックはI/O処理が中心である場合にのみ有効で、CPU負荷の高いプログラムでは効果が無く、この場合にはプリエンプティブなスケジューリングが可能なスレッドが有効でしょう。しかし、多くの場合、ネットワークサーバではCPU負荷よりはIO負荷が問題となります。
+
+もしOSのI/Oライブラリがシステムコール select() をサポートしている場合（ほとんどの場合はサポートされている）、I/O処理は"バックグラウンド"で実行し、その間に他の処理を実行すれば、複数の通信チャネルを同時にこなすことができます。一見、この戦略は奇妙で複雑に思えるかもしれませんが、いろいろな面でマルチスレッドよりも理解しやすく、制御も容易です。 asyncore は多くの複雑な問題を解決済みなので、洗練され、パフォーマンスにも優れたネットワークサーバとクライアントを簡単に開発することができます。とくに、 asynchat のような、対話型のアプリケーションやプロトコルには非常に有効でしょう。
+
+基本的には、この二つのモジュールを使う場合は一つ以上のネットワーク チャネル を asyncore.dispatcher クラス、または asynchat.async_chat のインスタンスとして作成します。作成されたチャネルはグローバルマップに登録され、 loop() 関数で参照されます。 loop() には、専用の マップ を渡す事も可能です。
+
+チャネルを生成後、 loop() を呼び出すとチャネル処理が開始し、最後のチャネル（非同期処理中にマップに追加されたチャネルを含む）が閉じるまで継続します。
+
+asyncore.loop([timeout[, use_poll[, map[, count]]]])
+ポーリングループを開始し、count 回が過ぎるか、全てのオープン済みチャネルがクローズされた場合のみ終了します。全ての引数はオプションです。引数 count のデフォルト値は None で、ループは全てのチャネルがクローズされた場合のみ終了します。引数 timeout は select() または poll() の引数 timeout として渡され、秒単位で指定します。デフォルト値は 30 秒です。引数 use_poll が真の場合、 select() ではなく poll() が使われます (デフォルト値は False です)。
+
+引数 map には、監視するチャネルをアイテムとして格納した辞書を指定します。チャネルがクローズされた時に map からそのチャネルが削除されます。 map が省略された場合、グローバルなマップが使用されます。チャネル (asyncore.dispatcher, asynchat.async_chat とそのサブクラス) は自由に混ぜて map に入れることができます。
+
+class asyncore.dispatcher
+dispatcher クラスは、低レベルソケットオブジェクトの薄いラッパーです。便宜上、非同期ループから呼び出されるイベント処理メソッドを追加していますが、これ以外の点では、non-blockingなソケットと同様です。
+
+非同期ループ内で低レベルイベントが発生した場合、発生のタイミングやコネクションの状態から特定の高レベルイベントへと置き換えることができます。例えばソケットを他のホストに接続する場合、最初の書き込み可能イベントが発生すれば接続が完了した事が分かります(この時点で、ソケットへの書き込みは成功すると考えられる)。このように判定できる高レベルイベントを以下に示します:
+
+Event
+
+説明
+
+handle_connect()
+
+最初にreadもしくはwriteイベントが発生した時
+
+handle_close()
+
+読み込み可能なデータなしでreadイベントが発生した時
+
+handle_accepted()
+
+listen中のソケットでreadイベントが発生した時
+
+非同期処理中、マップに登録されたチャネルの readable() メソッドと writable() メソッドが呼び出され、 select() か poll() でread/writeイベントを検出するリストに登録するか否かを判定します。
+
+このようにして、チャネルでは低レベルなソケットイベントの種類より多くの種類のイベントを検出する事ができます。以下にあげるイベントは、サブクラスでオーバライドすることが可能です:
+
+handle_read()
+非同期ループで、チャネルのソケットの read() メソッドの呼び出しが成功した時に呼び出されます。
+
+handle_write()
+非同期ループで、書き込み可能ソケットが実際に書き込み可能になった時に呼び出されます。このメソッドでは、しばしばパフォーマンスの向上のために必要なバッファリングを実装します。例:
+
+def handle_write(self):
+    sent = self.send(self.buffer)
+    self.buffer = self.buffer[sent:]
+handle_expt()
+out of band (OOB)データが検出された時に呼び出されます。OOBはあまりサポートされておらず、また滅多に使われないので、handle_expt() が呼び出されることはほとんどありません。
+
+handle_connect()
+ソケットの接続が確立した時に呼び出されます。"welcome"バナーの送信、プロトコルネゴシエーションの初期化などを行います。
+
+handle_close()
+ソケットが閉じた時に呼び出されます。
+
+handle_error()
+捕捉されない例外が発生した時に呼び出されます。デフォルトでは、短縮したトレースバック情報が出力されます。
+
+handle_accept()
+listen 中のチャネル (受動的にオープンしたもの) がリモートホストからの connect() で接続され、接続が確立した時に呼び出されます。 バージョン 3.2 で非推奨になりました; 代わりに handle_accepted() を使ってください。
+
+バージョン 3.2 で非推奨.
+
+handle_accepted(sock, addr)
+listen 中のチャネル (受動的にオープンしたもの) がリモートホストからの connect() で接続され、接続が確立した時に呼び出されます。 sock はその接続でデータを送受信するのに使える 新しい ソケットオブジェクトで、 addr は接続の対向のソケットに bind されているアドレスです。
+
+バージョン 3.2 で追加.
+
+readable()
+非同期ループ中に呼び出され、readイベントの監視リストに加えるか否かを決定します。デフォルトのメソッドでは True を返し、readイベントの発生を監視します。
+
+writable()
+非同期ループ中に呼び出され、writeイベントの監視リストに加えるか否かを決定します。デフォルトのメソッドでは True を返し、writeイベントの発生を監視します。
+
+さらに、チャネルにはソケットのメソッドとほぼ同じメソッドがあり、チャネルはソケットのメソッドの多くを委譲・拡張しており、ソケットとほぼ同じメソッドを持っています。
+
+create_socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
+引数も含め、通常のソケット生成と同一です。ソケットの生成については、 socket モジュールのドキュメントを参照してください。
+
+バージョン 3.3 で変更: family 引数と type 引数が省略可能になりました。
+
+connect(address)
+通常のソケットオブジェクトと同様、address には一番目の値が接続先ホスト、2番目の値がポート番号であるタプルを指定します。
+
+send(data)
+リモート側の端点に data を送出します。
+
+recv(buffer_size)
+リモート側の端点より、最大 buffer_size バイトのデータを読み込みます。長さ0のバイト列オブジェクトが返ってきた場合、チャネルはリモートから切断された事を示します。
+
+select.select() や select.poll() がソケットが読み込みできる状態にあると報告したとしても、 recv() が BlockingIOError を送出する場合があります。
+
+listen(backlog)
+ソケットへの接続を待ちます。引数 backlog は、キューに追加できるコネクションの最大数 (1 以上) を指定します。最大値はシステムに依存します（通常は5)。
+
+bind(address)
+ソケットを address にバインドします。ソケットはバインド済みであってはなりません。 (address の形式は、アドレスファミリに依存します。 socket モジュールを参照のこと。) ソケットを再利用可能にする (SO_REUSEADDR オプションを設定する) には、 dispatcher オブジェクトの set_reuse_addr() メソッドを呼び出してください。
+
+accept()
+接続を受け入れます。ソケットはアドレスにバインド済みであり、listen() で接続待ち状態でなければなりません。戻り値は None か (conn, address) のペアで、conn はデータの送受信を行う 新しい ソケットオブジェクト、address は接続先ソケットがバインドされているアドレスです。None が返された場合、接続が起こらなかったことを意味します。その場合、サーバーはこのイベントを無視して後続の接続を待ち続けるべきです。
+
+close()
+ソケットをクローズします。以降の全ての操作は失敗します。リモート端点では、キューに溜まったデータ以外、これ以降のデータ受信は行えません。ソケットはガベージコレクト時に自動的にクローズされます。
+
+class asyncore.dispatcher_with_send
+dispatcher のサブクラスで、シンプルなバッファされた出力機能を持ちます。シンプルなクライアントプログラムに適しています。もっと高レベルな場合には asynchat.async_chat を利用してください。
+
+class asyncore.file_dispatcher
+file_dispatcher はファイルデスクリプタか ファイルオブジェクト とオプションとして map を引数にとって、 poll() か loop() 関数で利用できるようにラップします。与えられたファイルオブジェクトなどが fileno() メソッドを持っているとき、そのメソッドが呼び出されて戻り値が file_wrapper のコンストラクタに渡されます。
+
+利用可能な環境: Unix。
+
+class asyncore.file_wrapper
+file_wrapper は整数のファイルデスクリプタを受け取って os.dup() を呼び出してハンドルを複製するので、元のハンドルは file_wrapper と独立してclose されます。このクラスは file_dispatcher クラスが使うために必要なソケットをエミュレートするメソッドを実装しています。
+
+利用可能な環境: Unix。
+
+asyncoreの例: 簡単なHTTPクライアント
+基本的なサンプルとして、以下に非常に単純なHTTPクライアントを示します。このHTTPクライアントは dispatcher クラスでソケットを利用しています:
+
+import asyncore
+
+class HTTPClient(asyncore.dispatcher):
+
+    def __init__(self, host, path):
+        asyncore.dispatcher.__init__(self)
+        self.create_socket()
+        self.connect( (host, 80) )
+        self.buffer = bytes('GET %s HTTP/1.0\r\nHost: %s\r\n\r\n' %
+                            (path, host), 'ascii')
+
+    def handle_connect(self):
+        pass
+
+    def handle_close(self):
+        self.close()
+
+    def handle_read(self):
+        print(self.recv(8192))
+
+    def writable(self):
+        return (len(self.buffer) > 0)
+
+    def handle_write(self):
+        sent = self.send(self.buffer)
+        self.buffer = self.buffer[sent:]
+
+
+client = HTTPClient('www.python.org', '/')
+asyncore.loop()
+基本的な echo サーバーの例
+この例の基本的な echoサーバーは、 dispatcher を利用して接続を受けつけ、接続をハンドラーにディスパッチします:
+
+import asyncore
+
+class EchoHandler(asyncore.dispatcher_with_send):
+
+    def handle_read(self):
+        data = self.recv(8192)
+        if data:
+            self.send(data)
+
+class EchoServer(asyncore.dispatcher):
+
+    def __init__(self, host, port):
+        asyncore.dispatcher.__init__(self)
+        self.create_socket()
+        self.set_reuse_addr()
+        self.bind((host, port))
+        self.listen(5)
+
+    def handle_accepted(self, sock, addr):
+        print('Incoming connection from %s' % repr(addr))
+        handler = EchoHandler(sock)
+
+server = EchoServer('localhost', 8080)
+asyncore.loop()
+
+asynchat --- 非同期ソケットコマンド/レスポンスハンドラ
+ソースコード: Lib/asynchat.py
+
+バージョン 3.6 で非推奨: 代わりに asyncio を使ってください。
+
+注釈 このモジュールは後方互換性のためだけに存在します。新しいコードでは asyncio を利用することを推奨します。
+asynchat を使うと、 asyncore を基盤とした非同期なサーバ・クライアントをより簡単に開発する事ができます。 asynchat では、プロトコルの要素が任意の文字列で終了するか、または可変長の文字列であるようなプロトコルを容易に制御できるようになっています。 asynchat は、抽象クラス async_chat を定義しており、 async_chat を継承して collect_incoming_data() メソッドと found_terminator() メソッドを実装すれば使うことができます。 async_chat と asyncore は同じ非同期ループを使用しており、 asyncore.dispatcher も asynchat.async_chat も同じチャネルマップに登録する事ができます。通常、 asyncore.dispatcher はサーバチャネルとして使用し、リクエストの受け付け時に asynchat.async_chat オブジェクトを生成します。
+
+class asynchat.async_chat
+このクラスは、 asyncore.dispatcher から継承した抽象クラスです。使用する際には async_chat のサブクラスを作成し、 collect_incoming_data() と found_terminator() を定義しなければなりません。 asyncore.dispatcher のメソッドを使用する事もできますが、メッセージ/レスポンス処理を中心に行う場合には使えないメソッドもあります。
+
+asyncore.dispatcher と同様に、 async_chat も select() 呼出し後のソケットの状態からイベントを生成します。ポーリングループ開始後、イベント処理フレームワークが自動的に async_chat のメソッドを呼び出しますので、プログラマが処理を記述する必要はありません。
+
+パフォーマンスの向上やメモリの節約のために、2つのクラス属性を調整することができます。
+
+ac_in_buffer_size
+非同期入力バッファサイズ (デフォルト値: 4096)。
+
+ac_out_buffer_size
+非同期出力バッファサイズ (デフォルト値: 4096)。
+
+Unlike asyncore.dispatcher, async_chat allows you to define a FIFO queue of producers. A producer need have only one method, more(), which should return data to be transmitted on the channel. The producer indicates exhaustion (i.e. that it contains no more data) by having its more() method return the empty bytes object. At this point the async_chat object removes the producer from the queue and starts using the next producer, if any. When the producer queue is empty the handle_write() method does nothing. You use the channel object's set_terminator() method to describe how to recognize the end of, or an important breakpoint in, an incoming transmission from the remote endpoint.
+
+async_chat のサブクラスでは、入力メソッド collect_incoming_data() と found_terminator() を定義し、チャネルが非同期に受信するデータを処理します。これらのメソッドについては後ろで解説します。
+
+async_chat.close_when_done()
+Pushes a None on to the producer queue. When this producer is popped off the queue it causes the channel to be closed.
+
+async_chat.collect_incoming_data(data)
+チャネルが受信した不定長のデータを data に指定して呼び出されます。このメソッドは必ずオーバライドする必要があり、デフォルトの実装では、 NotImplementedError 例外を送出します。
+
+async_chat.discard_buffers()
+In emergencies this method will discard any data held in the input and/or output buffers and the producer queue.
+
+async_chat.found_terminator()
+入力データストリームが、 set_terminator() で指定した終了条件と一致した場合に呼び出されます。このメソッドは必ずオーバライドする必要があり、デフォルトの実装では、 NotImplementedError 例外を送出します。入力データを参照する必要がある場合でも引数としては与えられないため、入力バッファをインスタンス属性として参照しなければなりません。
+
+async_chat.get_terminator()
+現在のチャネルの終了条件を返します。
+
+async_chat.push(data)
+Pushes data on to the channel's queue to ensure its transmission. This is all you need to do to have the channel write the data out to the network, although it is possible to use your own producers in more complex schemes to implement encryption and chunking, for example.
+
+async_chat.push_with_producer(producer)
+Takes a producer object and adds it to the producer queue associated with the channel. When all currently-pushed producers have been exhausted the channel will consume this producer's data by calling its more() method and send the data to the remote endpoint.
+
+async_chat.set_terminator(term)
+チャネルで検出する終了条件を設定します。term は入力プロトコルデータの処理方式によって以下の3つの型の何れかを指定します。
+
+term
+
+説明
+
+string
+
+入力ストリーム中でstringが検出された時、 found_terminator() を呼び出します
+
+integer
+
+指定された文字数が読み込まれた時、 found_terminator() を呼び出します
+
+None
+
+永久にデータを読み込みます
+
+終了条件が成立しても、その後に続くデータは、 found_terminator() の呼出し後に再びチャネルを読み込めば取得する事ができます。
+
+asynchat 使用例
+以下のサンプルは、 async_chat でHTTPリクエストを読み込む処理の一部です。Webサーバは、クライアントからの接続毎に http_request_handler オブジェクトを作成します。最初はチャネルの終了条件に空行を指定してHTTPヘッダの末尾までを検出し、その後ヘッダ読み込み済みを示すフラグを立てています。
+
+ヘッダ読み込んだ後、リクエストの種類がPOSTであればデータが入力ストリームに流れるため、Content-Length: ヘッダの値を数値として終了条件に指定し、適切な長さのデータをチャネルから読み込みます。
+
+必要な入力データを全て入手したら、チャネルの終了条件に None を指定して残りのデータを無視するようにしています。この後、 handle_request() が呼び出されます。
+
+import asynchat
+
+class http_request_handler(asynchat.async_chat):
+
+    def __init__(self, sock, addr, sessions, log):
+        asynchat.async_chat.__init__(self, sock=sock)
+        self.addr = addr
+        self.sessions = sessions
+        self.ibuffer = []
+        self.obuffer = b""
+        self.set_terminator(b"\r\n\r\n")
+        self.reading_headers = True
+        self.handling = False
+        self.cgi_data = None
+        self.log = log
+
+    def collect_incoming_data(self, data):
+        """Buffer the data"""
+        self.ibuffer.append(data)
+
+    def found_terminator(self):
+        if self.reading_headers:
+            self.reading_headers = False
+            self.parse_headers(b"".join(self.ibuffer))
+            self.ibuffer = []
+            if self.op.upper() == b"POST":
+                clen = self.headers.getheader("content-length")
+                self.set_terminator(int(clen))
+            else:
+                self.handling = True
+                self.set_terminator(None)
+                self.handle_request()
+        elif not self.handling:
+            self.set_terminator(None)  # browsers sometimes over-send
+            self.cgi_data = parse(self.headers, b"".join(self.ibuffer))
+            self.handling = True
+            self.ibuffer = []
+            self.handle_request()
+
+signal --- 非同期イベントにハンドラを設定する
+このモジュールでは Python でシグナルハンドラを使うための機構を提供します。
+
+一般的なルール
+The signal.signal() function allows defining custom handlers to be executed when a signal is received. A small number of default handlers are installed: SIGPIPE is ignored (so write errors on pipes and sockets can be reported as ordinary Python exceptions) and SIGINT is translated into a KeyboardInterrupt exception if the parent process has not changed it.
+
+特定のシグナルに対するハンドラが一度設定されると、明示的にリセットしないかぎり設定されたままになります (Python は背後の実装系に関係なく BSD 形式のインタフェースをエミュレートします)。例外は SIGCHLD のハンドラで、この場合は背後の実装系の仕様に従います。
+
+Python のシグナルハンドラの実行
+Python のシグナルハンドラは、低水準 (C言語) のシグナルハンドラ内で実行されるわけではありません。代わりに、低水準のシグナルハンドラが virtual machine が対応する Python のシグナルハンドラを後から (例えば次の bytecode 命令時に) 実行するようにフラグを立てます:
+
+It makes little sense to catch synchronous errors like SIGFPE or SIGSEGV that are caused by an invalid operation in C code. Python will return from the signal handler to the C code, which is likely to raise the same signal again, causing Python to apparently hang. From Python 3.3 onwards, you can use the faulthandler module to report on synchronous errors.
+
+完全にCで実装された長時間かかる計算 (大きいテキストに対する正規表現のマッチなど) は、どのシグナルを受信しても中断されないまま長時間実行され続ける可能性があります。Python のシグナルハンドラはその計算が終了してから呼び出されます。
+
+シグナルとスレッド
+Python signal handlers are always executed in the main Python thread of the main interpreter, even if the signal was received in another thread. This means that signals can't be used as a means of inter-thread communication. You can use the synchronization primitives from the threading module instead.
+
+Besides, only the main thread of the main interpreter is allowed to set a new signal handler.
+
+モジュールの内容
+バージョン 3.5 で変更: signal (SIG*), handler (SIG_DFL, SIG_IGN) and sigmask (SIG_BLOCK, SIG_UNBLOCK, SIG_SETMASK) related constants listed below were turned into enums. getsignal(), pthread_sigmask(), sigpending() and sigwait() functions return human-readable enums.
+
+以下に signal モジュールで定義されている変数を示します:
+
+signal.SIG_DFL
+二つある標準シグナル処理オプションのうちの一つです; 単純にシグナルに対する標準の関数を実行します。例えば、ほとんどのシステムでは、 SIGQUIT に対する標準の動作はコアダンプと終了で、 SIGCHLD に対する標準の動作は単にシグナルの無視です。
+
+signal.SIG_IGN
+もう一つの標準シグナル処理オプションで、受け取ったシグナルを単に無視します。
+
+signal.SIGABRT
+Abort signal from abort(3).
+
+signal.SIGALRM
+Timer signal from alarm(2).
+
+利用可能な環境: Unix。
+
+signal.SIGBREAK
+Interrupt from keyboard (CTRL + BREAK).
+
+利用可能な環境: Windows 。
+
+signal.SIGBUS
+Bus error (bad memory access).
+
+利用可能な環境: Unix。
+
+signal.SIGCHLD
+Child process stopped or terminated.
+
+利用可能な環境: Unix。
+
+signal.SIGCLD
+Alias to SIGCHLD.
+
+signal.SIGCONT
+Continue the process if it is currently stopped
+
+利用可能な環境: Unix。
+
+signal.SIGFPE
+Floating-point exception. For example, division by zero.
+
+参考 ZeroDivisionError is raised when the second argument of a division or modulo operation is zero.
+signal.SIGHUP
+Hangup detected on controlling terminal or death of controlling process.
+
+利用可能な環境: Unix。
+
+signal.SIGILL
+Illegal instruction.
+
+signal.SIGINT
+Interrupt from keyboard (CTRL + C).
+
+Default action is to raise KeyboardInterrupt.
+
+signal.SIGKILL
+Kill signal.
+
+It cannot be caught, blocked, or ignored.
+
+利用可能な環境: Unix。
+
+signal.SIGPIPE
+Broken pipe: write to pipe with no readers.
+
+Default action is to ignore the signal.
+
+利用可能な環境: Unix。
+
+signal.SIGSEGV
+Segmentation fault: invalid memory reference.
+
+signal.SIGTERM
+Termination signal.
+
+signal.SIGUSR1
+User-defined signal 1.
+
+利用可能な環境: Unix。
+
+signal.SIGUSR2
+User-defined signal 2.
+
+利用可能な環境: Unix。
+
+signal.SIGWINCH
+Window resize signal.
+
+利用可能な環境: Unix。
+
+SIG*
+All the signal numbers are defined symbolically. For example, the hangup signal is defined as signal.SIGHUP; the variable names are identical to the names used in C programs, as found in <signal.h>. The Unix man page for 'signal()' lists the existing signals (on some systems this is signal(2), on others the list is in signal(7)). Note that not all systems define the same set of signal names; only those names defined by the system are defined by this module.
+
+signal.CTRL_C_EVENT
+CTRL+C キーストロークに該当するシグナル。このシグナルは os.kill() でだけ利用できます。
+
+利用可能な環境: Windows 。
+
+バージョン 3.2 で追加.
+
+signal.CTRL_BREAK_EVENT
+CTRL+BREAK キーストロークに該当するシグナル。このシグナルは os.kill() でだけ利用できます。
+
+利用可能な環境: Windows 。
+
+バージョン 3.2 で追加.
+
+signal.NSIG
+最も大きいシグナル番号に 1 を足した値です。
+
+signal.ITIMER_REAL
+実時間でデクリメントするインターバルタイマーです。タイマーが発火したときに SIGALRM を送ります。
+
+signal.ITIMER_VIRTUAL
+プロセスの実行時間だけデクリメントするインターバルタイマーです。タイマーが発火したときに SIGVTALRM を送ります。
+
+signal.ITIMER_PROF
+プロセスの実行中と、システムがそのプロセスのために実行している時間だけデクリメントするインターバルタイマーです。ITIMER_VIRTUAL と組み合わせて、このタイマーはよくアプリケーションがユーザー空間とカーネル空間で消費した時間のプロファイリングに利用されます。タイマーが発火したときに SIGPROF を送ります。
+
+signal.SIG_BLOCK
+pthread_sigmask() の how 引数に渡せる値で、シグナルがブロックされることを意味します。
+
+バージョン 3.3 で追加.
+
+signal.SIG_UNBLOCK
+pthread_sigmask() の how 引数に渡せる値で、シグナルがブロック解除されることを意味します。
+
+バージョン 3.3 で追加.
+
+signal.SIG_SETMASK
+pthread_sigmask() の how 引数に渡せる値で、シグナルが置換されることを意味します。
+
+バージョン 3.3 で追加.
+
+signal モジュールは1つの例外を定義しています:
+
+exception signal.ItimerError
+背後の setitimer() または getitimer() 実装からエラーを通知するために送出されます。無効なインタバルタイマーや負の時間が setitimer() に渡された場合、このエラーを予期してください。このエラーは OSError を継承しています。
+
+バージョン 3.3 で追加: このエラーは以前は IOError のサブタイプでしたが、 OSError のエイリアスになりました。
+
+signal モジュールでは以下の関数を定義しています:
+
+signal.alarm(time)
+If time is non-zero, this function requests that a SIGALRM signal be sent to the process in time seconds. Any previously scheduled alarm is canceled (only one alarm can be scheduled at any time). The returned value is then the number of seconds before any previously set alarm was to have been delivered. If time is zero, no alarm is scheduled, and any scheduled alarm is canceled. If the return value is zero, no alarm is currently scheduled.
+
+Availability: Unix. See the man page alarm(2) for further information.
+
+signal.getsignal(signalnum)
+シグナル signalnum に対する現在のシグナルハンドラを返します。戻り値は呼び出し可能な Python オブジェクトか、 signal.SIG_IGN、 signal.SIG_DFL、および None といった特殊な値のいずれかです。ここで signal.SIG_IGN は以前そのシグナルが無視されていたことを示し、 signal.SIG_DFL は以前そのシグナルの標準の処理方法が使われていたことを示し、 None はシグナルハンドラがまだ Python によってインストールされていないことを示します。
+
+signal.strsignal(signalnum)
+Return the system description of the signal signalnum, such as "Interrupt", "Segmentation fault", etc. Returns None if the signal is not recognized.
+
+バージョン 3.8 で追加.
+
+signal.valid_signals()
+Return the set of valid signal numbers on this platform. This can be less than range(1, NSIG) if some signals are reserved by the system for internal use.
+
+バージョン 3.8 で追加.
+
+signal.pause()
+Cause the process to sleep until a signal is received; the appropriate handler will then be called. Returns nothing.
+
+Availability: Unix. See the man page signal(2) for further information.
+
+sigwait(), sigwaitinfo(), sigtimedwait() sigpending() も参照してください。
+
+signal.raise_signal(signum)
+Sends a signal to the calling process. Returns nothing.
+
+バージョン 3.8 で追加.
+
+signal.pidfd_send_signal(pidfd, sig, siginfo=None, flags=0)
+Send signal sig to the process referred to by file descriptor pidfd. Python does not currently support the siginfo parameter; it must be None. The flags argument is provided for future extensions; no flag values are currently defined.
+
+See the pidfd_send_signal(2) man page for more information.
+
+Availability: Linux 5.1+
+
+バージョン 3.9 で追加.
+
+signal.pthread_kill(thread_id, signalnum)
+Send the signal signalnum to the thread thread_id, another thread in the same process as the caller. The target thread can be executing any code (Python or not). However, if the target thread is executing the Python interpreter, the Python signal handlers will be executed by the main thread of the main interpreter. Therefore, the only point of sending a signal to a particular Python thread would be to force a running system call to fail with InterruptedError.
+
+Use threading.get_ident() or the ident attribute of threading.Thread objects to get a suitable value for thread_id.
+
+If signalnum is 0, then no signal is sent, but error checking is still performed; this can be used to check if the target thread is still running.
+
+Raises an auditing event signal.pthread_kill with arguments thread_id, signalnum.
+
+Availability: Unix. See the man page pthread_kill(3) for further information.
+
+os.kill() を参照してください。
+
+バージョン 3.3 で追加.
+
+signal.pthread_sigmask(how, mask)
+これを呼び出すスレッドにセットされているシグナルマスクを取り出したり変更したりします。シグナルマスクは、呼び出し側のために現在どのシグナルの配送がブロックされているかを示す集合 (set) です。呼び出し前のもとのシグナルマスクを集合として返却します。
+
+この関数の振る舞いは how に依存して以下のようになります。
+
+SIG_BLOCK: mask で指定されるシグナルが現時点のシグナルマスクに追加されます。
+
+SIG_UNBLOCK: mask で指定されるシグナルが現時点のシグナルマスクから取り除かれます。もともとブロックされていないシグナルをブロック解除しようとしても問題ありません。
+
+SIG_SETMASK: シグナルマスク全体を mask としてセットします。
+
+mask is a set of signal numbers (e.g. {signal.SIGINT, signal.SIGTERM}). Use valid_signals() for a full mask including all signals.
+
+呼び出しスレッドにセットされたシグナルマスクを問い合わせるには例えば signal.pthread_sigmask(signal.SIG_BLOCK, []) とします。
+
+SIGKILL and SIGSTOP cannot be blocked.
+
+Availability: Unix. See the man page sigprocmask(3) and pthread_sigmask(3) for further information.
+
+pause(), sigpending(), sigwait() も参照して下さい。
+
+バージョン 3.3 で追加.
+
+signal.setitimer(which, seconds, interval=0.0)
+Sets given interval timer (one of signal.ITIMER_REAL, signal.ITIMER_VIRTUAL or signal.ITIMER_PROF) specified by which to fire after seconds (float is accepted, different from alarm()) and after that every interval seconds (if interval is non-zero). The interval timer specified by which can be cleared by setting seconds to zero.
+
+インターバルタイマーが起動したとき、シグナルがプロセスに送られます。送られるシグナルは利用されたタイマーの種類に依存します。 signal.ITIMER_REAL の場合は SIGALRM が、 signal.ITIMER_VIRTUAL の場合は SIGVTALRM が、 signal.ITIMER_PROF の場合は SIGPROF が送られます。
+
+以前の値が (delay, interval) のタプルとして返されます。
+
+Attempting to pass an invalid interval timer will cause an ItimerError.
+
+利用可能な環境: Unix。
+
+signal.getitimer(which)
+Returns current value of a given interval timer specified by which.
+
+利用可能な環境: Unix。
+
+signal.set_wakeup_fd(fd, *, warn_on_full_buffer=True)
+Set the wakeup file descriptor to fd. When a signal is received, the signal number is written as a single byte into the fd. This can be used by a library to wakeup a poll or select call, allowing the signal to be fully processed.
+
+The old wakeup fd is returned (or -1 if file descriptor wakeup was not enabled). If fd is -1, file descriptor wakeup is disabled. If not -1, fd must be non-blocking. It is up to the library to remove any bytes from fd before calling poll or select again.
+
+When threads are enabled, this function can only be called from the main thread of the main interpreter; attempting to call it from other threads will cause a ValueError exception to be raised.
+
+There are two common ways to use this function. In both approaches, you use the fd to wake up when a signal arrives, but then they differ in how they determine which signal or signals have arrived.
+
+In the first approach, we read the data out of the fd's buffer, and the byte values give you the signal numbers. This is simple, but in rare cases it can run into a problem: generally the fd will have a limited amount of buffer space, and if too many signals arrive too quickly, then the buffer may become full, and some signals may be lost. If you use this approach, then you should set warn_on_full_buffer=True, which will at least cause a warning to be printed to stderr when signals are lost.
+
+In the second approach, we use the wakeup fd only for wakeups, and ignore the actual byte values. In this case, all we care about is whether the fd's buffer is empty or non-empty; a full buffer doesn't indicate a problem at all. If you use this approach, then you should set warn_on_full_buffer=False, so that your users are not confused by spurious warning messages.
+
+バージョン 3.5 で変更: Windowsで、この関数はソケットハンドルをサポートするようになりました。
+
+バージョン 3.7 で変更: Added warn_on_full_buffer parameter.
+
+signal.siginterrupt(signalnum, flag)
+Change system call restart behaviour: if flag is False, system calls will be restarted when interrupted by signal signalnum, otherwise system calls will be interrupted. Returns nothing.
+
+Availability: Unix. See the man page siginterrupt(3) for further information.
+
+signal() を使ってシグナルハンドラを設定したときに、暗黙のうちに flag に true を指定して siginterrupt() が実行されるため、中断に対するリスタートの動作がリセットされることに注意してください。
+
+signal.signal(signalnum, handler)
+Set the handler for signal signalnum to the function handler. handler can be a callable Python object taking two arguments (see below), or one of the special values signal.SIG_IGN or signal.SIG_DFL. The previous signal handler will be returned (see the description of getsignal() above). (See the Unix man page signal(2) for further information.)
+
+When threads are enabled, this function can only be called from the main thread of the main interpreter; attempting to call it from other threads will cause a ValueError exception to be raised.
+
+handler は二つの引数とともに呼び出されます: シグナル番号、および現在のスタックフレーム (None またはフレームオブジェクト; フレームオブジェクトについての記述は 標準型の階層における説明 か、 inspect モジュールの属性の説明を参照してください)。
+
+On Windows, signal() can only be called with SIGABRT, SIGFPE, SIGILL, SIGINT, SIGSEGV, SIGTERM, or SIGBREAK. A ValueError will be raised in any other case. Note that not all systems define the same set of signal names; an AttributeError will be raised if a signal name is not defined as SIG* module level constant.
+
+signal.sigpending()
+呼び出しスレッドで配送が保留されているシグナル (つまり配送がブロックされている間に発生したシグナル) の集合を調べます。保留中のシグナルの集合を返します。
+
+Availability: Unix. See the man page sigpending(2) for further information.
+
+pause(), pthread_sigmask(), sigwait() も参照して下さい。
+
+バージョン 3.3 で追加.
+
+signal.sigwait(sigset)
+sigset 集合で指定されたシグナルのうちどれか一つが届くまで呼び出しスレッドを一時停止します。この関数はそのシグナルを受け取ると (それを保留シグナルリストから取り除いて) そのシグナル番号を返します。
+
+Availability: Unix. See the man page sigwait(3) for further information.
+
+pause(), pthread_sigmask(), sigpending(), sigwaitinfo(), sigtimedwait() も参照して下さい。
+
+バージョン 3.3 で追加.
+
+signal.sigwaitinfo(sigset)
+Suspend execution of the calling thread until the delivery of one of the signals specified in the signal set sigset. The function accepts the signal and removes it from the pending list of signals. If one of the signals in sigset is already pending for the calling thread, the function will return immediately with information about that signal. The signal handler is not called for the delivered signal. The function raises an InterruptedError if it is interrupted by a signal that is not in sigset.
+
+The return value is an object representing the data contained in the siginfo_t structure, namely: si_signo, si_code, si_errno, si_pid, si_uid, si_status, si_band.
+
+Availability: Unix. See the man page sigwaitinfo(2) for further information.
+
+pause(), sigwait(), sigtimedwait() も参照して下さい。
+
+バージョン 3.3 で追加.
+
+バージョン 3.5 で変更: The function is now retried if interrupted by a signal not in sigset and the signal handler does not raise an exception (see PEP 475 for the rationale).
+
+signal.sigtimedwait(sigset, timeout)
+Like sigwaitinfo(), but takes an additional timeout argument specifying a timeout. If timeout is specified as 0, a poll is performed. Returns None if a timeout occurs.
+
+Availability: Unix. See the man page sigtimedwait(2) for further information.
+
+pause(), sigwait(), sigwaitinfo() も参照して下さい。
+
+バージョン 3.3 で追加.
+
+バージョン 3.5 で変更: The function is now retried with the recomputed timeout if interrupted by a signal not in sigset and the signal handler does not raise an exception (see PEP 475 for the rationale).
+
+使用例
+以下は最小限のプログラム例です。この例では alarm() を使ってファイルを開く処理を待つのに費やす時間を制限します; 例えば、電源の入っていないシリアルデバイスを開こうとすると、通常 os.open() は未定義の期間ハングアップしてしまいますが、この方法はそうした場合に便利です。ここではファイルを開くまで 5 秒間のアラームを設定することで解決しています; ファイルを開く処理が長くかかりすぎると、アラームシグナルが送信され、ハンドラが例外を送出するようになっています。
+
+import signal, os
+
+def handler(signum, frame):
+    print('Signal handler called with signal', signum)
+    raise OSError("Couldn't open device!")
+
+# Set the signal handler and a 5-second alarm
+signal.signal(signal.SIGALRM, handler)
+signal.alarm(5)
+
+# This open() may hang indefinitely
+fd = os.open('/dev/ttyS0', os.O_RDWR)
+
+signal.alarm(0)          # Disable the alarm
+Note on SIGPIPE
+Piping output of your program to tools like head(1) will cause a SIGPIPE signal to be sent to your process when the receiver of its standard output closes early. This results in an exception like BrokenPipeError: [Errno 32] Broken pipe. To handle this case, wrap your entry point to catch this exception as follows:
+
+import os
+import sys
+
+def main():
+    try:
+        # simulate large output (your code replaces this loop)
+        for x in range(10000):
+            print("y")
+        # flush output here to force SIGPIPE to be triggered
+        # while inside this try block.
+        sys.stdout.flush()
+    except BrokenPipeError:
+        # Python flushes standard streams on exit; redirect remaining output
+        # to devnull to avoid another BrokenPipeError at shutdown
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, sys.stdout.fileno())
+        sys.exit(1)  # Python exits with error code 1 on EPIPE
+
+if __name__ == '__main__':
+    main()
+Do not set SIGPIPE's disposition to SIG_DFL in order to avoid BrokenPipeError. Doing that would cause your program to exit unexpectedly also whenever any socket connection is interrupted while your program is still writing to it.
+
+mmap --- メモリマップファイル
+メモリにマップされたファイルオブジェクトは、 bytearray と ファイルオブジェクト の両方のように振舞います。しかし通常の文字列オブジェクトとは異なり、これらは可変です。 bytearray が期待されるほとんどの場所で mmap オブジェクトを利用できます。例えば、メモリマップファイルを探索するために re モジュールを使うことができます。それらは可変なので、 obj[index] = 97 のように文字を変換できますし、スライスを使うことで obj[i1:i2] = b'...' のように部分文字列を変換することができます。現在のファイル位置をデータの始めとする読込みや書込み、ファイルの異なる位置へ seek() することもできます。
+
+メモリマップドファイルは Unix と Windows で異なる mmap コンストラクタで生成されます。どちらの場合も、更新用に開かれたファイルディスクリプタを渡さなければなりません。既存の Python ファイルオブジェクトをマップしたければ、 fileno() メソッドを使って fileno パラメータの正しい値を取得してください。そうでなければ、 os.open() 関数を使ってファイルを開けます。この関数はファイルディスクリプタを直接返します(処理が終わったら、やはりファイルを閉じる必要があります)。
+
+注釈 書き込み可能でバッファされたファイルへのメモリマップファイルを作りたいのであれば、まず最初にファイルの flush() を呼び出すべきです。これはバッファへのローカルな修正がマッピングで実際に利用可能になることを保障するために必要です。
+For both the Unix and Windows versions of the constructor, access may be specified as an optional keyword parameter. access accepts one of four values: ACCESS_READ, ACCESS_WRITE, or ACCESS_COPY to specify read-only, write-through or copy-on-write memory respectively, or ACCESS_DEFAULT to defer to prot. access can be used on both Unix and Windows. If access is not specified, Windows mmap returns a write-through mapping. The initial memory values for all three access types are taken from the specified file. Assignment to an ACCESS_READ memory map raises a TypeError exception. Assignment to an ACCESS_WRITE memory map affects both memory and the underlying file. Assignment to an ACCESS_COPY memory map affects memory but does not update the underlying file.
+
+バージョン 3.7 で変更: Added ACCESS_DEFAULT constant.
+
+無名メモリ(anonymous memory)にマップするためには fileno として -1 を渡し、length を与えてください。
+
+class mmap.mmap(fileno, length, tagname=None, access=ACCESS_DEFAULT[, offset])
+(Windows バージョン) ファイルハンドル fileno によって指定されたファイルから length バイトをマップして、 mmap オブジェクトを生成します。 length が現在のファイルサイズより大きな場合、ファイルサイズは length を含む大きさにまで拡張されます。 length が 0 の場合、マップの最大の長さは現在のファイルサイズになります。ただし、ファイル自体が空のときは Windows が例外を送出します (Windows では空のマップを作成することができません)。
+
+tagname は、 None 以外で指定された場合、マップのタグ名を与える文字列となります。 Windows は同じファイルに対する様々なマップを持つことを可能にします。既存のタグの名前を指定すればそのタグがオープンされ、そうでなければこの名前の新しいタグが作成されます。もしこのパラメータを省略したり None を与えたりしたならば、マップは名前なしで作成されます。タグ・パラメータの使用の回避は、あなたのコードを Unix と Windows の間で移植可能にしておくのを助けてくれるでしょう。
+
+offset は非負整数のオフセットとして指定できます。mmap の参照はファイルの先頭からのオフセットに相対的になります。offset のデフォルトは 0 です。offset は ALLOCATIONGRANULARITY の倍数でなければなりません。
+
+Raises an auditing event mmap.__new__ with arguments fileno, length, access, offset.
+
+class mmap.mmap(fileno, length, flags=MAP_SHARED, prot=PROT_WRITE|PROT_READ, access=ACCESS_DEFAULT[, offset])
+(Unix バージョン) ファイルディスクリプタ fileno で指定されたファイルから length バイトをマップし、mmap オブジェクトを返します。length が 0 の場合、マップの最大の長さは mmap が呼ばれた時点でのファイルサイズになります。
+
+flags はマップの種類を指定します。 MAP_PRIVATE はプライベートな copy-on-write(書込み時コピー)のマップを作成します。従って、mmap オブジェクトの内容への変更はこのプロセス内にのみ有効です。 MAP_SHARED はファイルの同じ領域をマップする他のすべてのプロセスと共有されたマップを作成します。デフォルトは MAP_SHARED です。
+
+prot が指定された場合、希望のメモリ保護を与えます。 2つの最も有用な値は、 PROT_READ と PROT_WRITE です。これは、読込み可能または書込み可能を指定するものです。 prot のデフォルトは PROT_READ | PROT_WRITE です。
+
+access はオプションのキーワード・パラメータとして、 flags と prot の代わりに指定してもかまいません。 flags, prot と access の両方を指定することは間違っています。このパラメータの使用法についての情報は、先に述べた access の記述を参照してください。
+
+offset may be specified as a non-negative integer offset. mmap references will be relative to the offset from the beginning of the file. offset defaults to 0. offset must be a multiple of ALLOCATIONGRANULARITY which is equal to PAGESIZE on Unix systems.
+
+Mac OS X と OpenVMS において、作成された memory mapping の正当性を確実にするために fileno で指定されたファイルディスクリプタは内部で自動的に物理的なストレージ (physical backing store) と同期されます。
+
+この例は mmap の簡潔な使い方を示すものです:
+
+import mmap
+
+# write a simple example file
+with open("hello.txt", "wb") as f:
+    f.write(b"Hello Python!\n")
+
+with open("hello.txt", "r+b") as f:
+    # memory-map the file, size 0 means whole file
+    mm = mmap.mmap(f.fileno(), 0)
+    # read content via standard file methods
+    print(mm.readline())  # prints b"Hello Python!\n"
+    # read content via slice notation
+    print(mm[:5])  # prints b"Hello"
+    # update content using slice notation;
+    # note that new content must have same size
+    mm[6:] = b" world!\n"
+    # ... and read again using standard file methods
+    mm.seek(0)
+    print(mm.readline())  # prints b"Hello  world!\n"
+    # close the map
+    mm.close()
+mmap は with 文の中でコンテキストマネージャとしても使えます:
+
+import mmap
+
+with mmap.mmap(-1, 13) as mm:
+    mm.write(b"Hello world!")
+バージョン 3.2 で追加: コンテキストマネージャのサポート。
+
+次の例では無名マップを作り親プロセスと子プロセスの間でデータのやりとりをしてみせます:
+
+import mmap
+import os
+
+mm = mmap.mmap(-1, 13)
+mm.write(b"Hello world!")
+
+pid = os.fork()
+
+if pid == 0:  # In a child process
+    mm.seek(0)
+    print(mm.readline())
+
+    mm.close()
+Raises an auditing event mmap.__new__ with arguments fileno, length, access, offset.
+
+メモリマップファイルオブジェクトは以下のメソッドをサポートしています:
+
+close()
+メモリマップファイルを閉じます。この呼出しの後にオブジェクトの他のメソッドの呼出すことは、 ValueError 例外の送出を引き起こします。このメソッドは開いたファイルのクローズはしません。
+
+closed
+ファイルが閉じている場合 True となります。
+
+バージョン 3.2 で追加.
+
+find(sub[, start[, end]])
+オブジェクト内の [start, end] の範囲に含まれている部分シーケンス sub が見つかった場所の最も小さいインデックスを返します。オプションの引数 start と end はスライスに使われるときのように解釈されます。失敗したときには -1 を返します。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+flush([offset[, size]])
+Flushes changes made to the in-memory copy of a file back to disk. Without use of this call there is no guarantee that changes are written back before the object is destroyed. If offset and size are specified, only changes to the given range of bytes will be flushed to disk; otherwise, the whole extent of the mapping is flushed. offset must be a multiple of the PAGESIZE or ALLOCATIONGRANULARITY.
+
+None is returned to indicate success. An exception is raised when the call failed.
+
+バージョン 3.8 で変更: Previously, a nonzero value was returned on success; zero was returned on error under Windows. A zero value was returned on success; an exception was raised on error under Unix.
+
+madvise(option[, start[, length]])
+Send advice option to the kernel about the memory region beginning at start and extending length bytes. option must be one of the MADV_* constants available on the system. If start and length are omitted, the entire mapping is spanned. On some systems (including Linux), start must be a multiple of the PAGESIZE.
+
+Availability: Systems with the madvise() system call.
+
+バージョン 3.8 で追加.
+
+move(dest, src, count)
+オフセット src から始まる count バイトをインデックス dest の位置へコピーします。もし mmap が ACCESS_READ で作成されていた場合、 TypeError 例外を発生させます。
+
+read([n])
+現在のファイル位置からの最大 n バイトを含む bytes を返します。引数が省略されるか、 None もしくは負の値が指定された場合、現在のファイル位置からマップ終端までの全てのバイト列を返します。ファイル位置は返されたバイト列の直後を指すように更新されます。
+
+バージョン 3.3 で変更: 引数が省略可能になり、 None も受け付けるようになりました。
+
+read_byte()
+現在のファイル位置のバイトを整数値として返し、ファイル位置を 1 進めます。
+
+readline()
+Returns a single line, starting at the current file position and up to the next newline. The file position is updated to point after the bytes that were returned.
+
+resize(newsize)
+マップと元ファイル(がもしあれば)のサイズを変更します。もし mmap が ACCESS_READ または ACCESS_COPY で作成されたならば、マップサイズの変更は TypeError 例外を発生させます。
+
+rfind(sub[, start[, end]])
+オブジェクト内の [start, end] の範囲に含まれている部分シーケンス sub が見つかった場所の最も大きいインデックスを返します。オプションの引数 start と end はスライスに使われるときのように解釈されます。失敗したときには -1 を返します。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+seek(pos[, whence])
+ファイルの現在位置をセットします。 whence 引数はオプションであり、デフォルトは os.SEEK_SET つまり 0 (絶対位置)です。その他の値として、 os.SEEK_CUR つまり 1 (現在位置からの相対位置)と os.SEEK_END つまり 2 (ファイルの終わりからの相対位置)があります。
+
+size()
+ファイルの長さを返します。メモリマップ領域のサイズより大きいかもしれません。
+
+tell()
+ファイルポインタの現在位置を返します。
+
+write(bytes)
+メモリ内のファイルポイントの現在位置に bytes のバイト列を書き込み、書き込まれたバイト数を返します(もし書き込みが失敗したら ValueError が送出されるため、len(bytes) より少なくなりません)。ファイル位置はバイト列が書き込まれた位置に更新されます。もしmmapが:const:ACCESS_READ とともに作成されていた場合は、書き込みは TypeError 例外を送出するでしょう。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+バージョン 3.6 で変更: 書きこまれたバイト数を返すようになりました。
+
+write_byte(byte)
+メモリ内のファイル・ポインタの現在位置に整数 byte を書き込みます。ファイル位置は 1 だけ進みます。もし mmap が ACCESS_READ で作成されていた場合、書き込み時に TypeError 例外を発生させるでしょう。
+
+MADV_* Constants
+mmap.MADV_NORMAL
+mmap.MADV_RANDOM
+mmap.MADV_SEQUENTIAL
+mmap.MADV_WILLNEED
+mmap.MADV_DONTNEED
+mmap.MADV_REMOVE
+mmap.MADV_DONTFORK
+mmap.MADV_DOFORK
+mmap.MADV_HWPOISON
+mmap.MADV_MERGEABLE
+mmap.MADV_UNMERGEABLE
+mmap.MADV_SOFT_OFFLINE
+mmap.MADV_HUGEPAGE
+mmap.MADV_NOHUGEPAGE
+mmap.MADV_DONTDUMP
+mmap.MADV_DODUMP
+mmap.MADV_FREE
+mmap.MADV_NOSYNC
+mmap.MADV_AUTOSYNC
+mmap.MADV_NOCORE
+mmap.MADV_CORE
+mmap.MADV_PROTECT
+These options can be passed to mmap.madvise(). Not every option will be present on every system.
+
+Availability: Systems with the madvise() system call.
+
+バージョン 3.8 で追加.

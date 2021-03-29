@@ -1,0 +1,1653 @@
+struct --- バイト列をパックされたバイナリデータとして解釈する
+ソースコード: Lib/struct.py
+
+このモジュールは、 Python の値と Python bytes オブジェクトとして表される C の構造体データとの間の変換を実現します。このモジュールは特に、ファイルに保存されたり、ネットワーク接続を経由したバイナリデータを扱うときに使われます。このモジュールでは、C 構造体のレイアウトおよび Python の値との間で行いたい変換をコンパクトに表現するために、 書式文字列 を使います。
+
+注釈 デフォルトでは、与えられた C の構造体をパックする際に、関連する C データ型を適切にアラインメント(alignment)するために数バイトのパディングを行うことがあります。この挙動が選択されたのは、パックされた構造体のバイト表現を対応する C 構造体のメモリレイアウトに正確に対応させるためです。プラットフォーム独立のデータフォーマットを扱ったり、隠れたパディングを排除したりするには、サイズ及びアラインメントとして native の代わりに standard を使うようにします: 詳しくは バイトオーダ、サイズ、アラインメント を参照して下さい。
+いくつかの struct の関数 (および Struct のメソッド) は buffer 引数を取ります。 これは バッファプロトコル (buffer Protocol) を実装していて読み取り可能または読み書き可能なバッファを提供するオブジェクトのことです。この目的のために使われる最も一般的な型は bytes と bytearray ですが、バイトの配列とみなすことができるような他の多くの型がバッファプロトコルを実装しています。そのため、それらは bytes オブジェクトから追加のコピーなしで読み出しや書き込みができます。
+
+関数と例外
+このモジュールは以下の例外と関数を定義しています:
+
+exception struct.error
+様々な状況で送出される例外です。引数は何が問題なのかを記述する文字列です。
+
+struct.pack(format, v1, v2, ...)
+Return a bytes object containing the values v1, v2, ... packed according to the format string format. The arguments must match the values required by the format exactly.
+
+struct.pack_into(format, buffer, offset, v1, v2, ...)
+Pack the values v1, v2, ... according to the format string format and write the packed bytes into the writable buffer buffer starting at position offset. Note that offset is a required argument.
+
+struct.unpack(format, buffer)
+Unpack from the buffer buffer (presumably packed by pack(format, ...)) according to the format string format. The result is a tuple even if it contains exactly one item. The buffer's size in bytes must match the size required by the format, as reflected by calcsize().
+
+struct.unpack_from(format, /, buffer, offset=0)
+Unpack from buffer starting at position offset, according to the format string format. The result is a tuple even if it contains exactly one item. The buffer's size in bytes, starting at position offset, must be at least the size required by the format, as reflected by calcsize().
+
+struct.iter_unpack(format, buffer)
+Iteratively unpack from the buffer buffer according to the format string format. This function returns an iterator which will read equally-sized chunks from the buffer until all its contents have been consumed. The buffer's size in bytes must be a multiple of the size required by the format, as reflected by calcsize().
+
+イテレーション毎に書式文字列で指定されたタプルを yield します。
+
+バージョン 3.4 で追加.
+
+struct.calcsize(format)
+Return the size of the struct (and hence of the bytes object produced by pack(format, ...)) corresponding to the format string format.
+
+書式文字列
+書式文字列はデータをパックしたりアンパックしたりするときの期待されるレイアウトを指定するためのメカニズムです。文字列はパック/アンパックされるデータの型を指定する 書式指定文字 から組み立てられます。さらに、 バイトオーダ、サイズ、アラインメント を制御するための特殊文字もあります。
+
+バイトオーダ、サイズ、アラインメント
+デフォルトでは、C での型はマシンのネイティブ (native) の形式およびバイトオーダ (byte order) で表され、適切にアラインメント (alignment) するために、必要に応じて数バイトのパディングを行ってスキップします (これは C コンパイラが用いるルールに従います)。
+
+これに代わって、フォーマット文字列の最初の文字を使って、バイトオーダやサイズ、アラインメントを指定することができます。指定できる文字を以下のテーブルに示します:
+
+文字
+
+バイトオーダ
+
+サイズ
+
+アラインメント
+
+@
+
+native
+
+native
+
+native
+
+=
+
+native
+
+standard
+
+none
+
+<
+
+リトルエンディアン
+
+standard
+
+none
+
+>
+
+ビッグエンディアン
+
+standard
+
+none
+
+!
+
+ネットワーク (= ビッグエンディアン)
+
+standard
+
+none
+
+フォーマット文字列の最初の文字が上のいずれかでない場合、'@' であるとみなされます。
+
+ネイティブのバイトオーダはビッグエンディアンかリトルエンディアンで、ホスト計算機に依存します。例えば、Intel x86 および AMD64 (x86-64) はリトルエンディアンです。Motorola 68000 および PowerPC G5 はビッグエンディアンです。ARM および Intel Itanium はエンディアンを切り替えられる機能を備えています (バイエンディアン)。使っているシステムでのエンディアンは sys.byteorder を使って調べて下さい。
+
+ネイティブのサイズおよびアラインメントは C コンパイラの sizeof 式で決定されます。ネイティブのサイズおよびアラインメントはネイティブのバイトオーダと同時に使われます。
+
+標準のサイズはフォーマット文字だけで決まります。 書式指定文字 の表を参照して下さい。
+
+'@' と '=' の違いに注意してください: 両方ともネイティブのバイトオーダですが、後者のバイトサイズとアラインメントは標準のものに合わせてあります。
+
+The form '!' represents the network byte order which is always big-endian as defined in IETF RFC 1700.
+
+バイトオーダに関して、「(強制的にバイトスワップを行う)ネイティブの逆」を指定する方法はありません。'<' または '>' のうちふさわしい方を選んでください。
+
+注釈:
+
+パディングは構造体のメンバの並びの中にだけ自動で追加されます。最初や最後にパディングが追加されることはありません。
+
+ネイティブでないサイズおよびアラインメントが使われる場合にはパディングは行われません (たとえば '<', '>', '=', '!' を使った場合です)。
+
+特定の型によるアラインメント要求に従うように構造体の末端をそろえるには、繰り返し回数をゼロにした特定の型でフォーマットを終端します。 使用例 を参照して下さい。
+
+書式指定文字
+フォーマット文字 (format character) は以下の意味を持っています; C と Python の間の変換では、値は正確に以下に指定された型でなくてはなりません: 「標準のサイズ」列は standard サイズ使用時にパックされた値が何バイトかを示します。つまり、フォーマット文字列が '<', '>', '!', '=' のいずれかで始まっている場合のものです。native サイズ使用時にはパックされた値の大きさはプラットフォーム依存です。
+
+フォーマット
+
+C の型
+
+Python の型
+
+標準のサイズ
+
+注釈
+
+x
+
+パディングバイト
+
+値なし
+
+c
+
+char
+
+長さ 1 のバイト列
+
+1
+
+b
+
+signed char
+
+整数
+
+1
+
+(1), (2)
+
+B
+
+unsigned char
+
+整数
+
+1
+
+(2)
+
+?
+
+_Bool
+
+真偽値型(bool)
+
+1
+
+(1)
+
+h
+
+short
+
+整数
+
+2
+
+(2)
+
+H
+
+unsigned short
+
+整数
+
+2
+
+(2)
+
+i
+
+int
+
+整数
+
+4
+
+(2)
+
+I
+
+unsigned int
+
+整数
+
+4
+
+(2)
+
+l
+
+long
+
+整数
+
+4
+
+(2)
+
+L
+
+unsigned long
+
+整数
+
+4
+
+(2)
+
+q
+
+long long
+
+整数
+
+8
+
+(2)
+
+Q
+
+unsigned long long
+
+整数
+
+8
+
+(2)
+
+n
+
+ssize_t
+
+整数
+
+(3)
+
+N
+
+size_t
+
+整数
+
+(3)
+
+e
+
+(6)
+
+浮動小数点数
+
+2
+
+(4)
+
+f
+
+float
+
+浮動小数点数
+
+4
+
+(4)
+
+d
+
+double
+
+浮動小数点数
+
+8
+
+(4)
+
+s
+
+char[]
+
+bytes
+
+p
+
+char[]
+
+bytes
+
+P
+
+void *
+
+整数
+
+(5)
+
+バージョン 3.3 で変更: 'n' および 'N' フォーマットのサポートが追加されました。
+
+バージョン 3.6 で変更: 'e' フォーマットのサポートが追加されました。
+
+注釈:
+
+'?' 変換コードは C99 で定義された _Bool 型に対応します。その型が利用できない場合は、 char で代用されます。標準モードでは常に1バイトで表現されます。
+
+非整数を整数の変換コードを使ってパックしようとすると、非整数が __index__() メソッドを持っていた場合は、整数に変換するためにパックする前にそのメソッドが呼ばれます。
+
+バージョン 3.2 で変更: Added use of the __index__() method for non-integers.
+
+'n' および 'N' 変換コードは (デフォルトもしくはバイトオーダ文字 '@' 付きで選択される) native サイズ使用時のみ利用できます。standard サイズ使用時には、自身のアプリケーションに適する他の整数フォーマットを使うことができます。
+
+'f' 、 'd' および 'e' 変換コードについて、パックされた表現は IEEE 754 binary32 ('f' の場合) 、 binary64 ('d' の場合) 、またはbinary16('e' の場合) フォーマットが、プラットフォームにおける浮動小数点数のフォーマットに関係なく使われます。
+
+'P' フォーマット文字はネイティブバイトオーダでのみ利用可能です (デフォルトのネットワークバイトオーダに設定するか、'@' バイトオーダ指定文字を指定しなければなりません)。'=' を指定した場合、ホスト計算機のバイトオーダに基づいてリトルエンディアンとビッグエンディアンのどちらを使うかを決めます。struct モジュールはこの設定をネイティブのオーダ設定として解釈しないので、'P' を使うことはできません。
+
+IEEE 754 の binary16 "半精度" 型は、 IEEE 754 standard の2008 年の改訂で導入されました。 半精度型は、符号 bit 、5 bit の指数部、 11 bit の精度 (明示的には 10 bit が保存される) を持ち、おおよそ 6.1e-05 から 6.5e+04 までの数を完全な精度で表現できます。 この型は C コンパイラでは広くはサポートされていません: たいていのマシンでは、保存するのに unsigned short が使えますが、数学の演算には使えません。 詳しいことは Wikipedia の half-precision floating-point format のページを参照してください。
+
+フォーマット文字の前に整数をつけ、繰り返し回数 (count) を指定することができます。例えば、フォーマット文字列 '4h' は 'hhhh' と全く同じ意味です。
+
+フォーマット文字間の空白文字は無視されます; count とフォーマット文字の間にはスペースを入れてはいけません。
+
+'s' フォーマット文字での繰り返し回数 (count) は、他のフォーマット文字のような繰り返し回数ではなく、バイト長として解釈されます。例えば、'10s' は単一の 10 バイトの文字列を意味し、'10c' は 10 個の文字を意味します。繰り返し回数が指定されなかった場合は、デフォルト値の 1 とみなされます。パックでは、文字列はサイズに合うように切り詰められたり null バイトで埋められたりします。アンパックでは、返されるバイトオブジェクトのバイト数は、正確に指定した通りになります。特殊な場合として、'0s' は単一の空文字列を意味し、'0c' は 0 個の文字を意味します。
+
+整数フォーマット ('b', 'B', 'h', 'H', 'i', 'I', 'l', 'L', 'q', 'Q') のいずれかを使って値 x をパックするとき x がフォーマットの適切な値の範囲に無い場合、 struct.error が送出されます。
+
+バージョン 3.1 で変更: Previously, some of the integer formats wrapped out-of-range values and raised DeprecationWarning instead of struct.error.
+
+フォーマット文字 'p' は "Pascal 文字列 (pascal string)" をコードします。Pascal 文字列は count で与えられる 固定長のバイト列 に収められた短い可変長の文字列です。このデータの先頭の 1 バイトには文字列の長さか255 のうち、小さい方の数が収められます。その後に文字列のバイトデータが続きます。 pack() に渡された Pascal 文字列の長さが長すぎた (count-1 よりも長い) 場合、先頭の count-1 バイトが書き込まれます。文字列が count-1 よりも短い場合、指定した count バイトに達するまでの残りの部分はヌルで埋められます。 unpack() では、フォーマット文字 'p' は指定された count バイトだけデータを読み込みますが、返される文字列は決して 255 文字を超えることはないので注意してください。
+
+'?' フォーマット文字では、返り値は True または False です。パックするときには、引数オブジェクトの論理値としての値が使われます。 0 または 1 のネイティブや標準の真偽値表現でパックされ、アンパックされるときはゼロでない値は True になります。
+
+使用例
+注釈 全ての例は、ビッグエンディアンのマシンで、ネイティブのバイトオーダ、サイズおよびアラインメントを仮定します。
+基本的な例として、三つの整数をパック/アンパックします:
+
+>>>
+>>> from struct import *
+>>> pack('hhl', 1, 2, 3)
+b'\x00\x01\x00\x02\x00\x00\x00\x03'
+>>> unpack('hhl', b'\x00\x01\x00\x02\x00\x00\x00\x03')
+(1, 2, 3)
+>>> calcsize('hhl')
+8
+アンパックした結果のフィールドは、変数に割り当てるか named tuple でラップすることによって名前を付けることができます:
+
+>>>
+>>> record = b'raymond   \x32\x12\x08\x01\x08'
+>>> name, serialnum, school, gradelevel = unpack('<10sHHb', record)
+
+>>> from collections import namedtuple
+>>> Student = namedtuple('Student', 'name serialnum school gradelevel')
+>>> Student._make(unpack('<10sHHb', record))
+Student(name=b'raymond   ', serialnum=4658, school=264, gradelevel=8)
+アラインメントの要求を満たすために必要なパディングが異なるという理由により、フォーマット文字の順番がサイズの違いを生み出すことがあります:
+
+>>>
+>>> pack('ci', b'*', 0x12131415)
+b'*\x00\x00\x00\x12\x13\x14\x15'
+>>> pack('ic', 0x12131415, b'*')
+b'\x12\x13\x14\x15*'
+>>> calcsize('ci')
+8
+>>> calcsize('ic')
+5
+以下のフォーマット 'llh0l' は、long 型が 4 バイトを境界としてそろえられていると仮定して、末端に 2 バイトをパディングします:
+
+>>>
+>>> pack('llh0l', 1, 2, 3)
+b'\x00\x00\x00\x01\x00\x00\x00\x02\x00\x03\x00\x00'
+この例はネイティブのサイズとアラインメントが使われているときだけ思った通りに動きます。標準のサイズとアラインメントはアラインメントの設定ではいかなるアラインメントも行いません。
+
+参考
+array モジュール
+一様なデータ型からなるバイナリ記録データのパック。
+
+xdrlib モジュール
+XDR データのパックおよびアンパック。
+
+クラス
+struct モジュールは次の型を定義します:
+
+class struct.Struct(format)
+フォーマット文字列 format に従ってバイナリデータを読み書きする、新しい Struct オブジェクトを返します。 Struct オブジェクトを一度作ってからそのメソッドを使うと、フォーマット文字列のコンパイルが一度で済むので、 struct モジュールの関数を同じフォーマットで何度も呼び出すよりも効率的です。
+
+注釈 The compiled versions of the most recent format strings passed to Struct and the module-level functions are cached, so programs that use only a few format strings needn't worry about reusing a single Struct instance.
+コンパイルされた Struct オブジェクトは以下のメソッドと属性をサポートします:
+
+pack(v1, v2, ...)
+pack() 関数と同じ、コンパイルされたフォーマットを利用するメソッドです。 (len(result) は size と等しいでしょう)
+
+pack_into(buffer, offset, v1, v2, ...)
+pack_into() 関数と同じ、コンパイルされたフォーマットを利用するメソッドです。
+
+unpack(buffer)
+unpack() 関数と同じ、コンパイルされたフォーマットを利用するメソッドです。 (buffer のバイト数は size と等しくなければなりません)。
+
+unpack_from(buffer, offset=0)
+Identical to the unpack_from() function, using the compiled format. The buffer's size in bytes, starting at position offset, must be at least size.
+
+iter_unpack(buffer)
+iter_unpack() 関数と同じ、コンパイルされたフォーマットを利用するメソッドです。 (buffer のバイト数は size の倍数でなければなりません)。
+
+バージョン 3.4 で追加.
+
+format
+この Struct オブジェクトを作成する時に利用されたフォーマット文字列です。
+
+バージョン 3.7 で変更: The format string type is now str instead of bytes.
+
+size
+format 属性に対応する構造体の (従って pack() メソッドによって作成されるバイト列オブジェクトの) サイズです。
+
+codecs --- codec レジストリと基底クラス
+ソースコード: Lib/codecs.py
+
+このモジュールは、標準的な Python codec (エンコーダとデコーダ) 用の基底クラスを定義し、codec とエラー処理検索プロセスを管理する内部の Python codec レジストリへのアクセスを提供します。多くの codec はテキストをバイト形式にエンコードする テキストエンコーディング ですが、テキストをテキストに、またはバイトをバイトにエンコードする codec も提供されています。カスタムの codec は任意の型間でエンコードとデコードを行えますが、一部のモジュール機能は テキストエンコーディング か bytes へのエンコードのみに制限されています。
+
+このモジュールでは、任意の codec でエンコードやデコードを行うための、以下の関数が定義されています。
+
+codecs.encode(obj, encoding='utf-8', errors='strict')
+encoding に記載された codec を使用して obj をエンコードします。
+
+希望のエラー処理スキームを errors に設定することができます。デフォルトのエラーハンドラ (エラー処理関数) は 'strict' です。これはエンコードエラーは ValueError (もしくは UnicodeEncodeError のような、より codec に固有のサブクラス) を送出することを意味します。codec エラー処理についてのより詳しい情報は Codec 基底クラス を参照してください。
+
+codecs.decode(obj, encoding='utf-8', errors='strict')
+encoding に記載された codec を使用して obj をデコードします。
+
+希望のエラー処理スキームを errors に設定することができます。デフォルトのエラーハンドラは 'strict' です。これはデコードエラーは ValueError (もしくは UnicodeDecodeError のような、より codec に固有のサブクラス) を送出することを意味します。codec エラー処理についてのより詳しい情報は Codec 基底クラス を参照してください。
+
+各 codec についての詳細も、次のようにして直接調べることができます。
+
+codecs.lookup(encoding)
+Python codec レジストリから codec 情報を探し、以下で定義するような CodecInfo オブジェクトを返します。
+
+エンコーディングの検索は、まずレジストリのキャッシュから行います。見つからなければ、登録されている検索関数のリストから探します。 CodecInfo オブジェクトが一つも見つからなければ LookupError を送出します。見つかったら、その CodecInfo オブジェクトはキャッシュに保存され、呼び出し側に返されます。
+
+class codecs.CodecInfo(encode, decode, streamreader=None, streamwriter=None, incrementalencoder=None, incrementaldecoder=None, name=None)
+codec レジストリ内を検索する場合の、codec の詳細です。コントラクタ引数は、次の同名の属性に保存されます。
+
+name
+エンコーディングの名前です。
+
+encode
+decode
+ステートレスなエンコーディングとデコーディングの関数です。これらは、Codec インスタンスの encode() メソッドと decode() メソッドと同じインターフェースを持っている必要があります (see Codec のインターフェース を参照)。この関数またはメソッドは、ステートレスモードで動作することが想定されています。
+
+incrementalencoder
+incrementaldecoder
+インクリメンタル・エンコーダとデコーダのクラスまたはファクトリ関数です。これらは、基底クラスの IncrementalEncoder と IncrementalDecoder が定義するインターフェースをそれぞれ提供する必要があります。インクリメンタルな codec は、ステート (内部状態) を保持することができます。
+
+streamwriter
+streamreader
+ストリームライターとリーダーのクラスまたはファクトリ関数です。これらは、基底クラスの StreamWriter と StreamReader が定義するインターフェースをそれぞれ提供する必要があります。ストリーム codec は、ステートを保持することができます。
+
+さまざまな codec 構成要素へのアクセスを簡便化するために、このモジュールは以下のような関数を提供しています。これらの関数は、 codec の検索に lookup() を使います:
+
+codecs.getencoder(encoding)
+与えられたエンコーディングに対する codec を検索し、エンコーダ関数を返します。
+
+エンコーディングが見つからなければ LookupError を送出します。
+
+codecs.getdecoder(encoding)
+与えられたエンコーディングに対する codec を検索し、デコーダ関数を返します。
+
+エンコーディングが見つからなければ LookupError を送出します。
+
+codecs.getincrementalencoder(encoding)
+与えられたエンコーディングに対する codec を検索し、インクリメンタル・エンコーダクラスまたはファクトリ関数を返します。
+
+エンコーディングが見つからないか、 codec がインクリメンタル・エンコーダをサポートしなければ LookupError を送出します。
+
+codecs.getincrementaldecoder(encoding)
+与えられたエンコーディングに対する codec を検索し、インクリメンタル・デコーダクラスまたはファクトリ関数を返します。
+
+エンコーディングが見つからないか、 codec がインクリメンタル・デコーダをサポートしなければ LookupError を送出します。
+
+codecs.getreader(encoding)
+与えられたエンコーディングに対する codec を検索し、StreamReader クラスまたはファクトリ関数を返します。
+
+エンコーディングが見つからなければ LookupError を送出します。
+
+codecs.getwriter(encoding)
+与えられたエンコーディングに対する codec を検索し、StreamWriter クラスまたはファクトリ関数を返します。
+
+エンコーディングが見つからなければ LookupError を送出します。
+
+次のように、適切な codec 検索関数を登録することで、カスタムの codecs を利用することができます。
+
+codecs.register(search_function)
+codec 検索関数を登録します。検索関数は第 1 引数にすべてアルファベットの小文字から成るエンコーディング名を取り、CodecInfo オブジェクトを返します。検索関数が指定されたエンコーディングを見つけられない場合、None を返します。
+
+注釈 現在、検索関数の登録は不可逆的です。このため、ユニットテストやモジュールの再ロード時などに問題が生じることがあります。
+エンコードされたテキストファイルを処理する場合、組み込みの open() とそれに関連付けられた io モジュールの使用が推奨されていますが、このモジュールは追加のユーティリティ関数とクラスを提供し、バイナリファイルを処理する場合に幅広い codecs を利用できるようにします。
+
+codecs.open(filename, mode='r', encoding=None, errors='strict', buffering=-1)
+エンコードされたファイルを mode を使って開き、透過的なエンコード/デコードを提供する StreamReaderWriter のインスタンスを返します。デフォルトのファイルモードは 'r' 、つまり、読み出しモードでファイルを開きます。
+
+注釈 下層のエンコードされたファイルは、常にバイナリモードで開きます。読み書き時に、 '\n' の自動変換は行われません。mode 引数は、組み込みの open() 関数が受け入れる任意のバイナリモードにすることができます。'b' が自動的に付加されます。
+encoding は、そのファイルに対して使用されるエンコーディングを指定します。バイトにエンコードする、あるいはバイトからデコードするすべてのエンコーディングが許可されます。ファイルメソッドがサポートするデータ型は、使用される codec によって異なります。
+
+エラーハンドリングのために errors を渡すことができます。これはデフォルトでは 'strict' で、エンコード時にエラーがあれば ValueError を送出します。
+
+buffering has the same meaning as for the built-in open() function. It defaults to -1 which means that the default buffer size will be used.
+
+codecs.EncodedFile(file, data_encoding, file_encoding=None, errors='strict')
+透過的なエンコード変換を行うファイルのラップされたバージョンである、StreamRecoder インスタンスを返します。元のファイルは、ラップされたバージョンが閉じられる時に、閉じられます。
+
+ラップされたファイルに書き込まれたデータは、指定された data_encoding に従ってデコードされ、次に file_encoding を使用して元のファイルにバイトとして書き出されます。元のファイルから読み出されたバイトは、file_encoding に従ってデコードされ、結果は data_encoding を使用してエンコードされます。
+
+file_encoding が与えられなければ、data_encoding がデフォルトになります。
+
+エラーハンドリングのために errors を渡すことができます。これはデフォルトでは 'strict' で、エンコード時にエラーがあれば ValueError を送出します。
+
+codecs.iterencode(iterator, encoding, errors='strict', **kwargs)
+インクリメンタル・エンコーダを使って、 iterator から供給される入力を反復的にエンコードします。この関数は generator です。 errors 引数は (他のあらゆるキーワード引数と同様に) インクリメンタル・エンコーダにそのまま引き渡されます。
+
+この関数では、コーデックはエンコードするテキストの str オブジェクトを受け付ける必要があります。 従って、 base64_codec のようなバイトからバイトへのエンコーダはサポートしていません。
+
+codecs.iterdecode(iterator, encoding, errors='strict', **kwargs)
+インクリメンタル・デコーダを使って、 iterator から供給される入力を反復的にデコードします。この関数は generator です。 errors 引数は (他のあらゆるキーワード引数と同様に) インクリメンタル・デコーダにそのまま引き渡されます。
+
+この関数では、コーデックはエンコードする bytes オブジェクトを受け付ける必要があります。 従って、 rot_13 のようなテキストからテキストへのエンコーダが iterencode() で同等に使えるとしても、この関数ではサポートしていません。
+
+このモジュールは以下のような定数も定義しています。プラットフォーム依存なファイルを読み書きするのに役立ちます:
+
+codecs.BOM
+codecs.BOM_BE
+codecs.BOM_LE
+codecs.BOM_UTF8
+codecs.BOM_UTF16
+codecs.BOM_UTF16_BE
+codecs.BOM_UTF16_LE
+codecs.BOM_UTF32
+codecs.BOM_UTF32_BE
+codecs.BOM_UTF32_LE
+これらの定数は、いくつかのエンコーディングの Unicode のバイトオーダマーク (BOM) で、様々なバイトシーケンスを定義します。これらは、UTF-16 と UTF-32 のデータストリームで使用するバイトオーダを指定したり、 UTF-8 で Unicode シグネチャとして使われます。 BOM_UTF16 は、プラットフォームのネイティブバイトオーダによって BOM_UTF16_BE または BOM_UTF16_LE です。 BOM は BOM_UTF16 のエイリアスです。同様に、 BOM_LE は BOM_UTF16_LE の、 BOM_BE は BOM_UTF16_BE のエイリアスです。その他の定数は UTF-8 と UTF-32 エンコーディングの BOM を表します。
+
+Codec 基底クラス
+codecs モジュールは、 codec オブジェクトを操作するインターフェースを定義する一連の基底クラスを定義します。このモジュールは、カスタムの codec の実装の基礎として使用することもできます。
+
+Python で codec として使えるようにするには、ステートレスエンコーダ、ステートレスデコーダ、ストリームリーダ、ストリームライタの 4 つのインタフェースを定義する必要があります。通常は、ストリームリーダとライタはステートレスエンコーダとデコーダを再利用して、ファイルプロトコルを実装します。codec の作者は、codec がエンコードとデコードのエラーの処理方法も定義する必要があります。
+
+エラーハンドラ
+To simplify and standardize error handling, codecs may implement different error handling schemes by accepting the errors string argument. The following string values are defined and implemented by all standard Python codecs:
+
+値
+
+意味
+
+'strict'
+
+Raise UnicodeError (or a subclass); this is the default. Implemented in strict_errors().
+
+'ignore'
+
+Ignore the malformed data and continue without further notice. Implemented in ignore_errors().
+
+以下のエラーハンドラは、 テキストエンコーディング にのみ適用されます。
+
+値
+
+意味
+
+'replace'
+
+Replace with a suitable replacement marker; Python will use the official U+FFFD REPLACEMENT CHARACTER for the built-in codecs on decoding, and '?' on encoding. Implemented in replace_errors().
+
+'xmlcharrefreplace'
+
+Replace with the appropriate XML character reference (only for encoding). Implemented in xmlcharrefreplace_errors().
+
+'backslashreplace'
+
+バックスラッシュつきのエスケープシーケンスで置換します。 backslashreplace_errors() で実装されています。
+
+'namereplace'
+
+Replace with \N{...} escape sequences (only for encoding). Implemented in namereplace_errors().
+
+'surrogateescape'
+
+On decoding, replace byte with individual surrogate code ranging from U+DC80 to U+DCFF. This code will then be turned back into the same byte when the 'surrogateescape' error handler is used when encoding the data. (See PEP 383 for more.)
+
+さらに、次のエラーハンドラは与えられた codec に特有です:
+
+値
+
+Codecs
+
+意味
+
+'surrogatepass'
+
+utf-8, utf-16, utf-32, utf-16-be, utf-16-le, utf-32-be, utf-32-le
+
+Allow encoding and decoding of surrogate codes. These codecs normally treat the presence of surrogates as an error.
+
+バージョン 3.1 で追加: 'surrogateescape' および 'surrogatepass' エラーハンドラ。
+
+バージョン 3.4 で変更: 'surrogatepass' エラーハンドラは utf-16* コーデックと utf-32* コーデックで動作するようになりました。
+
+バージョン 3.5 で追加: 'namereplace' エラーハンドラです。
+
+バージョン 3.5 で変更: 'backslashreplace' エラーハンドラは、デコード時と翻訳時に動作するようになりました。
+
+次のように、名前付きの新しいエラーハンドラを登録することで、許可される値の集合を拡張することができます。
+
+codecs.register_error(name, error_handler)
+エラーハンドラ error_handler を名前 name で登録します。エンコード中およびデコード中にエラーが送出された場合、name が errors 引数として指定されていれば error_handler が呼び出されます。
+
+For encoding, error_handler will be called with a UnicodeEncodeError instance, which contains information about the location of the error. The error handler must either raise this or a different exception, or return a tuple with a replacement for the unencodable part of the input and a position where encoding should continue. The replacement may be either str or bytes. If the replacement is bytes, the encoder will simply copy them into the output buffer. If the replacement is a string, the encoder will encode the replacement. Encoding continues on original input at the specified position. Negative position values will be treated as being relative to the end of the input string. If the resulting position is out of bound an IndexError will be raised.
+
+デコードと翻訳の動作は似ていますが、エラーハンドラに渡されるのが UnicodeDecodeError か UnicodeTranslateError である点と、エラーハンドラの置換した内容が直接出力されるという点が異なります。
+
+登録済みのエラーハンドラ (標準エラーハンドラを含む) は、次のようにその名前で検索することができます。
+
+codecs.lookup_error(name)
+名前 name で登録済みのエラーハンドラを返します。
+
+エラーハンドラが見つからなければ LookupError を送出します。
+
+以下の標準エラーハンドラも、モジュールレベルの関数として利用できます。
+
+codecs.strict_errors(exception)
+strict エラー処理を実装します。エンコードエラーまたはデコードエラーはそれぞれ UnicodeError を送出します。
+
+codecs.replace_errors(exception)
+'replace' エラー処理を実装します ( テキストエンコーディング のみ)。(codec によりエンコードする必要のある) エンコードエラーに対しては '?' に、デコードエラーに対しては '\ufffd' (Unicode 代替文字) に置き換えます。
+
+codecs.ignore_errors(exception)
+ignore エラー処理を実装します。不正な形式のデータは無視され、エンコードまたはデコードは何も通知することなく継続されます。
+
+codecs.xmlcharrefreplace_errors(exception)
+'xmlcharrefreplace' エラー処理を実装します ( テキストエンコーディング のエンコードのみ)。エンコードできない文字は、適切な XML 文字参照に置き換えます。
+
+codecs.backslashreplace_errors(exception)
+'backslashreplace' エラー処理を実装します ( テキストエンコーディング のエンコードのみ)。不正な形式のデータは、バックスラッシュ付きのエスケープシーケンスに置き換えます。
+
+codecs.namereplace_errors(exception)
+'namereplace' エラー処理を実装します ( テキストエンコーディング のエンコードのみ)。エンコードできない文字は、\N{...} エスケープシーケンスに置き換えます。
+
+バージョン 3.5 で追加.
+
+ステートレスなエンコードとデコード
+基底の Codec クラスは以下のメソッドを定義します。これらのメソッドは、内部状態を持たないエンコーダ／デコーダ関数のインターフェースを定義します:
+
+Codec.encode(input[, errors])
+オブジェクト input エンコードし、(出力オブジェクト, 消費した長さ) のタプルを返します。例えば、 テキストエンコーディング は文字列オブジェクトを特有の文字セット (例えば cp1252 や iso-8859-1) を用いてバイト列オブジェクトに変換します。
+
+errors 引数は適用するエラー処理を定義します。'strict' 処理がデフォルトです。
+
+このメソッドは Codec に内部状態を保存してはなりません。効率よくエンコードするために状態を保持しなければならないような codecs には StreamWriter を使ってください。
+
+エンコーダは長さが 0 の入力を処理できなければなりません。この場合、空のオブジェクトを出力オブジェクトとして返さなければなりません。
+
+Codec.decode(input[, errors])
+Decodes the object input and returns a tuple (output object, length consumed). For instance, for a text encoding, decoding converts a bytes object encoded using a particular character set encoding to a string object.
+
+テキストエンコーディングとバイト列からバイト列への codec では、input は bytes オブジェクト、または読み出し専用のバッファインターフェースを提供するオブジェクトである必要があります。例えば、buffer オブジェクトやメモリマップドファイルでなければなりません。
+
+errors 引数は適用するエラー処理を定義します。'strict' 処理がデフォルトです。
+
+このメソッドは、 Codec インスタンスに内部状態を保存してはなりません。効率よくエンコード／デコードするために状態を保持しなければならないような codecs には StreamReader を使ってください。
+
+デコーダは長さが 0 の入力を処理できなければなりません。この場合、空のオブジェクトを出力オブジェクトとして返さなければなりません。
+
+インクリメンタルなエンコードとデコード
+IncrementalEncoder クラスおよび IncrementalDecoder クラスはそれぞれインクリメンタル・エンコードおよびデコードのための基本的なインターフェースを提供します。エンコード／デコードは内部状態を持たないエンコーダ／デコーダを一度呼び出すことで行なわれるのではなく、インクリメンタル・エンコーダ／デコーダの encode()/decode() メソッドを複数回呼び出すことで行なわれます。インクリメンタル・エンコーダ／デコーダはメソッド呼び出しの間エンコード／デコード処理の進行を管理します。
+
+encode()/decode() メソッド呼び出しの出力結果をまとめたものは、入力をひとまとめにして内部状態を持たないエンコーダ／デコーダでエンコード／デコードしたものと同じになります。
+
+IncrementalEncoder オブジェクト
+IncrementalEncoder クラスは入力を複数ステップでエンコードするのに使われます。全てのインクリメンタル・エンコーダが Python codec レジストリと互換性を持つために定義すべきメソッドとして、このクラスには以下のメソッドが定義されています。
+
+class codecs.IncrementalEncoder(errors='strict')
+IncrementalEncoder インスタンスのコンストラクタ。
+
+全てのインクリメンタル・エンコーダはこのコンストラクタインターフェースを提供しなければなりません。さらにキーワード引数を付け加えるのは構いませんが、Python codec レジストリで利用されるのはここで定義されているものだけです。
+
+IncrementalEncoder は、 errors キーワード引数を提供することで、様々なエラー取扱方法を実装することができます。取り得る値については エラーハンドラ を参照してください。
+
+errors 引数は、同名の属性に代入されます。この属性を変更すると、 IncrementalEncoder オブジェクトが生きている間に、異なるエラー処理方法に切り替えることができるようになります。
+
+encode(object[, final])
+object を(エンコーダの現在の状態を考慮に入れて)エンコードし、得られたエンコードされたオブジェクトを返します。 encode() 呼び出しがこれで最後という時には final は真でなければなりません(デフォルトは偽です)。
+
+reset()
+エンコーダを初期状態にリセットします。出力は破棄されます。.encode(object, final=True) を呼び出して、必要に応じて空バイト列またはテキスト文字列を渡すことにより、エンコーダをリセットし、出力を取得します。
+
+getstate()
+Return the current state of the encoder which must be an integer. The implementation should make sure that 0 is the most common state. (States that are more complicated than integers can be converted into an integer by marshaling/pickling the state and encoding the bytes of the resulting string into an integer.)
+
+setstate(state)
+エンコーダの状態を state にセットします。 state は getstate() によって返されたエンコーダ状態でなければなりません。
+
+IncrementalDecoder オブジェクト
+IncrementalDecoder クラスは入力を複数ステップでデコードするのに使われます。全てのインクリメンタル・デコーダが Python codec レジストリと互換性を持つために定義すべきメソッドとして、このクラスには以下のメソッドが定義されています。
+
+class codecs.IncrementalDecoder(errors='strict')
+IncrementalDecoder インスタンスのコンストラクタ。
+
+全てのインクリメンタル・デコーダはこのコンストラクタインターフェースを提供しなければなりません。さらにキーワード引数を付け加えるのは構いませんが、Python codec レジストリで利用されるのはここで定義されているものだけです。
+
+IncrementalDecoder は、 errors キーワード引数を提供することで、様々なエラー取扱方法を実装することができます。取り得る値については エラーハンドラ を参照してください。
+
+errors 引数は、同名の属性に代入されます。この属性を変更すると、 IncrementalDecoder オブジェクトが生きている間に、異なるエラー処理方法に切り替えることができるようになります。
+
+decode(object[, final])
+object を(デコーダの現在の状態を考慮に入れて)デコードし、得られたデコードされたオブジェクトを返します。 decode() 呼び出しがこれで最後という時には final は真でなければなりません(デフォルトは偽です)。もし final が真ならばデコーダは入力をデコードし切り全てのバッファをフラッシュしなければなりません。そうできない場合(たとえば入力の最後に不完全なバイト列があるから)、デコーダは内部状態を持たない場合と同じようにエラーの取り扱いを開始しなければなりません(例外を送出するかもしれません)。
+
+reset()
+デコーダを初期状態にリセットします。
+
+getstate()
+デコーダの現在の状態を返します。これは2要素を含むタプルでなければなりません。1番目はまだデコードされていない入力を含むバッファです。2番目は整数で、付加的な状態情報です (実装は 0 が最も一般的な付加的な状態情報であることを保証すべきです)。この付加的な状態情報が 0 である場合、デコーダを入力がバッファされていない状態に戻して、付加的な状態情報を 0 にセットすることが可能でなければなりません。その結果、以前バッファされた入力をデコーダに与えることで、何の出力もせずにデコーダを前の状態に戻します。 (整数より複雑な付加的な状態情報は、情報を marshal/pickle して、結果として生じる文字列のバイト列を整数にエンコードすることで、整数に変換することができます。)
+
+setstate(state)
+デコーダの状態を state にセットします。 state は getstate() によって返されたデコーダの状態でなければなりません。
+
+ストリームのエンコードとデコード
+StreamWriter と StreamReader クラスは、新しいエンコーディングサブモジュールを非常に簡単に実装するのに使用できる、一般的なインターフェイスを提供します。実装例は encodings.utf_8 をご覧ください。
+
+StreamWriter オブジェクト
+StreamWriter クラスは Codec のサブクラスで、以下のメソッドを定義しています。全てのストリームライタは、 Python の codec レジストリとの互換性を保つために、これらのメソッドを定義する必要があります。
+
+class codecs.StreamWriter(stream, errors='strict')
+StreamWriter インスタンスのコンストラクタです。
+
+全てのストリームライタはコンストラクタとしてこのインターフェースを提供しなければなりません。キーワード引数を追加しても構いませんが、Python の codec レジストリはここで定義されている引数だけを使います。
+
+stream 引数は、特定の codec に対応して、テキストまたはバイナリデータの書き込みが可能なファイルライクオブジェクトである必要があります。
+
+StreamWriter は、 errors キーワード引数を提供することで、様々なエラー取扱方法を実装することができます。下層のストリーム codec がサポートできる標準エラーハンドラについては エラーハンドラ を参照してください。
+
+errors 引数は、同名の属性に代入されます。この属性を変更すると、 StreamWriter オブジェクトが生きている間に、異なるエラー処理に変更できます。
+
+write(object)
+object の内容をエンコードしてストリームに書き出します。
+
+writelines(list)
+文字列からなるリストを連結して、ストリームに書き出します (可能な場合には write() を再利用します) 。バイト列からバイト列への標準 codecs は、このメソッドをサポートしません。
+
+reset()
+Resets the codec buffers used for keeping internal state.
+
+このメソッドが呼び出された場合、出力先データをきれいな状態にし、わざわざストリーム全体を再スキャンして状態を元に戻さなくても新しくデータを追加できるようにしなければなりません。
+
+ここまでで挙げたメソッドの他にも、 StreamWriter では背後にあるストリームの他の全てのメソッドや属性を継承しなければなりません。
+
+StreamReader オブジェクト
+StreamReader クラスは Codec のサブクラスで、以下のメソッドを定義しています。全てのストリームリーダは、 Python の codec レジストリとの互換性を保つために、これらのメソッドを定義する必要があります。
+
+class codecs.StreamReader(stream, errors='strict')
+StreamReader インスタンスのコンストラクタです。
+
+全てのストリームリーダはコンストラクタとしてこのインターフェースを提供しなければなりません。キーワード引数を追加しても構いませんが、Python の codec レジストリはここで定義されている引数だけを使います。
+
+stream 引数は、特定の codec に対応して、テキストまたはバイナリデータの読み出しが可能なファイルライクオブジェクトである必要があります。
+
+StreamReader は、 errors キーワード引数を提供することで、様々なエラー取扱方法を実装することができます。下層のストリーム codec がサポートできる標準エラーハンドラについては エラーハンドラ を参照してください。
+
+errors 引数は、同名の属性に代入されます。この属性を変更すると、 StreamReader オブジェクトが生きている間に、異なるエラー処理に変更できます。
+
+errors 引数に許される値の集合は register_error() で拡張できます。
+
+read([size[, chars[, firstline]]])
+ストリームからのデータをデコードし、デコード済のオブジェクトを返します。
+
+chars 引数は、いくつのデコードされたコードポイントまたはバイト列を返すかを表します。 read() メソッドは、要求された数以上のデータを返すことはありませんが、データがそれより少ない場合には要求された数未満のデータを返す場合があります。
+
+The size argument indicates the approximate maximum number of encoded bytes or code points to read for decoding. The decoder can modify this setting as appropriate. The default value -1 indicates to read and decode as much as possible. This parameter is intended to prevent having to decode huge files in one step.
+
+firstline フラグは、1行目さえ返せばその後の行でデコードエラーがあっても無視して十分だ、ということを示します。
+
+このメソッドは貪欲な読み込み戦略を取るべきです。すなわち、エンコーディング定義と size の値が許す範囲で、できるだけ多くのデータを読むべきだということです。たとえば、ストリーム上にエンコーディングの終端や状態の目印があれば、それも読み込みます。
+
+readline([size[, keepends]])
+入力ストリームから1行読み込み、デコード済みのデータを返します。
+
+size が与えられた場合、ストリームの read() メソッドに size 引数として渡されます。
+
+keepends が偽の場合には行末の改行が削除された行が返ります。
+
+readlines([sizehint[, keepends]])
+入力ストリームから全ての行を読み込み、行のリストとして返します。
+
+Line-endings are implemented using the codec's decode() method and are included in the list entries if keepends is true.
+
+sizehint が与えられた場合、ストリームの read() メソッドに size 引数として渡されます。
+
+reset()
+Resets the codec buffers used for keeping internal state.
+
+Note that no stream repositioning should take place. This method is primarily intended to be able to recover from decoding errors.
+
+ここまでで挙げたメソッドの他にも、 StreamReader では背後にあるストリームの他の全てのメソッドや属性を継承しなければなりません。
+
+StreamReaderWriter オブジェクト
+StreamReaderWriter は、読み書き両方に使えるストリームをラップできる便利なクラスです。
+
+lookup() 関数が返すファクトリ関数を使って、インスタンスを生成するという設計です。
+
+class codecs.StreamReaderWriter(stream, Reader, Writer, errors='strict')
+StreamReaderWriter インスタンスを生成します。 stream はファイル類似のオブジェクトです。 Reader と Writer は、それぞれ StreamReader と StreamWriter インターフェースを提供するファクトリ関数かファクトリクラスでなければなりません。エラー処理は、ストリームリーダとライタで定義したものと同じように行われます。
+
+StreamReaderWriter インスタンスは、 StreamReader クラスと StreamWriter クラスを合わせたインタフェースを継承します。元になるストリームからは、他のメソッドや属性を継承します。
+
+StreamRecoder オブジェクト
+StreamRecoder はデータをあるエンコーディングから別のエンコーディングに変換します。異なるエンコーディング環境を扱うとき、便利な場合があります。
+
+lookup() 関数が返すファクトリ関数を使って、インスタンスを生成するという設計です。
+
+class codecs.StreamRecoder(stream, encode, decode, Reader, Writer, errors='strict')
+双方向変換を実装する StreamRecoder インスタンスを生成します。 encode と decode はフロントエンド (read() および write() を呼び出すコードから見えるデータ) ではたらき、 Reader と Writer はバックエンド (stream 内のデータ) ではたらきます。
+
+You can use these objects to do transparent transcodings, e.g., from Latin-1 to UTF-8 and back.
+
+stream 引数はファイルライクオブジェクトでなくてはなりません。
+
+encode 引数と decode 引数は Codec のインターフェースに忠実でなくてはなりません。Reader と Writer は、それぞれ StreamReader と StreamWriter のインターフェースを提供するオブジェクトのファクトリ関数かクラスでなくてはなりません。
+
+エラー処理はストリーム・リーダやライタで定義されている方法と同じように行われます。
+
+StreamRecoder インスタンスは、 StreamReader と StreamWriter クラスを合わせたインターフェースを定義します。また、元のストリームのメソッドと属性も継承します。
+
+エンコーディングと Unicode
+Strings are stored internally as sequences of code points in range 0x0--0x10FFFF. (See PEP 393 for more details about the implementation.) Once a string object is used outside of CPU and memory, endianness and how these arrays are stored as bytes become an issue. As with other codecs, serialising a string into a sequence of bytes is known as encoding, and recreating the string from the sequence of bytes is known as decoding. There are a variety of different text serialisation codecs, which are collectivity referred to as text encodings.
+
+最も単純なテキストエンコーディング ('latin-1' または 'iso-8859-1') では、0--255 の範囲にあるコードポイントを 0x0--0xff のバイトにマップします。 つまり、この codec では U+00FF 以上のコードポイントを含む文字列オブジェクトをエンコードすることはできません。 このようなエンコード処理をしようとすると、次のように UnicodeEncodeError が送出されます (エラーメッセージの細かところは異なる場合があります。): UnicodeEncodeError: 'latin-1' codec can't encode character '\u1234' in position 3: ordinal not in range(256) 。
+
+他のエンコーディングの一群 (charmap エンコーディングと呼ばれます) があり、 Unicode コードポイントの別の部分集合と、それらから 0x0--0xff のバイトへの対応付けを選択したものです。 これがどのように行なわれるかを知るには、単にたとえば encodings/cp1252.py (主に Windows で使われるエンコーディングです) を開いてみてください。 256 文字のひとつの文字列定数があり、どの文字がどのバイト値へ対応付けられるかが示されています。
+
+これらのエンコーディングはすべて、 Unicode に定義された 1114112 のコードポイントのうちの 256 だけをエンコードすることができます。 Unicode のすべてのコードポイントを格納するための単純で直接的な方法は、各コードポイントを連続する4バイトとして格納することです。これには2つの可能性があります: ビッグエンディアンまたはリトルエンディアンの順にバイトを格納することです。これら2つのエンコーディングはそれぞれ UTF-32-BE および UTF-32-LE と呼ばれます。それらのデメリットは、例えばリトルエンディアンのマシン上で UTF-32-BE を使用すると、エンコードでもデコードでも常にバイト順を交換する必要があることです。UTF-32 はこの問題を回避します: バイト順は、常に自然なエンディアンに従います。しかし、これらのバイト順が異なるエンディアン性を持つ CPU によって読まれる場合、結局バイト順を交換しなければなりません。UTF-16 あるいは UTF-32 バイト列のエンディアン性を検出する目的で、いわゆる BOM (「バイト・オーダー・マーク」) があります。これは Unicode 文字 U+FEFF です。この文字はすべての UTF-16 あるいは UTF-32 バイト列の前に置くことができます。この文字のバイトが交換されたバージョン (0xFFFE) は、 Unicode テキストに現われてはならない不正な文字です。したがって、UTF-16 あるいは UTF-32 バイト列中の最初の文字が U+FFFE であるように見える場合、デコードの際にバイトを交換しなければなりません。不運にも文字 U+FEFF は ZERO WIDTH NO-BREAK SPACE として別の目的を持っていました: 幅を持たず、単語を分割することを許容しない文字。それは、例えばリガチャアルゴリズムにヒントを与えるために使用することができます。 Unicode 4.0 で、ZERO WIDTH NO-BREAK SPACE としての U+FEFF の使用は廃止予定になりました (この役割は U+2060 (WORD JOINER) によって引き継がれました)。しかしながら、 Unicode ソフトウェアは、依然として両方の役割の U+FEFF を扱うことができなければなりません: BOM として、エンコードされたバイトのメモリレイアウトを決定する手段であり、一旦バイト列が文字列にデコードされたならば消えます; ZERO WIDTH NO-BREAK SPACE として、他の任意の文字のようにデコードされる通常の文字です。
+
+さらにもう一つ Unicode 文字全てをエンコードできるエンコーディングがあり、UTF-8 と呼ばれています。UTF-8 は8ビットエンコーディングで、したがって UTF-8 にはバイト順の問題はありません。UTF-8 バイト列の各バイトは二つのパートから成ります。二つはマーカ(上位数ビット)とペイロードです。マーカは0ビットから4ビットの 1 の列に 0 のビットが一つ続いたものです。Unicode 文字は次のようにエンコードされます (x はペイロードを表わし、連結されると一つの Unicode 文字を表わします):
+
+範囲
+
+エンコーディング
+
+U-00000000 ... U-0000007F
+
+0xxxxxxx
+
+U-00000080 ... U-000007FF
+
+110xxxxx 10xxxxxx
+
+U-00000800 ... U-0000FFFF
+
+1110xxxx 10xxxxxx 10xxxxxx
+
+U-00010000 ... U-0010FFFF
+
+11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+
+Unicode 文字の最下位ビットとは最も右にある x のビットです。
+
+UTF-8 は8ビットエンコーディングなので BOM は必要とせず、デコードされた文字列中の U+FEFF は(たとえ最初の文字であったとしても) ZERO WIDTH NO-BREAK SPACE として扱われます。
+
+外部からの情報無しには、文字列のエンコーディングにどのエンコーディングが使われたのか信頼できる形で決定することは不可能です。どの charmap エンコーディングもどんなランダムなバイト列でもデコードできます。しかし UTF-8 ではそれは可能ではありません。任意のバイト列を許さないような構造を持っているからです。UTF-8 エンコーディングであることを検知する信頼性を向上させるために、Microsoft は Notepad プログラム用に UTF-8 の変種 (Python 2.5 では "utf-8-sig" と呼んでいます) を考案しました。Unicode 文字がファイルに書き込まれる前に UTF-8 でエンコードした BOM (バイト列では 0xef, 0xbb, 0xbf のように見えます) が書き込まれます。このようなバイト値で charmap エンコードされたファイルが始まることはほとんどあり得ない (たとえば iso-8859-1 では
+
+LATIN SMALL LETTER I WITH DIAERESIS
+RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
+INVERTED QUESTION MARK
+in iso-8859-1), this increases the probability that a utf-8-sig encoding can be correctly guessed from the byte sequence. So here the BOM is not used to be able to determine the byte order used for generating the byte sequence, but as a signature that helps in guessing the encoding. On encoding the utf-8-sig codec will write 0xef, 0xbb, 0xbf as the first three bytes to the file. On decoding utf-8-sig will skip those three bytes if they appear as the first three bytes in the file. In UTF-8, the use of the BOM is discouraged and should generally be avoided.
+
+標準エンコーディング
+Python には数多くの codec が組み込みで付属します。これらは C 言語の関数、対応付けを行うテーブルの両方で提供されています。以下のテーブルでは codec と、いくつかの良く知られている別名と、エンコーディングが使われる言語を列挙します。別名のリスト、言語のリストともしらみつぶしに網羅されているわけではありません。大文字と小文字、またはアンダースコアの代りにハイフンにしただけの綴りも有効な別名です; そのため、例えば 'utf-8' は 'utf_8' codec の正当な別名です。
+
+CPython implementation detail: Some common encodings can bypass the codecs lookup machinery to improve performance. These optimization opportunities are only recognized by CPython for a limited set of (case insensitive) aliases: utf-8, utf8, latin-1, latin1, iso-8859-1, iso8859-1, mbcs (Windows only), ascii, us-ascii, utf-16, utf16, utf-32, utf32, and the same using underscores instead of dashes. Using alternative aliases for these encodings may result in slower execution.
+
+バージョン 3.6 で変更: us-ascii に対して最適化の機会が認識されるようになりました。
+
+多くの文字セットは同じ言語をサポートしています。これらの文字セットは個々の文字 (例えば、EURO SIGN がサポートされているかどうか) や、文字のコード部分への割り付けが異なります。特に欧州言語では、典型的に以下の変種が存在します:
+
+ISO 8859 コードセット
+
+Microsoft Windows コードページで、8859 コード形式から導出されているが、制御文字を追加のグラフィック文字と置き換えたもの
+
+IBM EBCDIC コードページ
+
+ASCII 互換の IBM PC コードページ
+
+Codec
+
+別名
+
+言語
+
+ascii
+
+646, us-ascii
+
+英語
+
+big5
+
+big5-tw, csbig5
+
+繁体字中国語
+
+big5hkscs
+
+big5-hkscs, hkscs
+
+繁体字中国語
+
+cp037
+
+IBM037, IBM039
+
+英語
+
+cp273
+
+273, IBM273, csIBM273
+
+ドイツ語
+
+バージョン 3.4 で追加.
+
+cp424
+
+EBCDIC-CP-HE, IBM424
+
+ヘブライ語
+
+cp437
+
+437, IBM437
+
+英語
+
+cp500
+
+EBCDIC-CP-BE, EBCDIC-CP-CH, IBM500
+
+西ヨーロッパ言語
+
+cp720
+
+アラビア語
+
+cp737
+
+ギリシャ語
+
+cp775
+
+IBM775
+
+バルト沿岸国
+
+cp850
+
+850, IBM850
+
+西ヨーロッパ言語
+
+cp852
+
+852, IBM852
+
+中央および東ヨーロッパ
+
+cp855
+
+855, IBM855
+
+ブルガリア、ベラルーシ、マケドニア、ロシア、セルビア
+
+cp856
+
+ヘブライ語
+
+cp857
+
+857, IBM857
+
+トルコ語
+
+cp858
+
+858, IBM858
+
+西ヨーロッパ言語
+
+cp860
+
+860, IBM860
+
+ポルトガル語
+
+cp861
+
+861, CP-IS, IBM861
+
+アイスランド語
+
+cp862
+
+862, IBM862
+
+ヘブライ語
+
+cp863
+
+863, IBM863
+
+カナダ
+
+cp864
+
+IBM864
+
+アラビア語
+
+cp865
+
+865, IBM865
+
+デンマーク、ノルウェー
+
+cp866
+
+866, IBM866
+
+ロシア語
+
+cp869
+
+869, CP-GR, IBM869
+
+ギリシャ語
+
+cp874
+
+タイ語
+
+cp875
+
+ギリシャ語
+
+cp932
+
+932, ms932, mskanji, ms-kanji
+
+日本語
+
+cp949
+
+949, ms949, uhc
+
+韓国語
+
+cp950
+
+950, ms950
+
+繁体字中国語
+
+cp1006
+
+Urdu
+
+cp1026
+
+ibm1026
+
+トルコ語
+
+cp1125
+
+1125, ibm1125, cp866u, ruscii
+
+ウクライナ語
+
+バージョン 3.4 で追加.
+
+cp1140
+
+ibm1140
+
+西ヨーロッパ言語
+
+cp1250
+
+windows-1250
+
+中央および東ヨーロッパ
+
+cp1251
+
+windows-1251
+
+ブルガリア、ベラルーシ、マケドニア、ロシア、セルビア
+
+cp1252
+
+windows-1252
+
+西ヨーロッパ言語
+
+cp1253
+
+windows-1253
+
+ギリシャ語
+
+cp1254
+
+windows-1254
+
+トルコ語
+
+cp1255
+
+windows-1255
+
+ヘブライ語
+
+cp1256
+
+windows-1256
+
+アラビア語
+
+cp1257
+
+windows-1257
+
+バルト沿岸国
+
+cp1258
+
+windows-1258
+
+ベトナム
+
+euc_jp
+
+eucjp, ujis, u-jis
+
+日本語
+
+euc_jis_2004
+
+jisx0213, eucjis2004
+
+日本語
+
+euc_jisx0213
+
+eucjisx0213
+
+日本語
+
+euc_kr
+
+euckr, korean, ksc5601, ks_c-5601, ks_c-5601-1987, ksx1001, ks_x-1001
+
+韓国語
+
+gb2312
+
+chinese, csiso58gb231280, euc-cn, euccn, eucgb2312-cn, gb2312-1980, gb2312-80, iso-ir-58
+
+簡体字中国語
+
+gbk
+
+936, cp936, ms936
+
+Unified Chinese
+
+gb18030
+
+gb18030-2000
+
+Unified Chinese
+
+hz
+
+hzgb, hz-gb, hz-gb-2312
+
+簡体字中国語
+
+iso2022_jp
+
+csiso2022jp, iso2022jp, iso-2022-jp
+
+日本語
+
+iso2022_jp_1
+
+iso2022jp-1, iso-2022-jp-1
+
+日本語
+
+iso2022_jp_2
+
+iso2022jp-2, iso-2022-jp-2
+
+日本語, 韓国語, 簡体字中国語, 西欧, ギリシャ語
+
+iso2022_jp_2004
+
+iso2022jp-2004, iso-2022-jp-2004
+
+日本語
+
+iso2022_jp_3
+
+iso2022jp-3, iso-2022-jp-3
+
+日本語
+
+iso2022_jp_ext
+
+iso2022jp-ext, iso-2022-jp-ext
+
+日本語
+
+iso2022_kr
+
+csiso2022kr, iso2022kr, iso-2022-kr
+
+韓国語
+
+latin_1
+
+iso-8859-1, iso8859-1, 8859, cp819, latin, latin1, L1
+
+西ヨーロッパ言語
+
+iso8859_2
+
+iso-8859-2, latin2, L2
+
+中央および東ヨーロッパ
+
+iso8859_3
+
+iso-8859-3, latin3, L3
+
+エスペラント、マルタ
+
+iso8859_4
+
+iso-8859-4, latin4, L4
+
+バルト沿岸国
+
+iso8859_5
+
+iso-8859-5, cyrillic
+
+ブルガリア、ベラルーシ、マケドニア、ロシア、セルビア
+
+iso8859_6
+
+iso-8859-6, arabic
+
+アラビア語
+
+iso8859_7
+
+iso-8859-7, greek, greek8
+
+ギリシャ語
+
+iso8859_8
+
+iso-8859-8, hebrew
+
+ヘブライ語
+
+iso8859_9
+
+iso-8859-9, latin5, L5
+
+トルコ語
+
+iso8859_10
+
+iso-8859-10, latin6, L6
+
+北欧語
+
+iso8859_11
+
+iso-8859-11, thai
+
+タイ語
+
+iso8859_13
+
+iso-8859-13, latin7, L7
+
+バルト沿岸国
+
+iso8859_14
+
+iso-8859-14, latin8, L8
+
+ケルト語
+
+iso8859_15
+
+iso-8859-15, latin9, L9
+
+西ヨーロッパ言語
+
+iso8859_16
+
+iso-8859-16, latin10, L10
+
+南東ヨーロッパ
+
+johab
+
+cp1361, ms1361
+
+韓国語
+
+koi8_r
+
+ロシア語
+
+koi8_t
+
+タジク
+
+バージョン 3.5 で追加.
+
+koi8_u
+
+ウクライナ語
+
+kz1048
+
+kz_1048, strk1048_2002, rk1048
+
+カザフ
+
+バージョン 3.5 で追加.
+
+mac_cyrillic
+
+maccyrillic
+
+ブルガリア、ベラルーシ、マケドニア、ロシア、セルビア
+
+mac_greek
+
+macgreek
+
+ギリシャ語
+
+mac_iceland
+
+maciceland
+
+アイスランド語
+
+mac_latin2
+
+maclatin2, maccentraleurope, mac_centeuro
+
+中央および東ヨーロッパ
+
+mac_roman
+
+macroman, macintosh
+
+西ヨーロッパ言語
+
+mac_turkish
+
+macturkish
+
+トルコ語
+
+ptcp154
+
+csptcp154, pt154, cp154, cyrillic-asian
+
+カザフ
+
+shift_jis
+
+csshiftjis, shiftjis, sjis, s_jis
+
+日本語
+
+shift_jis_2004
+
+shiftjis2004, sjis_2004, sjis2004
+
+日本語
+
+shift_jisx0213
+
+shiftjisx0213, sjisx0213, s_jisx0213
+
+日本語
+
+utf_32
+
+U32, utf32
+
+全ての言語
+
+utf_32_be
+
+UTF-32BE
+
+全ての言語
+
+utf_32_le
+
+UTF-32LE
+
+全ての言語
+
+utf_16
+
+U16, utf16
+
+全ての言語
+
+utf_16_be
+
+UTF-16BE
+
+全ての言語
+
+utf_16_le
+
+UTF-16LE
+
+全ての言語
+
+utf_7
+
+U7, unicode-1-1-utf-7
+
+全ての言語
+
+utf_8
+
+U8, UTF, utf8, cp65001
+
+全ての言語
+
+utf_8_sig
+
+全ての言語
+
+バージョン 3.4 で変更: utf-16* と utf-32* のエンコーダは、サロゲートコードポイント (U+D800--U+DFFF) がエンコードされることを許可しなくなりました。utf-32* デコーダは、サロゲートコードポイントに対応するバイト列をデコードしなくなりました。
+
+バージョン 3.8 で変更: cp65001 is now an alias to utf_8.
+
+Python 特有のエンコーディング
+A number of predefined codecs are specific to Python, so their codec names have no meaning outside Python. These are listed in the tables below based on the expected input and output types (note that while text encodings are the most common use case for codecs, the underlying codec infrastructure supports arbitrary data transforms rather than just text encodings). For asymmetric codecs, the stated meaning describes the encoding direction.
+
+テキストエンコーディング
+次の codec では、 Unicode におけるテキストエンコーディングと同様に、 str から bytes へのエンコードと、 bytes-like object から str へのデコードを提供します。
+
+Codec
+
+別名
+
+意味
+
+idna
+
+Implement RFC 3490, see also encodings.idna. Only errors='strict' is supported.
+
+mbcs
+
+ansi, dbcs
+
+Windows only: Encode the operand according to the ANSI codepage (CP_ACP).
+
+oem
+
+Windows only: Encode the operand according to the OEM codepage (CP_OEMCP).
+
+バージョン 3.6 で追加.
+
+palmos
+
+Encoding of PalmOS 3.5.
+
+punycode
+
+Implement RFC 3492. Stateful codecs are not supported.
+
+raw_unicode_escape
+
+別のコードポイントに \uXXXX と \UXXXXXXXX を使用する Latin-1 エンコーディングです。既存のバックスラッシュは、いかなる方法でもエスケープされません。Python の pickle プロトコルで使用されます。
+
+undefined
+
+空文字列を含む全ての変換に対して例外を送出します。エラーハンドラは無視されます。
+
+unicode_escape
+
+Encoding suitable as the contents of a Unicode literal in ASCII-encoded Python source code, except that quotes are not escaped. Decode from Latin-1 source code. Beware that Python source code actually uses UTF-8 by default.
+
+バージョン 3.8 で変更: "unicode_internal" codec is removed.
+
+バイナリ変換 (Binary Transforms)
+The following codecs provide binary transforms: bytes-like object to bytes mappings. They are not supported by bytes.decode() (which only produces str output).
+
+Codec
+
+別名
+
+意味
+
+エンコーダ / デコーダ
+
+base64_codec 1
+
+base64, base_64
+
+Convert the operand to multiline MIME base64 (the result always includes a trailing '\n').
+
+バージョン 3.4 で変更: 任意の bytes-like object をエンコードとデコード用の入力として受け取ります。
+
+base64.encodebytes() / base64.decodebytes()
+
+bz2_codec
+
+bz2
+
+Compress the operand using bz2.
+
+bz2.compress() / bz2.decompress()
+
+hex_codec
+
+hex
+
+Convert the operand to hexadecimal representation, with two digits per byte.
+
+binascii.b2a_hex() / binascii.a2b_hex()
+
+quopri_codec
+
+quopri, quotedprintable, quoted_printable
+
+Convert the operand to MIME quoted printable.
+
+quotetabs=True を指定した quopri.encode() / quopri.decode()
+
+uu_codec
+
+uu
+
+Convert the operand using uuencode.
+
+uu.encode() / uu.decode()
+
+zlib_codec
+
+zip, zlib
+
+Compress the operand using gzip.
+
+zlib.compress() / zlib.decompress()
+
+1
+バイト様オブジェクト に加えて、'base64_codec' も str の ASCII のみのインスタンスをデコード用に受け入れるようになりました
+
+バージョン 3.2 で追加: バイナリ変換が復活しました。(訳注: 2.x にはあったものが 3.0 で削除されていた。)
+
+バージョン 3.4 で変更: バイナリ変換のエイリアスが復活しました。(訳注: 2.x にはあったエイリアス。3.2 でエイリアスは復活しなかった。)
+
+テキスト変換 (Text Transforms)
+The following codec provides a text transform: a str to str mapping. It is not supported by str.encode() (which only produces bytes output).
+
+Codec
+
+別名
+
+意味
+
+rot_13
+
+rot13
+
+Return the Caesar-cypher encryption of the operand.
+
+バージョン 3.2 で追加: rot_13 テキスト変換が復活しました。(訳注: 2.x にはあったものが 3.0 で削除されていた。)
+
+バージョン 3.4 で変更: rot13 エイリアスが復活しました。(訳注: 2.x にはあったエイリアス。3.2 でエイリアスは復活しなかった。)
+
+encodings.idna --- アプリケーションにおける国際化ドメイン名 (IDNA)
+このモジュールでは RFC 3490 (アプリケーションにおける国際化ドメイン名、 IDNA: Internationalized Domain Names in Applications) および RFC 3492 (Nameprep: 国際化ドメイン名 (IDN) のための stringprep プロファイル) を実装しています。このモジュールは punycode エンコーディングおよび stringprep の上に構築されています。
+
+これらの RFC はともに、非 ASCII 文字の入ったドメイン名をサポートするためのプロトコルを定義しています。 (www.Alliancefrançaise.nu のような) 非 ASCII 文字を含むドメイン名は、 ASCII と互換性のあるエンコーディング (ACE、 www.xn--alliancefranaise-npb.nu のような形式) に変換されます。ドメイン名の ACE 形式は、 DNS クエリ、 HTTP Host フィールドなどといった、プロトコル中で任意の文字を使えないような全ての局面で用いられます。この変換はアプリケーション内で行われます; 可能ならユーザからは不可視となります: アプリケーションは Unicode ドメインラベルをネットワークに載せる際に IDNA に、 ACE ドメインラベルをユーザに提供する前に Unicode に、それぞれ透過的に変換しなければなりません。
+
+Python supports this conversion in several ways: the idna codec performs conversion between Unicode and ACE, separating an input string into labels based on the separator characters defined in section 3.1 of RFC 3490 and converting each label to ACE as required, and conversely separating an input byte string into labels based on the . separator and converting any ACE labels found into unicode. Furthermore, the socket module transparently converts Unicode host names to ACE, so that applications need not be concerned about converting host names themselves when they pass them to the socket module. On top of that, modules that have host names as function parameters, such as http.client and ftplib, accept Unicode host names (http.client then also transparently sends an IDNA hostname in the Host field if it sends that field at all).
+
+When receiving host names from the wire (such as in reverse name lookup), no automatic conversion to Unicode is performed: applications wishing to present such host names to the user should decode them to Unicode.
+
+encodings.idna ではまた、 nameprep 手続きを実装しています。 nameprep はホスト名に対してある正規化を行って、国際化ドメイン名で大小文字を区別しないようにするとともに、類似の文字を一元化します。 nameprep 関数は必要なら直接使うこともできます。
+
+encodings.idna.nameprep(label)
+label を nameprep したバージョンを返します。現在の実装ではクエリ文字列を仮定しているので、AllowUnassigned は真です。
+
+encodings.idna.ToASCII(label)
+RFC 3490 仕様に従ってラベルを ASCIIに変換します。 UseSTD3ASCIIRules は偽であると仮定します。
+
+encodings.idna.ToUnicode(label)
+RFC 3490 仕様に従ってラベルを Unicode に変換します。
+
+encodings.mbcs --- Windows ANSI コードページ
+This module implements the ANSI codepage (CP_ACP).
+
+利用可能な環境: Windows のみ。
+
+バージョン 3.3 で変更: 任意のエラーハンドラのサポート。
+
+バージョン 3.2 で変更: 3.2 以前は errors 引数は無視されました; エンコードには常に 'replace' が、デコードには 'ignore' が使われました。
+
+encodings.utf_8_sig --- BOM 印付き UTF-8
+This module implements a variant of the UTF-8 codec. On encoding, a UTF-8 encoded BOM will be prepended to the UTF-8 encoded bytes. For the stateful encoder this is only done once (on the first write to the byte stream). On decoding, an optional UTF-8 encoded BOM at the start of the data will be skipped.
+

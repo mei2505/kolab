@@ -1,0 +1,1340 @@
+csv --- CSV ファイルの読み書き
+ソースコード: Lib/csv.py
+
+CSV (Comma Separated Values、カンマ区切り値列) と呼ばれる形式は、 スプレッドシートやデータベース間でのデータのインポートやエクスポートにおける最も一般的な形式です。 CSVフォーマットは、 RFC 4180 によって標準的な方法でフォーマットを記述する試みが行われる以前から長年使用されました。明確に定義された標準がないということは、異なるアプリケーション によって生成されたり取り込まれたりするデータ間では、しばしば微妙な違いが発生するということを意味します。こうした違いのために、複数のデータ源から得られた CSV ファイルを処理する作業が鬱陶しいものになることがあります。とはいえ、デリミタ (delimiter) やクオート文字の 相違はあっても、全体的な形式は十分似通っているため、こうしたデータを効率的に操作し、データの読み書きにおける細々としたことをプログラマ から隠蔽するような単一のモジュールを書くことは可能です。
+
+csv モジュールでは、CSV 形式で書かれたテーブル状のデータを読み書きするためのクラスを実装しています。このモジュールを使うことで、プログラマは Excel で使われている CSV 形式に関して詳しい知識をもっていなくても、 "このデータを Excel で推奨されている形式で書いてください" とか、 "データを Excel で作成されたこのファイルから読み出してください" と言うことができます。プログラマはまた、他のアプリケーションが解釈できる CSV 形式を記述したり、独自の特殊な目的をもった CSV 形式を定義することができます。
+
+csv モジュールの reader および writer オブジェクトはシーケンス型を読み書きします。プログラマは DictReader や DictWriter クラスを使うことで、データを辞書形式で読み書きすることもできます。
+
+参考
+PEP 305 - CSV File API
+Python へのこのモジュールの追加を提案している Python 改良案 (PEP: Python Enhancement Proposal)。
+
+モジュールコンテンツ
+csv モジュールでは以下の関数を定義しています:
+
+csv.reader(csvfile, dialect='excel', **fmtparams)
+与えられた csvfile 内の行を反復処理するような reader オブジェクトを返します。 csvfile は イテレータ プロトコルをサポートし、 __next__() メソッドが呼ばれた際に常に文字列を返すような任意のオブジェクトにすることができます --- ファイルオブジェクト でもリストでも構いません。 csvfile がファイルオブジェクトの場合、 newline='' として開くべきです。 1 オプションとして dialect パラメータを与えることができ、特定の CSV 表現形式 (dialect) 特有のパラメータの集合を定義するために使われます。 dialect 引数は Dialect クラスのサブクラスのインスタンスか、 list_dialects() 関数が返す文字列の一つにすることができます。別のオプションである fmtparams キーワード引数は、現在の表現形式における個々の書式パラメータを上書きするために与えることができます。表現形式および書式化パラメータの詳細については、 Dialect クラスと書式化パラメータ 節を参照してください。
+
+csv ファイルから読み込まれた各行は、文字列のリストとして返されます。QUOTE_NONNUMERIC フォーマットオプションが指定された場合を除き、データ型の変換が自動的に行われることはありません (このオプションが指定された場合、クォートされていないフィールドは浮動小数点数に変換されます)。
+
+短い利用例:
+
+>>>
+>>> import csv
+>>> with open('eggs.csv', newline='') as csvfile:
+...     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+...     for row in spamreader:
+...         print(', '.join(row))
+Spam, Spam, Spam, Spam, Spam, Baked Beans
+Spam, Lovely Spam, Wonderful Spam
+csv.writer(csvfile, dialect='excel', **fmtparams)
+ユーザが与えたデータをデリミタで区切られた文字列に変換し、与えられたファイルオブジェクトに書き込むための writer オブジェクトを返します。 csvfile は write() メソッドを持つ任意のオブジェクトです。 csvfile がファイルオブジェクトの場合、 newline='' として開くべきです 1 。オプションとして dialect 引数を与えることができ、利用するCSV表現形式(dialect)を指定することができます。 dialect パラメータは Dialect クラスのサブクラスのインスタンスか、 list_dialects() 関数が返す文字列の1つにすることができます。別のオプション引数である fmtparams キーワード引数は、現在の表現形式における個々の書式パラメータを上書きするために与えることができます。dialect と書式パラメータについての詳細は、 Dialect クラスと書式化パラメータ 節を参照してください。 DB API を実装するモジュールとのインタフェースを可能な限り容易にするために、 None は空文字列として書き込まれます。この処理は可逆な変換ではありませんが、SQL で NULL データ値を CSV にダンプする処理を、 cursor.fetch* 呼び出しによって返されたデータを前処理することなく簡単に行うことができます。他の非文字列データは、書き出される前に str() を使って文字列に変換されます。
+
+短い利用例:
+
+import csv
+with open('eggs.csv', 'w', newline='') as csvfile:
+    spamwriter = csv.writer(csvfile, delimiter=' ',
+                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+    spamwriter.writerow(['Spam'] * 5 + ['Baked Beans'])
+    spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
+csv.register_dialect(name[, dialect[, **fmtparams]])
+dialect を name と関連付けます。 name は文字列でなければなりません。表現形式(dialect)は Dialect のサブクラスを渡すか、またはキーワード引数 fmtparams 、もしくは両方で指定できますが、キーワード引数の方が優先されます。表現形式と書式化パラメータについての詳細は、 Dialect クラスと書式化パラメータ 節を参照してください。
+
+csv.unregister_dialect(name)
+name に関連づけられた表現形式を表現形式レジストリから削除します。 name が表現形式名でない場合には Error を送出します。
+
+csv.get_dialect(name)
+name に関連づけられた表現形式を返します。 name が表現形式名でない場合には Error を送出します。この関数は不変の Dialect を返します。
+
+csv.list_dialects()
+登録されている全ての表現形式を返します。
+
+csv.field_size_limit([new_limit])
+パーサが許容する現在の最大フィールドサイズを返します。 new_limit が渡されたときは、その値が新しい上限になります。
+
+csv モジュールでは以下のクラスを定義しています:
+
+class csv.DictReader(f, fieldnames=None, restkey=None, restval=None, dialect='excel', *args, **kwds)
+Create an object that operates like a regular reader but maps the information in each row to a dict whose keys are given by the optional fieldnames parameter.
+
+The fieldnames parameter is a sequence. If fieldnames is omitted, the values in the first row of file f will be used as the fieldnames. Regardless of how the fieldnames are determined, the dictionary preserves their original ordering.
+
+If a row has more fields than fieldnames, the remaining data is put in a list and stored with the fieldname specified by restkey (which defaults to None). If a non-blank row has fewer fields than fieldnames, the missing values are filled-in with the value of restval (which defaults to None).
+
+その他の省略可能またはキーワード形式のパラメータは、ベースになっている reader インスタンスに渡されます。
+
+バージョン 3.6 で変更: 返される列の型は OrderedDict になりました。
+
+バージョン 3.8 で変更: 返される列の型は dict になりました。
+
+短い利用例:
+
+>>>
+>>> import csv
+>>> with open('names.csv', newline='') as csvfile:
+...     reader = csv.DictReader(csvfile)
+...     for row in reader:
+...         print(row['first_name'], row['last_name'])
+...
+Eric Idle
+John Cleese
+
+>>> print(row)
+{'first_name': 'John', 'last_name': 'Cleese'}
+class csv.DictWriter(f, fieldnames, restval='', extrasaction='raise', dialect='excel', *args, **kwds)
+通常の writer のように動作しますが、辞書を出力行にマップするオブジェクトを生成します。 fieldnames パラメータは、writerow() メソッドに渡された辞書の値がどのような順番でファイル f に書かれるかを指定するキーの sequence です。 writerow() メソッドに渡された辞書に fieldnames には存在しないキーが含まれている場合、オプションの extrasaction パラメータによってどんな動作を行うかが指定されます。この値がデフォルト値である 'raise' に設定されている場合、 ValueError が送出されます。 'ignore' に設定されている場合、辞書の余分な値は無視されます。その他のパラメータはベースになっている writer インスタンスに渡されます。
+
+DictReader クラスとは異なり、 DictWriter の fieldnames パラメータは省略可能ではありません。
+
+短い利用例:
+
+import csv
+
+with open('names.csv', 'w', newline='') as csvfile:
+    fieldnames = ['first_name', 'last_name']
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+    writer.writeheader()
+    writer.writerow({'first_name': 'Baked', 'last_name': 'Beans'})
+    writer.writerow({'first_name': 'Lovely', 'last_name': 'Spam'})
+    writer.writerow({'first_name': 'Wonderful', 'last_name': 'Spam'})
+class csv.Dialect
+Dialect クラスはコンテナクラスで、基本的な用途としては、その属性を特定の reader や writer インスタンスのパラメータを定義するために用います。
+
+class csv.excel
+excel クラスは Excel で生成される CSV ファイルの通常のプロパティを定義します。これは 'excel' という名前の dialect として登録されています。
+
+class csv.excel_tab
+excel_tab クラスは Excel で生成されるタブ分割ファイルの通常のプロパティを定義します。これは 'excel-tab' という名前の dialect として登録されています。
+
+class csv.unix_dialect
+unix_dialect クラスは UNIX システムで生成される CSV ファイルの通常のプロパティ (行終端記号として '\n' を用い全てのフィールドをクォートするもの) を定義します。これは 'unix' という名前の dialect として登録されています。
+
+バージョン 3.2 で追加.
+
+class csv.Sniffer
+Sniffer クラスは CSV ファイルの書式を推理するために用いられるクラスです。
+
+Sniffer クラスではメソッドを二つ提供しています:
+
+sniff(sample, delimiters=None)
+与えられた sample を解析し、発見されたパラメータを反映した Dialect サブクラスを返します。オプションの delimiters パラメータを与えた場合、有効なデリミタ文字を含んでいるはずの文字列として解釈されます。
+
+has_header(sample)
+(CSV 形式と仮定される) サンプルテキストを解析して、最初の行がカラムヘッダの羅列のように推察される場合 True を返します。
+
+Sniffer の利用例:
+
+with open('example.csv', newline='') as csvfile:
+    dialect = csv.Sniffer().sniff(csvfile.read(1024))
+    csvfile.seek(0)
+    reader = csv.reader(csvfile, dialect)
+    # ... process CSV file contents here ...
+csv モジュールでは以下の定数を定義しています:
+
+csv.QUOTE_ALL
+writer オブジェクトに対し、全てのフィールドをクオートするように指示します。
+
+csv.QUOTE_MINIMAL
+writer オブジェクトに対し、 delimiter 、 quotechar または lineterminator に含まれる任意の文字のような特別な文字を含むフィールドだけをクオートするように指示します。
+
+csv.QUOTE_NONNUMERIC
+writer オブジェクトに対し、全ての非数値フィールドをクオートするように指示します。
+
+reader に対しては、クオートされていない全てのフィールドを float 型に変換するよう指示します。
+
+csv.QUOTE_NONE
+writer オブジェクトに対し、フィールドを決してクオートしないように指示します。現在の delimiter が出力データ中に現れた場合、現在設定されている escapechar 文字が前に付けられます。 escapechar がセットされていない場合、エスケープが必要な文字に遭遇した writer は Error を送出します。
+
+reader に対しては、クオート文字の特別扱いをしないように指示します。
+
+csv モジュールでは以下の例外を定義しています:
+
+exception csv.Error
+全ての関数において、エラーが検出された際に送出される例外です。
+
+Dialect クラスと書式化パラメータ
+レコードに対する入出力形式の指定をより簡単にするために、特定の書式化パラメータは表現形式 (dialect) にまとめてグループ化されます。表現形式は Dialect クラスのサブクラスで、様々なクラス特有のメソッドと、 validate() メソッドを一つ持っています。 reader または writer オブジェクトを生成するとき、プログラマは文字列または Dialect クラスのサブクラスを表現形式パラメータとして渡さなければなりません。さらに、 dialect パラメータの代りに、プログラマは上で定義されている属性と同じ名前を持つ個々の書式化パラメータを Dialect クラスに指定することができます。
+
+Dialect は以下の属性をサポートしています:
+
+Dialect.delimiter
+フィールド間を分割するのに用いられる 1 文字からなる文字列です。デフォルトでは ',' です。
+
+Dialect.doublequote
+フィールド内に現れた quotechar のインスタンスで、クオートではないその文字自身でなければならない文字をどのようにクオートするかを制御します。 True の場合、この文字は二重化されます。 False の場合、 escapechar は quotechar の前に置かれます。デフォルトでは True です。
+
+出力においては、 doublequote が False で escapechar がセットされていない場合、フィールド内に quotechar が現れると Error が送出されます。
+
+Dialect.escapechar
+writer が、 quoting が QUOTE_NONE に設定されている場合に delimiter をエスケープするため、および、 doublequote が False の場合に quotechar をエスケープするために用いられる、 1 文字からなる文字列です。読み込み時には escapechar はそれに引き続く文字の特別な意味を取り除きます。デフォルトでは None で、エスケープを行ないません。
+
+Dialect.lineterminator
+writer が作り出す各行を終端する際に用いられる文字列です。デフォルトでは '\r\n' です。
+
+注釈 reader は '\r' または '\n' のどちらかを行末と認識するようにハードコードされており、 lineterminator を無視します。この振る舞いは将来変更されるかもしれません。
+Dialect.quotechar
+delimiter や quotechar といった特殊文字を含むか、改行文字を含むフィールドをクオートする際に用いられる 1 文字からなる文字列です。デフォルトでは '"' です。
+
+Dialect.quoting
+クオートがいつ writer によって生成されるか、また reader によって認識されるかを制御します。 QUOTE_* 定数のいずれか (モジュールコンテンツ 節参照) をとることができ、デフォルトでは QUOTE_MINIMAL です。
+
+Dialect.skipinitialspace
+True の場合、 delimiter の直後に続く空白は無視されます。デフォルトでは False です。
+
+Dialect.strict
+True の場合、 不正な CSV 入力に対して Error を送出します。デフォルトでは False です。
+
+reader オブジェクト
+reader オブジェクト(DictReader インスタンス、および reader() 関数によって返されたオブジェクト) は、以下の public なメソッドを持っています:
+
+csvreader.__next__()
+reader の反復可能なオブジェクトから、現在の表現形式に基づいて次の行を解析してリスト（オブジェクトが reader() から返された場合）または辞書 （ DictReader のインスタンスの場合）として返します。通常は next(reader) のようにして呼び出すことになります。
+
+reader オブジェクトには以下の公開属性があります:
+
+csvreader.dialect
+パーサで使われる表現形式の読み出し専用の記述です。
+
+csvreader.line_num
+ソースイテレータから読んだ行数です。この数は返されるレコードの数とは、レコードが複数行に亘ることがあるので、一致しません。
+
+DictReader オブジェクトは、以下の public な属性を持っています:
+
+csvreader.fieldnames
+オブジェクトを生成するときに渡されなかった場合、この属性は最初のアクセス時か、ファイルから最初のレコードを読み出したときに初期化されます。
+
+writer オブジェクト
+Writer オブジェクト(DictWriter インスタンス、および writer() 関数によって返されたオブジェクト) は、以下の public なメソッドを持っています: row には、 Writer オブジェクトの場合には文字列か数値のイテラブルを指定し、 DictWriter オブジェクトの場合はフィールド名をキーとして対応する文字列か数値を格納した辞書オブジェクトを指定します(数値は str() で変換されます)。複素数を出力する場合、値をかっこで囲んで出力します。このため、CSV ファイルを読み込むアプリケーションで（そのアプリケーションが複素数をサポートしていたとしても）問題が発生する場合があります。
+
+csvwriter.writerow(row)
+Write the row parameter to the writer's file object, formatted according to the current dialect. Return the return value of the call to the write method of the underlying file object.
+
+バージョン 3.5 で変更: 任意のイテラブルのサポートの追加。
+
+csvwriter.writerows(rows)
+rows 引数 (上で解説した row オブジェクトのイテラブル) の全ての要素を現在の表現形式に基づいて書式化し、writer のファイルオブジェクトに書き込みます。
+
+writer オブジェクトには以下の公開属性があります:
+
+csvwriter.dialect
+writer で使われる表現形式の読み出し専用の記述です。
+
+DictWriter のオブジェクトは以下の public メソッドを持っています:
+
+DictWriter.writeheader()
+Write a row with the field names (as specified in the constructor) to the writer's file object, formatted according to the current dialect. Return the return value of the csvwriter.writerow() call used internally.
+
+バージョン 3.2 で追加.
+
+バージョン 3.8 で変更: writeheader() now also returns the value returned by the csvwriter.writerow() method it uses internally.
+
+使用例
+最も簡単な CSV ファイル読み込みの例です:
+
+import csv
+with open('some.csv', newline='') as f:
+    reader = csv.reader(f)
+    for row in reader:
+        print(row)
+別の書式での読み込み:
+
+import csv
+with open('passwd', newline='') as f:
+    reader = csv.reader(f, delimiter=':', quoting=csv.QUOTE_NONE)
+    for row in reader:
+        print(row)
+上に対して、単純な書き込みのプログラム例は以下のようになります。
+
+import csv
+with open('some.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerows(someiterable)
+open() が CSV ファイルの読み込みに使われるため、ファイルはデフォルトではシステムのデフォルトエンコーディングでユニコード文字列にデコードされます (locale.getpreferredencoding() を参照)。他のエンコーディングを用いてデコードするには、open の引数 encoding を設定して、以下のようにします:
+
+import csv
+with open('some.csv', newline='', encoding='utf-8') as f:
+    reader = csv.reader(f)
+    for row in reader:
+        print(row)
+システムのデフォルトエンコーディング以外で書き込む場合も同様です。出力ファイルを開く際に引数 encoding を明示してください。
+
+新しい表現形式の登録:
+
+import csv
+csv.register_dialect('unixpwd', delimiter=':', quoting=csv.QUOTE_NONE)
+with open('passwd', newline='') as f:
+    reader = csv.reader(f, 'unixpwd')
+もう少し手の込んだ reader の使い方 --- エラーを捉えてレポートします。
+
+import csv, sys
+filename = 'some.csv'
+with open(filename, newline='') as f:
+    reader = csv.reader(f)
+    try:
+        for row in reader:
+            print(row)
+    except csv.Error as e:
+        sys.exit('file {}, line {}: {}'.format(filename, reader.line_num, e))
+このモジュールは文字列の解析は直接サポートしませんが、簡単にできます。
+
+import csv
+for row in csv.reader(['one,two,three']):
+    print(row)
+脚注
+
+1(1,2)
+newline='' が指定されない場合、クォートされたフィールド内の改行は適切に解釈されず、書き込み時に \r\n を行末に用いる処理系では余分な \r が追加されてしまいます。csv モジュールは独自 (universal) の改行処理を行うため、newline='' を指定することは常に安全です。
+
+configparser --- 設定ファイルのパーサー
+ソースコード: Lib/configparser.py
+
+このモジュールは、 Microsoft Windows の INI ファイルに似た構造を持ったベーシックな設定用言語を実装した ConfigParser クラスを提供します。このクラスを使ってユーザーが簡単にカスタマイズできる Python プログラムを作ることができます。
+
+注釈 このライブラリでは、Windowsのレジストリ用に拡張された INI 文法はサポート していません 。
+参考
+shlex モジュール
+アプリケーション設定ファイルのフォーマットとして使える、Unix シェルに似たミニ言語の作成を支援します。
+
+json モジュール
+json モジュールは、同じ目的に利用できる JavaScript の文法のサブセットを実装しています。
+
+クイックスタート
+次のような、非常に簡単な設定ファイルを例に考えましょう:
+
+[DEFAULT]
+ServerAliveInterval = 45
+Compression = yes
+CompressionLevel = 9
+ForwardX11 = yes
+
+[bitbucket.org]
+User = hg
+
+[topsecret.server.com]
+Port = 50022
+ForwardX11 = no
+INI ファイルの構造は 下のセクション で解説します。 基本的に、ファイルは複数のセクションからなり、各セクションは複数のキーと値を持ちます。 configparser のクラス群はそれらのファイルを読み書きできます。 まずは上のような設定ファイルをプログラムから作成してみましょう。
+
+>>> import configparser
+>>> config = configparser.ConfigParser()
+>>> config['DEFAULT'] = {'ServerAliveInterval': '45',
+...                      'Compression': 'yes',
+...                      'CompressionLevel': '9'}
+>>> config['bitbucket.org'] = {}
+>>> config['bitbucket.org']['User'] = 'hg'
+>>> config['topsecret.server.com'] = {}
+>>> topsecret = config['topsecret.server.com']
+>>> topsecret['Port'] = '50022'     # mutates the parser
+>>> topsecret['ForwardX11'] = 'no'  # same here
+>>> config['DEFAULT']['ForwardX11'] = 'yes'
+>>> with open('example.ini', 'w') as configfile:
+...   config.write(configfile)
+...
+この例でわかるように、config parser は辞書のように扱うことができます。辞書との違いは 後に 説明しますが、このインターフェイスは辞書に対して期待するのととても近い動作をします。
+
+これで設定ファイルを作成して保存できました。次はこれを読み込み直して、中のデータを取り出してみましょう。
+
+>>> config = configparser.ConfigParser()
+>>> config.sections()
+[]
+>>> config.read('example.ini')
+['example.ini']
+>>> config.sections()
+['bitbucket.org', 'topsecret.server.com']
+>>> 'bitbucket.org' in config
+True
+>>> 'bytebong.com' in config
+False
+>>> config['bitbucket.org']['User']
+'hg'
+>>> config['DEFAULT']['Compression']
+'yes'
+>>> topsecret = config['topsecret.server.com']
+>>> topsecret['ForwardX11']
+'no'
+>>> topsecret['Port']
+'50022'
+>>> for key in config['bitbucket.org']:  
+...     print(key)
+user
+compressionlevel
+serveraliveinterval
+compression
+forwardx11
+>>> config['bitbucket.org']['ForwardX11']
+'yes'
+上の例からわかるように、API はとても直感的です。唯一の魔術は、DEFAULT セクションが他の全てのセクションのためのデフォルト値を提供していることです 1。 また、セクション内の各キーは大文字小文字を区別せず、全て小文字で保存されていることにも注意してください 1。
+
+サポートされるデータ型
+Config parser は値のデータ型について何も推論せず、常に文字列のまま内部に保存します。他のデータ型が必要な場合は自分で変換する必要があります:
+
+>>> int(topsecret['Port'])
+50022
+>>> float(topsecret['CompressionLevel'])
+9.0
+このタスクはとても一般的なため、設定パーサーでは整数、浮動小数点数、真偽値を扱うための手頃なゲッターメソッドが提供されています。真偽値の扱いは一筋縄ではいきません。文字列を bool() に渡しても、 bool('False') が True になってしまいます。そこで config parser は getboolean() を提供しています。このメソッドは大文字小文字を区別せず、 'yes'/'no'、'on'/'off'、'true'/'false'、'1'/'0' を真偽値として認識します 1。例えば:
+
+>>> topsecret.getboolean('ForwardX11')
+False
+>>> config['bitbucket.org'].getboolean('ForwardX11')
+True
+>>> config.getboolean('bitbucket.org', 'Compression')
+True
+config parser では、 getboolean() 以外に getint() と getfloat() メソッドも提供されています。独自のコンバーターの登録、提供されたメソッドのカスタマイズもできます。 1
+
+代替値
+辞書と同じように、セクションの get() メソッドは代替値を提供しています:
+
+>>> topsecret.get('Port')
+'50022'
+>>> topsecret.get('CompressionLevel')
+'9'
+>>> topsecret.get('Cipher')
+>>> topsecret.get('Cipher', '3des-cbc')
+'3des-cbc'
+デフォルト値は代替値よりも優先されることに注意してください。例えば上の例では、'CompressionLevel' キーは 'DEFAULT' セクションにしか存在しません。その値を 'topsecret.server.com' から取得しようとした場合、代替値を指定しても常にデフォルト値を返します:
+
+>>> topsecret.get('CompressionLevel', '3')
+'9'
+もう一つ注意すべき点は、パーサーレベルの (訳注: ConfigParserクラスの) get() メソッドは、後方互換性のために、カスタムのより複雑なインターフェースを提供します。 このメソッドを使用する際には、フォールバック値はキーワード専用引数 fallback を介して提供されます:
+
+>>> config.get('bitbucket.org', 'monster',
+...            fallback='No such things as monsters')
+'No such things as monsters'
+同様の fallback 引数を、getint() 、 getfloat() と getboolean() メソッドでも使えます。例えば:
+
+>>> 'BatchMode' in topsecret
+False
+>>> topsecret.getboolean('BatchMode', fallback=True)
+True
+>>> config['DEFAULT']['BatchMode'] = 'no'
+>>> topsecret.getboolean('BatchMode', fallback=True)
+False
+サポートするINI ファイルの構造
+設定ファイルは複数のセクションから構成されます。セクションは、[section] ヘッダに続いた、特定の文字列(デフォルトでは = または : 1 )で区切られたキーと値のエントリです。デフォルトでは、セクション名は大文字と小文字を区別しますが、キーはそうではありません 1。キーと値、それぞれの先頭と末尾の空白は取り除かれます。値は省略することができ、その際でも、キーと値の区切り文字は残しておけます。値はまた、値の先頭の行より深くインデントされていれば、複数の行にまたがっても構いません。パーサーのモードによって、空白行は、複数行からなる値の一部として扱われるか、無視されます。
+
+設定ファイルには先頭に特定の文字 (デフォルトでは # および ; 1) をつけてコメントをつけることができます。コメントは、他の内容がない行に置くことができ、インデントされていても構いません。1
+
+例えば:
+
+[Simple Values]
+key=value
+spaces in keys=allowed
+spaces in values=allowed as well
+spaces around the delimiter = obviously
+you can also use : to delimit keys from values
+
+[All Values Are Strings]
+values like this: 1000000
+or this: 3.14159265359
+are they treated as numbers? : no
+integers, floats and booleans are held as: strings
+can use the API to get converted values directly: true
+
+[Multiline Values]
+chorus: I'm a lumberjack, and I'm okay
+    I sleep all night and I work all day
+
+[No Values]
+key_without_value
+empty string value here =
+
+[You can use comments]
+# like this
+; or this
+
+# By default only in an empty line.
+# Inline comments can be harmful because they prevent users
+# from using the delimiting characters as parts of values.
+# That being said, this can be customized.
+
+    [Sections Can Be Indented]
+        can_values_be_as_well = True
+        does_that_mean_anything_special = False
+        purpose = formatting for readability
+        multiline_values = are
+            handled just fine as
+            long as they are indented
+            deeper than the first line
+            of a value
+        # Did I mention we can indent comments, too?
+値の補間
+コア機能に加えて、 ConfigParser は補間(interpolation, 内挿とも)をサポートします。これは get() コールが値を返す前に、その値に対して前処理を行えることを意味します。
+
+class configparser.BasicInterpolation
+ConfigParser が使用するデフォルト実装です。値に、同じセクションか特別なデフォルトセクション中 1 の他の値を参照するフォーマット文字列を含めることができます。追加のデフォルト値を初期化時に提供できます。
+
+例えば:
+
+[Paths]
+home_dir: /Users
+my_dir: %(home_dir)s/lumberjack
+my_pictures: %(my_dir)s/Pictures
+
+[Escape]
+gain: 80%%  # use a %% to escape the % sign (% is the only character that needs to be escaped)
+上の例では、 interpolation に BasicInterpolation() を設定した ConfigParser が %(home_dir)s を home_dir の値(このケースでは /Users )として解決しています、その結果 %(my_dir)s は /Users/lumberjack になります。全ての補間は必要に応じて実行されるため、設定ファイル中で参照の連鎖をもつキーを特定の順序で記述する必要はありません。
+
+interpolation に None を設定すれば、パーサーは単に my_pictures の値として %(my_dir)s/Pictures を返し、my_dir の値として %(home_dir)s/lumberjack を返します。
+
+class configparser.ExtendedInterpolation
+zc.buildout で使用されるような、より高度な文法を実装した補間ハンドラの別の選択肢です。拡張された補間は、他のセクション中の値を示すのに ${section:option} と書けます。補間は複数のレベルに及べます、利便性のために、もし section: の部分が省略されると、現在のセクションがデフォルト値となります(スペシャルセクション中のデフォルト値を使用することもできます)。
+
+たとえば、上記の basic interpolation で指定した設定は、extended interpolation を使うと下記のようになります:
+
+[Paths]
+home_dir: /Users
+my_dir: ${home_dir}/lumberjack
+my_pictures: ${my_dir}/Pictures
+
+[Escape]
+cost: $$80  # use a $$ to escape the $ sign ($ is the only character that needs to be escaped)
+他のセクションから値を持ってくることもできます:
+
+[Common]
+home_dir: /Users
+library_dir: /Library
+system_dir: /System
+macports_dir: /opt/local
+
+[Frameworks]
+Python: 3.2
+path: ${Common:system_dir}/Library/Frameworks/
+
+[Arthur]
+nickname: Two Sheds
+last_name: Jackson
+my_dir: ${Common:home_dir}/twosheds
+my_pictures: ${my_dir}/Pictures
+python_dir: ${Frameworks:path}/Python/Versions/${Frameworks:Python}
+マップ型プロトコルアクセス
+バージョン 3.2 で追加.
+
+マップ型プロトコルアクセスは、カスタムオブジェクトを辞書であるかのように使うための機能の総称です。 configparser の場合、マップ型インタフェースの実装は parser['section']['option'] 表記を使います。
+
+とくに、parser['section'] はパーサー内のそのセクションのデータへのプロキシを返します。つまり、値はコピーされるのではなく必要に応じてオリジナルのパーサーから取られます。さらに重要なことに、セクションのプロキシの値が変更されると、オリジナルのパーサー中の値が実際に変更されます。
+
+configparser は可能な限り実際の辞書と近い振る舞いをします。マップ型インタフェースは MutableMapping を矛盾なく完成します。しかし、考慮するべき違いがいくつかあります:
+
+デフォルトでは、セクション内の全てのキーは大文字小文字の区別なくアクセスできます 1。例えば、for option in parser["section"] は optionxform されたオプションキー名のみを yield します。つまり小文字のキーがデフォルトです。同時に、キー 'a' を含むセクションにおいて、どちらの式も True を返します:
+
+"a" in parser["section"]
+"A" in parser["section"]
+全てのセクションは DEFAULTSECT 値を持ち、すなわちセクションで .clear() してもセクションは見た目上空になりません。これは、デフォルト値は (技術的にはそこにないので) セクションから削除できないためです。デフォルト値が上書きされた場合、それが削除されるとデフォルト値が再び見えるようになります。デフォルト値を削除しようとすると KeyError が発生します。
+
+DEFAULTSECT はパーサーから取り除けません:
+
+削除しようとすると ValueError が発生します。
+
+parser.clear() はこれをそのまま残し、
+
+parser.popitem() がこれを返すことはありません。
+
+parser.get(section, option, **kwargs) - 第二引数は代替値では ありません。ただし、セクションごとの get() メソッドはマップ型プロトコルと旧式の configparser API の両方に互換です。
+
+parser.items() はマップ型プロトコルと互換です (DEFAULTSECT を含む section_name, section_proxy 対のリストを返します)。ただし、このメソッドは parser.items(section, raw, vars) のようにして引数を与えることでも呼び出せます。後者の呼び出しは指定された section の option, value 対のリストを、(raw=True が与えられない限り) 全ての補間を展開して返します。
+
+マップ型プロトコルは、既存のレガシーな API の上に実装されているので、オリジナルのインタフェースを上書きする派生クラスもまたは期待どおりにはたらきます。
+
+パーサーの振る舞いをカスタマイズする
+INI フォーマットの変種は、それを使うアプリケーションの数と同じくらい多く存在します。 configparser は、可能な限り広い範囲の INI スタイルを集めた集合をサポートするために、非常に役立ちます。デフォルトの機能は主に歴史的背景によって決められたので、機能によってはカスタマイズしてお使いください。
+
+特定の設定パーサーのはたらきを変える最も一般的な方法は __init__() オプションを使うことです:
+
+defaults, デフォルト値: None
+
+このオプションは最初に DEFAULT セクションに加えられるキー-値の対の辞書を受け付けます。
+
+ヒント: 特定のセクションにデフォルト値を指定したいなら、実際のファイルを読み込む前に read_dict() を使ってください。
+
+dict_type, default value: dict
+
+This option has a major impact on how the mapping protocol will behave and how the written configuration files look. With the standard dictionary, every section is stored in the order they were added to the parser. Same goes for options within sections.
+
+An alternative dictionary type can be used for example to sort sections and options on write-back.
+
+Please note: there are ways to add a set of key-value pairs in a single operation. When you use a regular dictionary in those operations, the order of the keys will be ordered. For example:
+
+>>> parser = configparser.ConfigParser()
+>>> parser.read_dict({'section1': {'key1': 'value1',
+...                                'key2': 'value2',
+...                                'key3': 'value3'},
+...                   'section2': {'keyA': 'valueA',
+...                                'keyB': 'valueB',
+...                                'keyC': 'valueC'},
+...                   'section3': {'foo': 'x',
+...                                'bar': 'y',
+...                                'baz': 'z'}
+... })
+>>> parser.sections()
+['section1', 'section2', 'section3']
+>>> [option for option in parser['section3']]
+['foo', 'bar', 'baz']
+allow_no_value, デフォルト値: False
+
+一部の設定ファイルには値のない設定項目がありますが、それ以外は ConfigParser がサポートする文法に従います。コンストラクタの allow_no_value 引数で、そのような値を許可することができます。
+
+>>> import configparser
+
+>>> sample_config = """
+... [mysqld]
+...   user = mysql
+...   pid-file = /var/run/mysqld/mysqld.pid
+...   skip-external-locking
+...   old_passwords = 1
+...   skip-bdb
+...   # we don't need ACID today
+...   skip-innodb
+... """
+>>> config = configparser.ConfigParser(allow_no_value=True)
+>>> config.read_string(sample_config)
+
+>>> # Settings with values are treated as before:
+>>> config["mysqld"]["user"]
+'mysql'
+
+>>> # Settings without values provide None:
+>>> config["mysqld"]["skip-bdb"]
+
+>>> # Settings which aren't specified still raise an error:
+>>> config["mysqld"]["does-not-exist"]
+Traceback (most recent call last):
+  ...
+KeyError: 'does-not-exist'
+delimiters, デフォルト値: ('=', ':')
+
+デリミタはセクション内でキーを値から区切る部分文字列です。行中で最初に現れた区切り部分文字列がデリミタと見なされます。つまり値にはデリミタを含めることができます (キーには含めることができません)。
+
+ConfigParser.write() の space_around_delimiters 引数も参照してください。
+
+comment_prefixes, デフォルト値: ('#', ';')
+
+inline_comment_prefixes, デフォルト値: None
+
+コメント接頭辞は設定ファイル中で有効なコメントの開始を示す文字列です。comment_prefixes は他の内容がない行 (インデントは自由) にのみ使用でき、inline_comment_prefixes は任意の有効な値 (例えば、セクション名、オプション、空行も可能) の後に使えます。デフォルトではインラインコメントは無効化されていて、'#' と ';' を行全体のコメントに使用します。
+
+バージョン 3.2 で変更: 以前のバージョンの configparser の振る舞いは comment_prefixes=('#',';') および inline_comment_prefixes=(';',) に該当します。
+
+設定パーサーはコメント接頭辞のエスケープをサポートしないので、inline_comment_prefixes はユーザーがコメント接頭辞として使われる文字を含むオプション値を指定するのを妨げる可能性があります。疑わしい場合には、inline_comment_prefixes を設定しないようにしてください。どのような状況でも、複数行にわたる値で、行の先頭にコメント接頭辞文字を保存する唯一の方法は、次の例のように接頭辞を補間することです:
+
+>>>
+>>> from configparser import ConfigParser, ExtendedInterpolation
+>>> parser = ConfigParser(interpolation=ExtendedInterpolation())
+>>> # the default BasicInterpolation could be used as well
+>>> parser.read_string("""
+... [DEFAULT]
+... hash = #
+...
+... [hashes]
+... shebang =
+...   ${hash}!/usr/bin/env python
+...   ${hash} -*- coding: utf-8 -*-
+...
+... extensions =
+...   enabled_extension
+...   another_extension
+...   #disabled_by_comment
+...   yet_another_extension
+...
+... interpolation not necessary = if # is not at line start
+... even in multiline values = line #1
+...   line #2
+...   line #3
+... """)
+>>> print(parser['hashes']['shebang'])
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+>>> print(parser['hashes']['extensions'])
+
+enabled_extension
+another_extension
+yet_another_extension
+>>> print(parser['hashes']['interpolation not necessary'])
+if # is not at line start
+>>> print(parser['hashes']['even in multiline values'])
+line #1
+line #2
+line #3
+strict, デフォルト値: True
+
+True に設定された場合、パーサーは単一のソースから (read_file(), read_string() または read_dict() を使って) 読み込むときにセクションやオプションの重複を許さなくなります。新しいアプリケーションには strict なパーサーを使うことが推奨されます。
+
+バージョン 3.2 で変更: 以前のバージョンの configparser の振る舞いは strict=False に該当します。
+
+empty_lines_in_values, デフォルト値: True
+
+設定パーサーでは、キーよりもその値を深くインデントするかぎり、複数行にまたがる値を使えます。デフォルトのパーサーはさらにその値の間に空行を置けます。同時に、キーは読みやすくするため任意にインデントできます。結果として、設定ファイルが大きく複雑になったとき、ユーザーがファイル構造を見失いやすいです。この例をご覧ください:
+
+[Section]
+key = multiline
+  value with a gotcha
+
+ this = is still a part of the multiline value of 'key'
+これは特にプロポーショナルフォントを使ってファイルを編集しているユーザーにとって問題になることがあります。だから、アプリケーションの値に空行が必要ないなら、空行を認めないべきです。これによって空行で必ずキーが分かれます。上の例では、2 つのキー、key および this が作られます。
+
+default_section, デフォルト値: configparser.DEFAULTSECT (すなわち: "DEFAULT")
+
+他のセクションのデフォルト値や補間目的での特別なセクションを認める慣行はこのライブラリの明確なコンセプトの一つで、ユーザーは複雑で宣言的な設定を作成できます。このセクションは通常 "DEFAULT" と呼ばれますが、任意の有効なセクション名を指すようにカスタマイズできます。典型的な値には "general" や "common" があります。与えられた名前はソースを読み込む際にデフォルトセクションを認識するのに使われ、設定をファイルに書き戻すときにも使われます。現在の値は parser_instance.default_section 属性から取り出すことができ、実行時 (すなわちファイルを別のフォーマットに変換するとき) に変更することもできます。
+
+interpolation, デフォルト値: configparser.BasicInterpolation
+
+補間の振る舞いは、 interpolation 引数を通してカスタムハンドラを与えることでカスタマイズできます。 None 引数を使うと補間を完全に無効にできます。 ExtendedInterpolation() は、 zc.buildout に影響を受けたより高度な補間を提供します。この話題に 特化したドキュメントのセクション をご覧ください。 RawConfigParser のデフォルト値は None です。
+
+converters, デフォルト値: 未設定
+
+設定パーサーは、型変換を実行するオプションの値ゲッターを提供します。デフォルトでは、 getint()、 getfloat()、 getboolean() が実装されています。他のゲッターが必要な場合、ユーザーはそれらをサブクラスで定義するか、辞書を渡します。辞書を渡す場合、各キーはコンバーターの名前で、値は当該変換を実装する呼び出し可能オブジェクトです。例えば、 {'decimal': decimal.Decimal} を渡すと、パーサーオブジェクトとすべてのセクションプロキシの両方に、 getdecimal() が追加されます。つまり、parser_instance.getdecimal('section', 'key', fallback=0) と parser_instance['section'].getdecimal('key', 0) の両方の方法で書くことができます。
+
+コンバーターがパーサーの状態にアクセスする必要がある場合、設定パーサーサブクラスでメソッドとして実装することができます。このメソッドの名前が get から始まる場合、すべてのセクションプロキシで、辞書と互換性のある形式で利用できます (上記の getdecimal() の例を参照)。
+
+これらのパーサー引数のデフォルト値を上書きすれば、さらに進んだカスタマイズができます。デフォルトはクラスで定義されているので、派生クラスや属性の代入で上書きできます。
+
+ConfigParser.BOOLEAN_STATES
+デフォルトでは、 getboolean() を使うことで、設定パーサーは以下の値を True と見なします: '1', 'yes', 'true', 'on' 。以下の値を False と見なします: '0', 'no', 'false', 'off' 。文字列と対応するブール値のカスタム辞書を指定することでこれを上書きできます。たとえば:
+
+>>> custom = configparser.ConfigParser()
+>>> custom['section1'] = {'funky': 'nope'}
+>>> custom['section1'].getboolean('funky')
+Traceback (most recent call last):
+...
+ValueError: Not a boolean: nope
+>>> custom.BOOLEAN_STATES = {'sure': True, 'nope': False}
+>>> custom['section1'].getboolean('funky')
+False
+ほかの典型的なブール値ペアには accept/reject や enabled/disabled などがあります。
+
+ConfigParser.optionxform(option)
+このメソッドは読み込み、取得、設定操作のたびにオプション名を変換します。デフォルトでは名前を小文字に変換します。従って設定ファイルが書き込まれるとき、すべてのキーは小文字になります。それがふさわしくなければ、このメソッドを上書きしてください。例えば:
+
+>>> config = """
+... [Section1]
+... Key = Value
+...
+... [Section2]
+... AnotherKey = Value
+... """
+>>> typical = configparser.ConfigParser()
+>>> typical.read_string(config)
+>>> list(typical['Section1'].keys())
+['key']
+>>> list(typical['Section2'].keys())
+['anotherkey']
+>>> custom = configparser.RawConfigParser()
+>>> custom.optionxform = lambda option: option
+>>> custom.read_string(config)
+>>> list(custom['Section1'].keys())
+['Key']
+>>> list(custom['Section2'].keys())
+['AnotherKey']
+注釈 The optionxform function transforms option names to a canonical form. This should be an idempotent function: if the name is already in canonical form, it should be returned unchanged.
+ConfigParser.SECTCRE
+セクションヘッダを解析するのに使われる、コンパイルされた正規表現です。デフォルトでは [section] が "section" という名前にマッチします。空白はセクション名の一部と見なされるので、[  larch  ] は "  larch  " という名のセクションとして読み込まれます。これがふさわしくない場合、このメソッドを上書きしてください。例えば:
+
+>>> import re
+>>> config = """
+... [Section 1]
+... option = value
+...
+... [  Section 2  ]
+... another = val
+... """
+>>> typical = configparser.ConfigParser()
+>>> typical.read_string(config)
+>>> typical.sections()
+['Section 1', '  Section 2  ']
+>>> custom = configparser.ConfigParser()
+>>> custom.SECTCRE = re.compile(r"\[ *(?P<header>[^]]+?) *\]")
+>>> custom.read_string(config)
+>>> custom.sections()
+['Section 1', 'Section 2']
+注釈 ConfigParser オブジェクトはオプション行の認識に OPTCRE 属性も使いますが、これを上書きすることは推奨されません。上書きするとコンストラクタオプション allow_no_value および delimiters に干渉します。
+レガシーな API の例
+主に後方互換性問題の理由から、 configparser は get/set メソッドを明示するレガシーな API も提供します。メソッドを以下に示すように使うこともできますが、新しいプロジェクトではマップ型プロトコルでアクセスするのが望ましいです。レガシーな API は時折高度で、低レベルで、まったく直感的ではありません。
+
+設定ファイルを書き出す例:
+
+import configparser
+
+config = configparser.RawConfigParser()
+
+# Please note that using RawConfigParser's set functions, you can assign
+# non-string values to keys internally, but will receive an error when
+# attempting to write to a file or when you get it in non-raw mode. Setting
+# values using the mapping protocol or ConfigParser's set() does not allow
+# such assignments to take place.
+config.add_section('Section1')
+config.set('Section1', 'an_int', '15')
+config.set('Section1', 'a_bool', 'true')
+config.set('Section1', 'a_float', '3.1415')
+config.set('Section1', 'baz', 'fun')
+config.set('Section1', 'bar', 'Python')
+config.set('Section1', 'foo', '%(bar)s is %(baz)s!')
+
+# Writing our configuration file to 'example.cfg'
+with open('example.cfg', 'w') as configfile:
+    config.write(configfile)
+設定ファイルを読み込む例:
+
+import configparser
+
+config = configparser.RawConfigParser()
+config.read('example.cfg')
+
+# getfloat() raises an exception if the value is not a float
+# getint() and getboolean() also do this for their respective types
+a_float = config.getfloat('Section1', 'a_float')
+an_int = config.getint('Section1', 'an_int')
+print(a_float + an_int)
+
+# Notice that the next output does not interpolate '%(bar)s' or '%(baz)s'.
+# This is because we are using a RawConfigParser().
+if config.getboolean('Section1', 'a_bool'):
+    print(config.get('Section1', 'foo'))
+補間するには、 ConfigParser を使ってください:
+
+import configparser
+
+cfg = configparser.ConfigParser()
+cfg.read('example.cfg')
+
+# Set the optional *raw* argument of get() to True if you wish to disable
+# interpolation in a single get operation.
+print(cfg.get('Section1', 'foo', raw=False))  # -> "Python is fun!"
+print(cfg.get('Section1', 'foo', raw=True))   # -> "%(bar)s is %(baz)s!"
+
+# The optional *vars* argument is a dict with members that will take
+# precedence in interpolation.
+print(cfg.get('Section1', 'foo', vars={'bar': 'Documentation',
+                                       'baz': 'evil'}))
+
+# The optional *fallback* argument can be used to provide a fallback value
+print(cfg.get('Section1', 'foo'))
+      # -> "Python is fun!"
+
+print(cfg.get('Section1', 'foo', fallback='Monty is not.'))
+      # -> "Python is fun!"
+
+print(cfg.get('Section1', 'monster', fallback='No such things as monsters.'))
+      # -> "No such things as monsters."
+
+# A bare print(cfg.get('Section1', 'monster')) would raise NoOptionError
+# but we can also use:
+
+print(cfg.get('Section1', 'monster', fallback=None))
+      # -> None
+どちらの型の ConfigParsers でもデフォルト値が利用できます。使われているオプションがどこにも定義されていなければ、そのデフォルト値が補間に使われます。
+
+import configparser
+
+# New instance with 'bar' and 'baz' defaulting to 'Life' and 'hard' each
+config = configparser.ConfigParser({'bar': 'Life', 'baz': 'hard'})
+config.read('example.cfg')
+
+print(config.get('Section1', 'foo'))     # -> "Python is fun!"
+config.remove_option('Section1', 'bar')
+config.remove_option('Section1', 'baz')
+print(config.get('Section1', 'foo'))     # -> "Life is hard!"
+ConfigParser オブジェクト
+class configparser.ConfigParser(defaults=None, dict_type=dict, allow_no_value=False, delimiters=('=', ':'), comment_prefixes=('#', ';'), inline_comment_prefixes=None, strict=True, empty_lines_in_values=True, default_section=configparser.DEFAULTSECT, interpolation=BasicInterpolation(), converters={})
+主要な設定パーサーです。defaults が与えられれば、その辞書の持つ初期値で初期化されます。dict_type が与えられれば、それがセクションの一覧、セクション中のオプション、およびデフォルト値の辞書オブジェクトを作成するのに使われます。
+
+delimiters が与えられた場合、キーと値を分割する部分文字列の組み合わせとして使われます。comment_prefixes が与えられた場合、他の内容がない行のコメントに接頭する部分文字列の組み合わせとして使われます。コメントはインデントできます。inline_comment_prefixes が与えられた場合、非空行のコメントに接頭する部分文字列としての組み合わせとして使われます。
+
+strict が True (デフォルト) であれば、パーサーは単一のソース (ファイル、文字列、辞書) 中にセクションやオプションの重複を認めず、 DuplicateSectionError や DuplicateOptionError を送出します。 empty_lines_in_values が False (デフォルト: True) なら、空行はそれぞれオプションの終わりを示します。 allow_no_value が True (デフォルト: False) なら、値のないオプションが受け付けられます。そのオプションの値は None となり、後端のデリミタを除いてシリアル化されます。
+
+default_section が与えられた場合、他のセクションへのデフォルト値や補間のためのデフォルト値を保持する特別なセクションの名前を指定します (通常は "DEFAULT" という名前です)。この値は実行時に default_section インスタンス属性を使って取得や変更ができます。
+
+補間の動作は、 interpolation 引数を通してカスタムハンドラを与えることでカスタマイズできます。 None 引数を使うと補間を完全に無効にできます。 ExtendedInterpolation() は、 zc.buildout に影響を受けたより高度な補間を提供します。この件に 特化したドキュメントのセクション を参照してください。
+
+補間に使われるすべてのオプション名は、他のオプション名参照と同様に、 optionxform() メソッドを通して渡されます。例えば、 optionxform() のデフォルトの実装を使うと、値 foo %(bar)s と foo %(BAR)s は等しくなります。
+
+converters が与えられた場合、各キーが型コンバーターの名前を表し、各値が文字列から目的のデータ型への変換を実装する呼び出し可能オブジェクトです。各コンバーターは、自身の対応する get*() メソッドをパーサーオブジェクトとセクションプロキシで取得します。
+
+バージョン 3.1 で変更: デフォルトの dict_type は collections.OrderedDict です。
+
+バージョン 3.2 で変更: allow_no_value, delimiters, comment_prefixes, strict, empty_lines_in_values, default_section および interpolation が追加されました。
+
+バージョン 3.5 で変更: converters 引数が追加されました。
+
+バージョン 3.7 で変更: The defaults argument is read with read_dict(), providing consistent behavior across the parser: non-string keys and values are implicitly converted to strings.
+
+バージョン 3.8 で変更: The default dict_type is dict, since it now preserves insertion order.
+
+defaults()
+インスタンス全体で使われるデフォルト値の辞書を返します。
+
+sections()
+利用できるセクションのリストを返します。default section はリストに含まれません。
+
+add_section(section)
+section という名のセクションをインスタンスに追加します。与えられた名前のセクション名がすでに存在したら、 DuplicateSectionError が送出されます。 default section 名が渡されたら、 ValueError が送出されます。セクションの名前は文字列でなければなりません。そうでなければ、 TypeError が送出されます。
+
+バージョン 3.2 で変更: 文字列でないセクション名は TypeError を送出します。
+
+has_section(section)
+指名された section が設定中に存在するかを示します。default section は認識されません。
+
+options(section)
+指定された section 中で利用できるオプションのリストを返します。
+
+has_option(section, option)
+与えられた section が存在し、与えられた option を含む場合、 True を返します。それ以外の場合には、 False を返します。指定された section が None または空文字列の場合、 DEFAULT が仮定されます。
+
+read(filenames, encoding=None)
+ファイル名の iterable を読み込んでパースしようと試みます。正常にパースできたファイル名のリストを返します。
+
+If filenames is a string, a bytes object or a path-like object, it is treated as a single filename. If a file named in filenames cannot be opened, that file will be ignored. This is designed so that you can specify an iterable of potential configuration file locations (for example, the current directory, the user's home directory, and some system-wide directory), and all existing configuration files in the iterable will be read.
+
+どの設定ファイルも存在しなかった場合、 ConfigParser のインスタンスは 空のデータセットを持ちます。初期値の設定ファイルを先に読み込んでおく必要があるアプリケーションでは、 オプションのファイルを読み込むために read() を呼ぶ前に 、まず read_file() を用いて必要なファイルを読み込んでください:
+
+import configparser, os
+
+config = configparser.ConfigParser()
+config.read_file(open('defaults.cfg'))
+config.read(['site.cfg', os.path.expanduser('~/.myapp.cfg')],
+            encoding='cp1250')
+バージョン 3.2 で追加: encoding 引数。以前は、すべてのファイルが open() のデフォルトエンコーディングを使って読まれていました。
+
+バージョン 3.6.1 で追加: filenames 引数が path-like object を受け入れるようになりました。
+
+バージョン 3.7 で追加: The filenames parameter accepts a bytes object.
+
+read_file(f, source=None)
+設定データを f から読み込んで解析します。f は Unicode 文字列を yield するイテラブル (例えばテキストモードで開かれたファイル) です。
+
+オプションの引数 source は読み込まれるファイルの名前を指定します。与えられず、 f に name 属性があれば、それが source として使われます。デフォルトは '<???>' です。
+
+バージョン 3.2 で追加: readfp() を置き換えます。
+
+read_string(string, source='<string>')
+設定データを文字列から解析します。
+
+オプションの引数 source はコンテキストにおける渡された文字列の名前を指定します。与えられなければ、'<string>' が使われます。これは一般にファイルシステムパスや URL にします。
+
+バージョン 3.2 で追加.
+
+read_dict(dictionary, source='<dict>')
+辞書的な items() メソッドを提供する任意のオブジェクトから設定を読み込みます。キーはセクション名で、値はそのセクションに現れるキーと値をもつ辞書です。使われた辞書型が順序を保存するなら、セクションおよびそのキーは順に加えられます。値は自動で文字列に変換されます。
+
+オプションの引数 source はコンテキストにおける渡された辞書の名前を指定します。与えられなければ、<dict> が使われます。
+
+このメソッドを使ってパーサー間で状態をコピーできます。
+
+バージョン 3.2 で追加.
+
+get(section, option, *, raw=False, vars=None[, fallback])
+指名された section の option の値を取得します。vars が提供されるなら、それは辞書でなければならず、(与えられたなら) vars, section, DEFAULTSECT 内からこの順で option が探索されます。fallback の値として None を与えられます。
+
+raw が真でない時には、全ての '%' 置換は展開されてから返されます。置換後の値はオプションと同じ順序で探されます。
+
+バージョン 3.2 で変更: 引数 raw, vars および fallback は、(特にマッピングプロトコルを使用するときに) ユーザーが第 3 引数を fallback フォールバックとして使おうとしないように、キーワード専用となりました。
+
+getint(section, option, *, raw=False, vars=None[, fallback])
+指定された section 中の option を整数に型強制する補助メソッドです。 raw, vars および fallback の説明は get() を参照してください。
+
+getfloat(section, option, *, raw=False, vars=None[, fallback])
+指定された section 中の option を浮動小数点数に型強制する補助メソッドです。 raw, vars および fallback の説明は get() を参照してください。
+
+getboolean(section, option, *, raw=False, vars=None[, fallback])
+指定された section 中の option をブール値に型強制する補助メソッドです。なお、このオプションで受け付けられる値はこのメソッドが True を返す '1', 'yes', 'true', および 'on',と、このメソッドが False を返す '0', 'no', 'false', and 'off' です。その他のいかなる値も ValueError を送出します。 raw, vars および fallback の説明は get() を参照してください。
+
+items(raw=False, vars=None)
+items(section, raw=False, vars=None)
+section が与えられなければ、DEFAULTSECT を含めた section_name, section_proxy の対のリストを返します。
+
+与えられれば、与えられた section 中のオプションの name, value の対のリストを返します。オプションの引数は get() メソッドに与えるものと同じ意味を持ちます。
+
+バージョン 3.8 で変更: vars に現れる項目は結果に表れなくなりました。以前の挙動は、実際のパーサーオプションを補間のために与えられた変数と混合していました。
+
+set(section, option, value)
+与えられたセクションが存在すれば、与えられたオプションを指定された値に設定します。そうでなければ NoSectionError を送出します。 option および value は文字列でなければなりません。そうでなければ TypeError が送出されます。
+
+write(fileobject, space_around_delimiters=True)
+設定の表現を指定された file object に書き込みます。 fileobject は (文字列を受け付ける) テキストモードで開かれていなければなりません。この表現は後で read() を呼び出すことでパースできます。 space_around_delimiters が真なら、キーと値の間のデリミタはスペースで囲まれます。
+
+remove_option(section, option)
+指定された option を指定された section から削除します。セクションが存在しなければ、 NoSectionError を送出します。オプションが存在して削除されれば、 True を返します。そうでなければ False を返します。
+
+remove_section(section)
+指定された section を設定から削除します。セクションが実際に存在すれば、True を返します。そうでなければ False を返します。
+
+optionxform(option)
+入力ファイルに現れた、またはクライアントコードで渡されたオプション名 option を内部構造で実際に使われる形式に変換します。デフォルトの実装では option の小文字版を返します。派生クラスでこれを上書きするか、クライアントコードでインスタンス上のこの名前の属性を設定して、この動作に影響を与えることができます。
+
+このメソッドを使うためにパーサーを派生クラス化させる必要はなく、インスタンス上で、これを文字列引数をとって文字列を返す関数に設定できます。例えば、これを str に設定すると、オプション名に大文字小文字の区別をつけられます:
+
+cfgparser = ConfigParser()
+cfgparser.optionxform = str
+なお、設定ファイルを読み込むとき、オプション名の周りの空白は optionxform() が呼び出される前に取り除かれます。
+
+readfp(fp, filename=None)
+バージョン 3.2 で非推奨: 代わりに read_file() を使ってください。
+
+バージョン 3.2 で変更: readfp() は fp.readline() を呼び出す代わりに fp をイテレートするようになりました。
+
+readfp() をイテレーションをサポートしない引数で呼び出す既存のコードには、ファイル的なオブジェクトまわりのラッパーとして以下のジェネレーターが使えます:
+
+def readline_generator(fp):
+    line = fp.readline()
+    while line:
+        yield line
+        line = fp.readline()
+parser.readfp(fp) の代わりに parser.read_file(readline_generator(fp)) を使ってください。
+
+configparser.MAX_INTERPOLATION_DEPTH
+get() の raw が偽であるときの再帰的な補間の最大の深さです。これはデフォルトの interpolation を使うときのみ関係します。
+
+RawConfigParser オブジェクト
+class configparser.RawConfigParser(defaults=None, dict_type=dict, allow_no_value=False, *, delimiters=('=', ':'), comment_prefixes=('#', ';'), inline_comment_prefixes=None, strict=True, empty_lines_in_values=True, default_section=configparser.DEFAULTSECT[, interpolation])
+Legacy variant of the ConfigParser. It has interpolation disabled by default and allows for non-string section names, option names, and values via its unsafe add_section and set methods, as well as the legacy defaults= keyword argument handling.
+
+バージョン 3.8 で変更: The default dict_type is dict, since it now preserves insertion order.
+
+注釈 代わりに内部に保存する値の型を検査する ConfigParser を使うことを検討してください。補間を望まない場合、 ConfigParser(interpolation=None) を使用できます。
+add_section(section)
+インスタンスに section という名のセクションを追加します。与えられた名前のセクションがすでに存在すれば、 DuplicateSectionError が送出されます。 default section 名が渡されると、 ValueError が送出されます。
+
+section の型は検査されないため、ユーザーは非文字列の名前付きセクションを作ることができます。この振る舞いはサポートされておらず、内部エラーを起こす可能性があります。
+
+set(section, option, value)
+与えられたセクションが存在していれば、オプションを指定された値に設定します。セクションが存在しなければ NoSectionError を発生させます。 RawConfigParser (あるいは raw パラメータをセットした ConfigParser) を文字列型でない値の 内部的な 格納場所として使うことは可能ですが、すべての機能 (置換やファイルへの出力を含む) がサポートされるのは文字列を値として使った場合だけです。
+
+ユーザーは、このメソッドを使って非文字列の値をキーに代入できます。この振る舞いはサポートされておらず、非rawモードでの値の取得や、ファイルへの書き出しを試みた際にエラーの原因となりえます。このような代入を許さない マッピングプロトコルAPIを使用してください。
+
+例外
+exception configparser.Error
+他の全ての configparser 例外の基底クラスです。
+
+exception configparser.NoSectionError
+指定したセクションが見つからなかった時に起きる例外です。
+
+exception configparser.DuplicateSectionError
+add_section() がすでに存在するセクションの名前で呼び出された場合や、strict なパーサーで単一の入力ファイル、文字列、辞書中に同じセクションが複数回現れたときに送出される例外です。
+
+バージョン 3.2 で追加: オプションの source と lineno が属性および __init__() への引数として加えられました。
+
+exception configparser.DuplicateOptionError
+strict なパーサーで、単一の入力ファイル、文字列、辞書中に同じオプションが複数回現れたときに送出される例外です。これはミススペルや大文字小文字の区別に関係するエラー、例えば辞書の二つのキーが同じ大文字小文字の区別のない設定キーを表すこと、を捕捉します。
+
+exception configparser.NoOptionError
+指定されたオプションが指定されたセクションに見つからないときに送出される例外です。
+
+exception configparser.InterpolationError
+文字列の補間中に問題が起きた時に発生する例外の基底クラスです。
+
+exception configparser.InterpolationDepthError
+繰り返しの回数が MAX_INTERPOLATION_DEPTH を超えたために文字列補間が完了しなかったときに送出される例外です。 InterpolationError の派生クラスです。
+
+exception configparser.InterpolationMissingOptionError
+InterpolationError の派生クラスで、値が参照しているオプションが見つからない場合に発生する例外です。
+
+exception configparser.InterpolationSyntaxError
+置換がなされるソーステキストが要求された文法を満たさないときに送出される例外です。 InterpolationError の派生クラスです。
+
+exception configparser.MissingSectionHeaderError
+セクションヘッダを持たないファイルを構文解析しようとした時に起きる例外です。
+
+exception configparser.ParsingError
+ファイルの構文解析中にエラーが起きた場合に発生する例外です。
+
+バージョン 3.2 で変更: filename という属性および __init__() の引数は source に名前が変更されました。
+
+netrc --- netrc ファイルの処理
+ソースコード: Lib/netrc.py
+
+netrc クラスは、Unix ftp プログラムや他の FTP クライアントで用いられる netrc ファイル形式を解析し、カプセル化 (encapsulate) します。
+
+class netrc.netrc([file])
+netrc のインスタンスやサブクラスのインスタンスは netrc ファイルのデータをカプセル化します。 初期化の際の引数が存在する場合、解析対象となるファイルの指定になります。 引数がない場合、 (os.path.expanduser() で特定される) ユーザのホームディレクトリ下にある .netrc が読み出されます。ファイルが見付からなかった場合は FileNotFoundError 例外が送出されます。 解析エラーが発生した場合、ファイル名、行番号、解析を中断したトークンに関する情報の入った NetrcParseError を送出します。 POSIX システムにおいて引数を指定しない場合、ファイルのオーナシップやパーミッションが安全でない (プロセスを実行しているユーザ以外が所有者であるか、誰にでも読み書き出来てしまう) のに .netrc ファイル内にパスワードが含まれていると、 NetrcParseError を送出します。 このセキュリティ的な振る舞いは、 ftp などの .netrc を使うプログラムと同じものです。
+
+バージョン 3.4 で変更: POSIX パーミッションのチェックが追加されました。
+
+バージョン 3.7 で変更: 引数で file が渡されなかったときは、 .netrc ファイルの場所を探すのに os.path.expanduser() が使われるようになりました。
+
+exception netrc.NetrcParseError
+ソースファイルのテキスト中で文法エラーに遭遇した場合に netrc クラスによって送出される例外です。 この例外のインスタンスは 3 つのインスタンス変数を持っています: msg はテキストによるエラーの説明、 filename はソースファイルの名前、そして lineno はエラーが発見された行番号です。
+
+netrc オブジェクト
+netrc インスタンスは以下のメソッドを持っています:
+
+netrc.authenticators(host)
+host の認証情報として、三要素のタプル (login, account, password) を返します。与えられた host に対するエントリが netrc ファイルにない場合、'default' エントリに関連付けられたタプルが返されます。host に対応するエントリがなく、default エントリもない場合、None を返します。
+
+netrc.__repr__()
+クラスの持っているデータを netrc ファイルの書式に従った文字列で出力します。(コメントは無視され、エントリが並べ替えられる可能性があります。)
+
+netrc のインスタンスは以下の public なインスタンス変数を持っています:
+
+netrc.hosts
+ホスト名を (login, account, password) からなるタプルに対応づけている辞書です。'default' エントリがある場合、その名前の擬似ホスト名として表現されます。
+
+netrc.macros
+マクロ名を文字列のリストに対応付けている辞書です。
+
+注釈 利用可能なパスワードの文字セットは、ASCII のサブセットのみです。全ての ASCII の記号を使用することができます。しかし、空白文字と印刷不可文字を使用することはできません。この制限は .netrc ファイルの解析方法によるものであり、将来解除されます。
+
+xdrlib --- XDR データのエンコードおよびデコード
+ソースコード: Lib/xdrlib.py
+
+xdrlib モジュールは外部データ表現標準 (External Data Representation Standard) のサポートを実現します。この標準は 1987 年に Sun Microsystems, Inc. によって書かれ、 RFC 1014 で定義されています。このモジュールでは RFC で記述されているほとんどのデータ型をサポートしています。
+
+xdrlib モジュールでは 2 つのクラスが定義されています。一つは変数を XDR 表現にパックするためのクラスで、もう一方は XDR 表現からアンパックするためのものです。2 つの例外クラスが同様にして定義されています。
+
+class xdrlib.Packer
+Packer はデータを XDR 表現にパックするためのクラスです。 Packer クラスのインスタンス生成は引数なしで行われます。
+
+class xdrlib.Unpacker(data)
+Unpacker は Packer と対をなしていて、文字列バッファから XDR をアンパックするためのクラスです。入力バッファ data を引数に与えてインスタンスを生成します。
+
+参考
+RFC 1014 - XDR: External Data Representation Standard
+この RFC が、かつてこのモジュールが最初に書かれた当時に XDR 標準であったデータのエンコード方法を定義していました。現在は RFC 1832 に更新されているようです。
+
+RFC 1832 - XDR: External Data Representation Standard
+こちらが新しい方のRFCで、XDR の改訂版が定義されています。
+
+Packer オブジェクト
+Packer インスタンスには以下のメソッドがあります:
+
+Packer.get_buffer()
+現在のパック処理用バッファを文字列で返します。
+
+Packer.reset()
+パック処理用バッファをリセットして、空文字にします。
+
+一般的には、適切な pack_type() メソッドを使えば、一般に用いられているほとんどの XDR データをパックすることができます。各々のメソッドは一つの引数をとり、パックしたい値を与えます。単純なデータ型をパックするメソッドとして、以下のメソッド: pack_uint() 、 pack_int() 、 pack_enum() 、 pack_bool() 、 pack_uhyper() そして pack_hyper() がサポートされています。
+
+Packer.pack_float(value)
+単精度 (single-precision) の浮動小数点数 value をパックします。
+
+Packer.pack_double(value)
+倍精度 (double-precision) の浮動小数点数 value をパックします。
+
+以下のメソッドは文字列、バイト列、不透明データ (opaque data) のパック処理をサポートします:
+
+Packer.pack_fstring(n, s)
+固定長の文字列、s をパックします。n は文字列の長さですが、この値自体はデータバッファにはパック されません。4 バイトのアラインメントを保証するために、文字列は必要に応じて null バイト列でパディングされます。
+
+Packer.pack_fopaque(n, data)
+pack_fstring() と同じく、固定長の不透明データストリームをパックします。
+
+Packer.pack_string(s)
+可変長の文字列 s をパックします。文字列の長さが最初に符号なし整数でパックされ、続いて pack_fstring() を使って文字列データがパックされます。
+
+Packer.pack_opaque(data)
+pack_string() と同じく、可変長の不透明データ文字列をパックします。
+
+Packer.pack_bytes(bytes)
+pack_string() と同じく、可変長のバイトストリームをパックします。
+
+以下のメソッドはアレイやリストのパック処理をサポートします:
+
+Packer.pack_list(list, pack_item)
+一様な項目からなる list をパックします。このメソッドはサイズ不定、すなわち、全てのリスト内容を網羅するまでサイズが分からないリストに対して有用です。リストのすべての項目に対し、最初に符号無し整数 1 がパックされ、続いてリスト中のデータがパックされます。pack_item は個々の項目をパックするために呼び出される関数です。リストの末端に到達すると、符号無し整数 0 がパックされます。
+
+例えば、整数のリストをパックするには、コードは以下のようになるはずです:
+
+import xdrlib
+p = xdrlib.Packer()
+p.pack_list([1, 2, 3], p.pack_int)
+Packer.pack_farray(n, array, pack_item)
+一様な項目からなる固定長のリスト (array) をパックします。 n はリストの長さです。この値はデータバッファにパック されません が、 len(array) が n と等しくない場合、例外 ValueError が送出されます。上と同様に、 pack_item は個々の要素をパック処理するための関数です。
+
+Packer.pack_array(list, pack_item)
+一様の項目からなる可変長の list をパックします。まず、リストの長さが符号無し整数でパックされ、つづいて各要素が上の pack_farray() と同じやり方でパックされます。
+
+Unpacker オブジェクト
+Unpacker クラスは以下のメソッドを提供します:
+
+Unpacker.reset(data)
+文字列バッファを data でリセットします。
+
+Unpacker.get_position()
+データバッファ中の現在のアンパック処理位置を返します。
+
+Unpacker.set_position(position)
+データバッファ中のアンパック処理位置を position に設定します。 get_position() および set_position() は注意して使わなければなりません。
+
+Unpacker.get_buffer()
+現在のアンパック処理用データバッファを文字列で返します。
+
+Unpacker.done()
+アンパック処理を終了させます。全てのデータがまだアンパックされていなければ、例外 Error が送出されます。
+
+上のメソッドに加えて、 Packer でパック処理できるデータ型はいずれも Unpacker でアンパック処理できます。アンパック処理メソッドは unpack_type() の形式をとり、引数をとりません。これらのメソッドはアンパックされたデータオブジェクトを返します。
+
+Unpacker.unpack_float()
+単精度の浮動小数点数をアンパックします。
+
+Unpacker.unpack_double()
+unpack_float() と同様に、倍精度の浮動小数点数をアンパックします。
+
+上のメソッドに加えて、文字列、バイト列、不透明データをアンパックする以下のメソッドが提供されています:
+
+Unpacker.unpack_fstring(n)
+固定長の文字列をアンパックして返します。n は予想される文字列の長さです。4 バイトのアラインメントを保証するために null バイトによるパディングが行われているものと仮定して処理を行います。
+
+Unpacker.unpack_fopaque(n)
+unpack_fstring() と同様に、固定長の不透明データストリームをアンパックして返します。
+
+Unpacker.unpack_string()
+可変長の文字列をアンパックして返します。最初に文字列の長さが符号無し整数としてアンパックされ、次に unpack_fstring() を使って文字列データがアンパックされます。
+
+Unpacker.unpack_opaque()
+unpack_string() と同様に、可変長の不透明データ文字列をアンパックして返します。
+
+Unpacker.unpack_bytes()
+unpack_string() と同様に、可変長のバイトストリームをアンパックして返します。
+
+以下メソッドはアレイおよびリストのアンパック処理をサポートします:
+
+Unpacker.unpack_list(unpack_item)
+一様な項目からなるリストをアンパック処理して返します。リストは、まず符号無し整数によるフラグをアンパックすることで、一度に 1 要素づつアンパック処理されます。フラグが 1 の場合、要素はアンパックされ、返り値のリストに追加されます。フラグが 0 の場合、リストの終端を示します。unpack_item は個々の項目をアンパック処理するために呼び出される関数です。
+
+Unpacker.unpack_farray(n, unpack_item)
+一様な項目からなる固定長のアレイをアンパックして（リストとして）返します。n はバッファ内に存在すると期待されるリストの要素数です。上と同様に、unpack_item は各要素をアンパックするために使われる関数です。
+
+Unpacker.unpack_array(unpack_item)
+一様な項目からなる可変長の list をアンパックして返します。まず、リストの長さが符号無し整数としてアンパックされ、続いて各要素が上の unpack_farray() のようにしてアンパック処理されます。
+
+例外
+このモジュールでの例外はクラスインスタンスとしてコードされています:
+
+exception xdrlib.Error
+ベースとなる例外クラスです。 Error public な属性として msg を持ち、エラーの詳細が収められています。
+
+exception xdrlib.ConversionError
+Error から派生したクラスです。インスタンス変数は追加されていません。
+
+これらの例外を補足する方法を以下の例に示します:
+
+import xdrlib
+p = xdrlib.Packer()
+try:
+    p.pack_double(8.01)
+except xdrlib.ConversionError as instance:
+    print('packing the double failed:', instance.msg)
+
+plistlib --- Generate and parse Apple .plist files
+ソースコード: Lib/plistlib.py
+
+This module provides an interface for reading and writing the "property list" files used by Apple, primarily on macOS and iOS. This module supports both binary and XML plist files.
+
+プロパティーリスト (.plist) ファイル形式は基本的型のオブジェクト、たとえば辞書やリスト、数、文字列など、に対する単純な直列化です。たいてい、トップレベルのオブジェクトは辞書です。
+
+plist ファイルを書き出したり解析したりするには dump() や load() 関数を利用します。
+
+バイトオブジェクトの plist データを扱うためには dumps() や loads() を利用します。
+
+Values can be strings, integers, floats, booleans, tuples, lists, dictionaries (but only with string keys), bytes, bytearray or datetime.datetime objects.
+
+バージョン 3.4 で変更: 新しい API。古い API は撤廃されました。バイナリ形式の plist がサポートされました。
+
+バージョン 3.8 で変更: Support added for reading and writing UID tokens in binary plists as used by NSKeyedArchiver and NSKeyedUnarchiver.
+
+バージョン 3.9 で変更: Old API removed.
+
+参考
+PList マニュアルページ
+このファイル形式の Apple の文書。
+
+このモジュールは以下の関数を定義しています:
+
+plistlib.load(fp, *, fmt=None, dict_type=dict)
+plist ファイルを読み込みます。fp は読み込み可能かつバイナリのファイルオブジェクトです。展開されたルートオブジェクト (通常は辞書です) を返します。
+
+fmt はファイルの形式で、次の値が有効です。
+
+None: ファイル形式を自動検出します
+
+FMT_XML: XML ファイル形式です
+
+FMT_BINARY: バイナリの plist 形式です
+
+dict_type は、 plist ファイルから読み出された辞書に使われる型です。
+
+FMT_XML 形式の XML データは xml.parsers.expat にある Expat パーサーを使って解析されます。不正な形式の XML に対して送出される可能性のある例外については、そちらの文書を参照してください。plist 解析器では、未知の要素は単純に無視されます。
+
+バイナリ形式のパーサーは、ファイルを解析できない場合に InvalidFileException を送出します。
+
+バージョン 3.4 で追加.
+
+plistlib.loads(data, *, fmt=None, dict_type=dict)
+バイナリオブジェクトから plist をロードします。キーワード引数の説明については、 load() を参照してください。
+
+バージョン 3.4 で追加.
+
+plistlib.dump(value, fp, *, fmt=FMT_XML, sort_keys=True, skipkeys=False)
+plist ファイルに value を書き込みます。Fp は、書き込み可能なバイナリファイルオブジェクトにしてください。
+
+fmt 引数は plist ファイルの形式を指定し、次のいずれかの値をとることができます。
+
+FMT_XML: XML 形式の plist ファイルです
+
+FMT_BINARY: バイナリ形式の plist ファイルです
+
+sort_keys が真 (デフォルト) の場合、辞書内のキーは、plist にソートされた順序で書き込まれます。偽の場合、ディクショナリのイテレートの順序で書き込まれます。
+
+skipkeys が偽 (デフォルト) の場合、この関数は辞書のキーが文字列でない場合に TypeError を送出します。真の場合、そのようなキーは読み飛ばされます。
+
+TypeError が、オブジェクトがサポート外の型のものであったりサポート外の型のオブジェクトを含むコンテナだった場合に、送出されます。
+
+(バイナリの) plist ファイル内で表現できない整数値に対しては、 OverflowError が送出されます。
+
+バージョン 3.4 で追加.
+
+plistlib.dumps(value, *, fmt=FMT_XML, sort_keys=True, skipkeys=False)
+value を plist 形式のバイトオブジェクトとして返します。この関数のキーワード引数の説明については、 dump() を参照してください。
+
+バージョン 3.4 で追加.
+
+以下のクラスが使用可能です:
+
+class plistlib.UID(data)
+Wraps an int. This is used when reading or writing NSKeyedArchiver encoded data, which contains UID (see PList manual).
+
+It has one attribute, data, which can be used to retrieve the int value of the UID. data must be in the range 0 <= data < 2**64.
+
+バージョン 3.8 で追加.
+
+以下の定数が利用可能です:
+
+plistlib.FMT_XML
+plist ファイルの XML 形式です
+
+バージョン 3.4 で追加.
+
+plistlib.FMT_BINARY
+plist ファイルのバイナリ形式です
+
+バージョン 3.4 で追加.
+
+使用例
+plist を作ります:
+
+pl = dict(
+    aString = "Doodah",
+    aList = ["A", "B", 12, 32.1, [1, 2, 3]],
+    aFloat = 0.1,
+    anInt = 728,
+    aDict = dict(
+        anotherString = "<hello & hi there!>",
+        aThirdString = "M\xe4ssig, Ma\xdf",
+        aTrueValue = True,
+        aFalseValue = False,
+    ),
+    someData = b"<binary gunk>",
+    someMoreData = b"<lots of binary gunk>" * 10,
+    aDate = datetime.datetime.fromtimestamp(time.mktime(time.gmtime())),
+)
+with open(fileName, 'wb') as fp:
+    dump(pl, fp)
+plist を解析します:
+
+with open(fileName, 'rb') as fp:
+    pl = load(fp)
+print(pl["aKey"])

@@ -1,0 +1,2454 @@
+pathlib --- オブジェクト指向のファイルシステムパス
+バージョン 3.4 で追加.
+
+ソースコード: Lib/pathlib.py
+
+このモジュールはファイルシステムのパスを表すクラスを提供していて、様々なオペレーティングシステムについての適切な意味論をそれらのクラスに持たせています。 Path クラスは 純粋パス と 具象パス からなります。 純粋パスは I/O を伴わない純粋な計算操作を提供します。 具象パスは純粋パスを継承していますが、 I/O 操作も提供しています。
+
+../_images/pathlib-inheritance.png
+あなたが今までこのモジュールを使用したことがない場合や、タスクに適しているのがどのクラスかわからない場合は、 Path はきっとあなたに必要なものでしょう。 Path はコードが実行されているプラットフォーム用の 具象パス のインスタンスを作成します。
+
+純粋パスは、以下のようないくつかの特殊なケースで有用です:
+
+Unix マシン上で Windows のパスを扱いたいとき (またはその逆)。Unix 上で実行しているときに WindowsPath のインスタンスを作成することはできませんが、PureWindowsPath なら可能になります。
+
+実際に OS にアクセスすることなしにパスを操作するだけのコードを確認したいとき。この場合、純粋クラスのインスタンスを一つ作成すれば、それが OS にアクセスすることはないので便利です。
+
+参考 PEP 428: The pathlib module -- オブジェクト指向のファイルシステムパス。
+参考 文字列による低水準のパス操作の場合は os.path も使用できます。
+基本的な使い方
+メインクラスをインポートします:
+
+>>>
+>>> from pathlib import Path
+サブディレクトリの一覧を取得します:
+
+>>>
+>>> p = Path('.')
+>>> [x for x in p.iterdir() if x.is_dir()]
+[PosixPath('.hg'), PosixPath('docs'), PosixPath('dist'),
+ PosixPath('__pycache__'), PosixPath('build')]
+このディレクトリツリー内の Python ソースファイルの一覧を取得します:
+
+>>>
+>>> list(p.glob('**/*.py'))
+[PosixPath('test_pathlib.py'), PosixPath('setup.py'),
+ PosixPath('pathlib.py'), PosixPath('docs/conf.py'),
+ PosixPath('build/lib/pathlib.py')]
+ディレクトリツリー内を移動します:
+
+>>>
+>>> p = Path('/etc')
+>>> q = p / 'init.d' / 'reboot'
+>>> q
+PosixPath('/etc/init.d/reboot')
+>>> q.resolve()
+PosixPath('/etc/rc.d/init.d/halt')
+パスのプロパティを問い合わせます:
+
+>>>
+>>> q.exists()
+True
+>>> q.is_dir()
+False
+ファイルを開きます:
+
+>>>
+>>> with q.open() as f: f.readline()
+...
+'#!/bin/bash\n'
+純粋パス
+純粋パスオブジェクトは実際にファイルシステムにアクセスしないパス操作処理を提供します。これらのクラスにアクセスするには 3 つの方法があり、それらを フレーバー と呼んでいます:
+
+class pathlib.PurePath(*pathsegments)
+システムのパスのフレーバーを表すジェネリッククラスです (インスタンスを作成することで PurePosixPath または PureWindowsPath のどちらかが作成されます):
+
+>>>
+>>> PurePath('setup.py')      # Running on a Unix machine
+PurePosixPath('setup.py')
+pathsegments の各要素は、部分パスの文字列表現か、文字列を返す os.PathLike インターフェイスを実装しているオブジェクトか、その他の path オブジェクトです。
+
+>>>
+>>> PurePath('foo', 'some/path', 'bar')
+PurePosixPath('foo/some/path/bar')
+>>> PurePath(Path('foo'), Path('bar'))
+PurePosixPath('foo/bar')
+pathsegments が空のとき、現在のディレクトリとみなされます:
+
+>>>
+>>> PurePath()
+PurePosixPath('.')
+絶対パスが複数与えられた場合、最後の要素がアンカーとして取られます (os.path.join() の挙動を真似ています):
+
+>>>
+>>> PurePath('/etc', '/usr', 'lib64')
+PurePosixPath('/usr/lib64')
+>>> PureWindowsPath('c:/Windows', 'd:bar')
+PureWindowsPath('d:bar')
+ただし、Windows のパスでは、ローカルルートを変更してもそれまでのドライブ設定は破棄されません:
+
+>>>
+>>> PureWindowsPath('c:/Windows', '/Program Files')
+PureWindowsPath('c:/Program Files')
+誤ったスラッシュおよび単一ドットは無視されますが、2 個のドット ('..') は、シンボリックリンクのときにパスの意味の変更を意味するため受け付けれられます:
+
+>>>
+>>> PurePath('foo//bar')
+PurePosixPath('foo/bar')
+>>> PurePath('foo/./bar')
+PurePosixPath('foo/bar')
+>>> PurePath('foo/../bar')
+PurePosixPath('foo/../bar')
+(通常 PurePosixPath('foo/../bar') は PurePosixPath('bar') と等価になりますが、foo が他のディレクトリへのシンボリックリンクの場合は等価になりません)
+
+純粋パスオブジェクトは os.PathLike インターフェースを実装しており、そのインタフェースを受理する箇所ならどこでも使用することができます。
+
+バージョン 3.6 で変更: os.PathLike インターフェースがサポートされました。
+
+class pathlib.PurePosixPath(*pathsegments)
+PurePath のサブクラスです。このパスフレーバーは非 Windows パスを表します:
+
+>>>
+>>> PurePosixPath('/etc')
+PurePosixPath('/etc')
+pathsegments の指定は PurePath と同じです。
+
+class pathlib.PureWindowsPath(*pathsegments)
+PurePath のサブクラスです。このパスフレーバーは Windows ファイルシステムパスを表します:
+
+>>>
+>>> PureWindowsPath('c:/Program Files/')
+PureWindowsPath('c:/Program Files')
+pathsegments の指定は PurePath と同じです。
+
+これらクラスはあらゆるシステムコールを行わないため、起動しているシステムにかかわらずインスタンスを作成できます。
+
+全般的な性質
+パスオブジェクトはイミュータブルでハッシュ可能です。 同じフレーバーのパスオブジェクトは比較ならびに順序付け可能です。 これらのプロパティは、フレーバーのケースフォールディング (訳注: 比較のために正規化すること、例えば全て大文字にする) のセマンティクスに従います。
+
+>>>
+>>> PurePosixPath('foo') == PurePosixPath('FOO')
+False
+>>> PureWindowsPath('foo') == PureWindowsPath('FOO')
+True
+>>> PureWindowsPath('FOO') in { PureWindowsPath('foo') }
+True
+>>> PureWindowsPath('C:') < PureWindowsPath('d:')
+True
+異なるフレーバーのパスオブジェクト同士の比較は等価になることはなく、順序付けもできません:
+
+>>>
+>>> PureWindowsPath('foo') == PurePosixPath('foo')
+False
+>>> PureWindowsPath('foo') < PurePosixPath('foo')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: '<' not supported between instances of 'PureWindowsPath' and 'PurePosixPath'
+演算子
+演算子スラッシュ "/" はパスの追加を行います。os.path.join() と似ています:
+
+>>>
+>>> p = PurePath('/etc')
+>>> p
+PurePosixPath('/etc')
+>>> p / 'init.d' / 'apache2'
+PurePosixPath('/etc/init.d/apache2')
+>>> q = PurePath('bin')
+>>> '/usr' / q
+PurePosixPath('/usr/bin')
+os.PathLike を実装したオブジェクトが受理できる箇所ならどこでも、パスオブジェクトが使用できます:
+
+>>>
+>>> import os
+>>> p = PurePath('/etc')
+>>> os.fspath(p)
+'/etc'
+パスオブジェクトの文字列表現はそのシステム自身の Raw ファイルシステムパス (ネイティブの形式、例えば Windows では区切り文字がバックスラッシュ) になり、文字列としてファイルパスを取るあらゆる関数に渡すことができます:
+
+>>>
+>>> p = PurePath('/etc')
+>>> str(p)
+'/etc'
+>>> p = PureWindowsPath('c:/Program Files')
+>>> str(p)
+'c:\\Program Files'
+同様に、パスオブジェクトを bytes で呼び出すと、Raw ファイルシステムパスを os.fsencode() でエンコードされたバイト列オブジェクトで返します:
+
+>>>
+>>> bytes(p)
+b'/etc'
+注釈 bytes での呼び出しは Unix 上での使用のみ推奨します。Windows では Unicode 形式が標準的なファイルシステムパス表現になります。
+個別の構成要素へのアクセス
+パスの個別の "構成要素" へアクセスするには、以下のプロパティを使用します:
+
+PurePath.parts
+パスのさまざまな構成要素へのアクセス手段を提供するタプルになります:
+
+>>>
+>>> p = PurePath('/usr/bin/python3')
+>>> p.parts
+('/', 'usr', 'bin', 'python3')
+
+>>> p = PureWindowsPath('c:/Program Files/PSF')
+>>> p.parts
+('c:\\', 'Program Files', 'PSF')
+(ドライブ名とローカルルートは単一要素にまとめられます)
+
+メソッドとプロパティ
+純粋パスは以下のメソッドとプロパティを提供します:
+
+PurePath.drive
+ドライブ文字または名前を表す文字列があればそれになります:
+
+>>>
+>>> PureWindowsPath('c:/Program Files/').drive
+'c:'
+>>> PureWindowsPath('/Program Files/').drive
+''
+>>> PurePosixPath('/etc').drive
+''
+UNC 共有名もドライブとみなされます:
+
+>>>
+>>> PureWindowsPath('//host/share/foo.txt').drive
+'\\\\host\\share'
+PurePath.root
+ローカルまたはグローバルルートを表す文字列があればそれになります:
+
+>>>
+>>> PureWindowsPath('c:/Program Files/').root
+'\\'
+>>> PureWindowsPath('c:Program Files/').root
+''
+>>> PurePosixPath('/etc').root
+'/'
+UNC 共有名は常にルートを持ちます:
+
+>>>
+>>> PureWindowsPath('//host/share').root
+'\\'
+PurePath.anchor
+ドライブとルートを結合した文字列になります:
+
+>>>
+>>> PureWindowsPath('c:/Program Files/').anchor
+'c:\\'
+>>> PureWindowsPath('c:Program Files/').anchor
+'c:'
+>>> PurePosixPath('/etc').anchor
+'/'
+>>> PureWindowsPath('//host/share').anchor
+'\\\\host\\share\\'
+PurePath.parents
+パスの論理的な上位パスにアクセスできるイミュータブルなシーケンスになります:
+
+>>>
+>>> p = PureWindowsPath('c:/foo/bar/setup.py')
+>>> p.parents[0]
+PureWindowsPath('c:/foo/bar')
+>>> p.parents[1]
+PureWindowsPath('c:/foo')
+>>> p.parents[2]
+PureWindowsPath('c:/')
+PurePath.parent
+パスの論理的な上位パスになります:
+
+>>>
+>>> p = PurePosixPath('/a/b/c/d')
+>>> p.parent
+PurePosixPath('/a/b/c')
+アンカーの位置を超えることや空のパスになる位置には対応していません:
+
+>>>
+>>> p = PurePosixPath('/')
+>>> p.parent
+PurePosixPath('/')
+>>> p = PurePosixPath('.')
+>>> p.parent
+PurePosixPath('.')
+注釈 これは純粋な字句操作であるため、以下のような挙動になります:
+>>>
+>>> p = PurePosixPath('foo/..')
+>>> p.parent
+PurePosixPath('foo')
+任意のファイルシステムパスを上位方向に移動したい場合、シンボリックリンクの解決や ".." 要素の除去のため、最初に Path.resolve() を呼ぶことを推奨します。
+
+PurePath.name
+パス要素の末尾を表す文字列があればそれになります。ドライブやルートは含まれません:
+
+>>>
+>>> PurePosixPath('my/library/setup.py').name
+'setup.py'
+UNC ドライブ名は考慮されません:
+
+>>>
+>>> PureWindowsPath('//some/share/setup.py').name
+'setup.py'
+>>> PureWindowsPath('//some/share').name
+''
+PurePath.suffix
+末尾の要素に拡張子があればそれになります:
+
+>>>
+>>> PurePosixPath('my/library/setup.py').suffix
+'.py'
+>>> PurePosixPath('my/library.tar.gz').suffix
+'.gz'
+>>> PurePosixPath('my/library').suffix
+''
+PurePath.suffixes
+パスのファイル拡張子のリストになります:
+
+>>>
+>>> PurePosixPath('my/library.tar.gar').suffixes
+['.tar', '.gar']
+>>> PurePosixPath('my/library.tar.gz').suffixes
+['.tar', '.gz']
+>>> PurePosixPath('my/library').suffixes
+[]
+PurePath.stem
+パス要素の末尾から拡張子を除いたものになります:
+
+>>>
+>>> PurePosixPath('my/library.tar.gz').stem
+'library.tar'
+>>> PurePosixPath('my/library.tar').stem
+'library'
+>>> PurePosixPath('my/library').stem
+'library'
+PurePath.as_posix()
+フォワードスラッシュ (/) を使用したパスを表す文字列を返します:
+
+>>>
+>>> p = PureWindowsPath('c:\\windows')
+>>> str(p)
+'c:\\windows'
+>>> p.as_posix()
+'c:/windows'
+PurePath.as_uri()
+file URI で表したパスを返します。絶対パスではない場合に ValueError を送出します。
+
+>>>
+p = PurePosixPath('/etc/passwd')
+p.as_uri()
+'file:///etc/passwd'
+p = PureWindowsPath('c:/Windows')
+p.as_uri()
+'file:///c:/Windows'
+PurePath.is_absolute()
+パスが絶対パスかどうかを返します。パスが絶対パスとみなされるのは、ルートと (フレーバーが許す場合) ドライブとの両方が含まれる場合です:
+
+>>>
+>>> PurePosixPath('/a/b').is_absolute()
+True
+>>> PurePosixPath('a/b').is_absolute()
+False
+
+>>> PureWindowsPath('c:/a/b').is_absolute()
+True
+>>> PureWindowsPath('/a/b').is_absolute()
+False
+>>> PureWindowsPath('c:').is_absolute()
+False
+>>> PureWindowsPath('//some/share').is_absolute()
+True
+PurePath.is_relative_to(*other)
+このパスが other パスに対して相対なのかそうでないのかの結果を返します。
+
+>>>
+p = PurePath('/etc/passwd')
+p.is_relative_to('/etc')
+True
+p.is_relative_to('/usr')
+False
+バージョン 3.9 で追加.
+
+PurePath.is_reserved()
+PureWindowsPath の場合はパスが Windows 上で予約されていれば True を返し、そうでなければ False を返します。PurePosixPath の場合は常に False を返します。
+
+>>>
+PureWindowsPath('nul').is_reserved()
+True
+PurePosixPath('nul').is_reserved()
+False
+ファイルシステムで予約されたパスを呼び出すと、原因不明で失敗したり、予期せぬ結果になります。
+
+PurePath.joinpath(*other)
+このメソッドの呼び出しは引数 other を順々に繋げることと等価になります:
+
+>>>
+>>> PurePosixPath('/etc').joinpath('passwd')
+PurePosixPath('/etc/passwd')
+>>> PurePosixPath('/etc').joinpath(PurePosixPath('passwd'))
+PurePosixPath('/etc/passwd')
+>>> PurePosixPath('/etc').joinpath('init.d', 'apache2')
+PurePosixPath('/etc/init.d/apache2')
+>>> PureWindowsPath('c:').joinpath('/Program Files')
+PureWindowsPath('c:/Program Files')
+PurePath.match(pattern)
+現在のパスが glob 形式で与えられたパターンと一致したら True を、一致しなければ False を返します。
+
+pattern が相対表記であればパスは相対および絶対パスを取ることができ、右から一致を調べます:
+
+>>>
+>>> PurePath('a/b.py').match('*.py')
+True
+>>> PurePath('/a/b/c.py').match('b/*.py')
+True
+>>> PurePath('/a/b/c.py').match('a/*.py')
+False
+pattern が絶対表記であれば、パスは絶対パスでなければならず、パス全体が一致しなければなりません:
+
+>>>
+>>> PurePath('/a.py').match('/*.py')
+True
+>>> PurePath('a/b.py').match('/*.py')
+False
+他のメソッドと同様に、大文字小文字の区別はプラットフォームの設定に従います:
+
+>>>
+>>> PurePosixPath('b.py').match('*.PY')
+False
+>>> PureWindowsPath('b.py').match('*.PY')
+True
+PurePath.relative_to(*other)
+other で表されたパスから現在のパスへの相対パスを返します。それが不可能だった場合は ValueError が送出されます:
+
+>>>
+>>> p = PurePosixPath('/etc/passwd')
+>>> p.relative_to('/')
+PurePosixPath('etc/passwd')
+>>> p.relative_to('/etc')
+PurePosixPath('passwd')
+>>> p.relative_to('/usr')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "pathlib.py", line 694, in relative_to
+    .format(str(self), str(formatted)))
+ValueError: '/etc/passwd' is not in the subpath of '/usr' OR one path is relative and the other absolute.
+注記: この関数は PurePath の一部分であり、文字列で処理を行います。 根底のファイル構造をチェックしたりアクセスしたりはしません。
+
+PurePath.with_name(name)
+現在のパスの name 部分を変更したパスを返します。オリジナルパスに name 部分がない場合は ValueError が送出されます:
+
+>>>
+>>> p = PureWindowsPath('c:/Downloads/pathlib.tar.gz')
+>>> p.with_name('setup.py')
+PureWindowsPath('c:/Downloads/setup.py')
+>>> p = PureWindowsPath('c:/')
+>>> p.with_name('setup.py')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/home/antoine/cpython/default/Lib/pathlib.py", line 751, in with_name
+    raise ValueError("%r has an empty name" % (self,))
+ValueError: PureWindowsPath('c:/') has an empty name
+PurePath.with_stem(stem)
+Return a new path with the stem changed. If the original path doesn't have a name, ValueError is raised:
+
+>>>
+>>> p = PureWindowsPath('c:/Downloads/draft.txt')
+>>> p.with_stem('final')
+PureWindowsPath('c:/Downloads/final.txt')
+>>> p = PureWindowsPath('c:/Downloads/pathlib.tar.gz')
+>>> p.with_stem('lib')
+PureWindowsPath('c:/Downloads/lib.gz')
+>>> p = PureWindowsPath('c:/')
+>>> p.with_stem('')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/home/antoine/cpython/default/Lib/pathlib.py", line 861, in with_stem
+    return self.with_name(stem + self.suffix)
+  File "/home/antoine/cpython/default/Lib/pathlib.py", line 851, in with_name
+    raise ValueError("%r has an empty name" % (self,))
+ValueError: PureWindowsPath('c:/') has an empty name
+バージョン 3.9 で追加.
+
+PurePath.with_suffix(suffix)
+suffix を変更した新しいパスを返します。 元のパスに suffix が無かった場合、代わりに新しい suffix が追加されます。 suffix が空文字列だった場合、元の suffix は除去されます:
+
+>>>
+>>> p = PureWindowsPath('c:/Downloads/pathlib.tar.gz')
+>>> p.with_suffix('.bz2')
+PureWindowsPath('c:/Downloads/pathlib.tar.bz2')
+>>> p = PureWindowsPath('README')
+>>> p.with_suffix('.txt')
+PureWindowsPath('README.txt')
+>>> p = PureWindowsPath('README.txt')
+>>> p.with_suffix('')
+PureWindowsPath('README')
+具象パス
+具象パスは純粋パスクラスのサブクラスです。純粋パスが提供する操作に加え、パスオブジェクト上でシステムコールを呼ぶメソッドも提供しています。具象パスのインスタンスを作成するには 3 つの方法があります:
+
+class pathlib.Path(*pathsegments)
+PurePath のサブクラスであり、システムのパスフレーバーの具象パスを表します (このインスタンスの作成で PosixPath か WindowsPath のどちらかが作成されます):
+
+>>>
+>>> Path('setup.py')
+PosixPath('setup.py')
+pathsegments の指定は PurePath と同じです。
+
+class pathlib.PosixPath(*pathsegments)
+Path および PurePosixPath のサブクラスで、非 Windows ファイルシステムの具象パスを表します:
+
+>>>
+>>> PosixPath('/etc')
+PosixPath('/etc')
+pathsegments の指定は PurePath と同じです。
+
+class pathlib.WindowsPath(*pathsegments)
+Path および PureWindowsPath のサブクラスで、Windows ファイルシステムの具象パスを表します:
+
+>>>
+>>> WindowsPath('c:/Program Files/')
+WindowsPath('c:/Program Files')
+pathsegments の指定は PurePath と同じです。
+
+インスタンスを作成できるのはシステムと一致するフレーバーのみです (互換性のないパスフレーバーでのシステムコールの許可はバグやアプリケーションの異常終了の原因になります):
+
+>>>
+>>> import os
+>>> os.name
+'posix'
+>>> Path('setup.py')
+PosixPath('setup.py')
+>>> PosixPath('setup.py')
+PosixPath('setup.py')
+>>> WindowsPath('setup.py')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "pathlib.py", line 798, in __new__
+    % (cls.__name__,))
+NotImplementedError: cannot instantiate 'WindowsPath' on your system
+メソッド
+具象パスは純粋パスに加え、以下のメソッドを提供します。これらメソッドの多くはシステムコールが失敗すると OSError を送出します。(例えばパスが存在しない場合)
+
+バージョン 3.8 で変更: exists(), is_dir(), is_file(), is_mount(), is_symlink(), is_block_device(), is_char_device(), is_fifo(), is_socket() は、OSレベルで表現不能な文字を含むパスに対して、例外を送出する代わりに False を返すようになりました。
+
+classmethod Path.cwd()
+(os.getcwd() が返す) 現在のディレクトリを表す新しいパスオブジェクトを返します:
+
+>>>
+>>> Path.cwd()
+PosixPath('/home/antoine/pathlib')
+classmethod Path.home()
+ユーザーのホームディレクトリ (os.path.expanduser() での ~ の返り値) を表す新しいパスオブジェクトを返します:
+
+>>>
+>>> Path.home()
+PosixPath('/home/antoine')
+バージョン 3.5 で追加.
+
+Path.stat()
+Return a os.stat_result object containing information about this path, like os.stat(). The result is looked up at each call to this method.
+
+>>>
+>>> p = Path('setup.py')
+>>> p.stat().st_size
+956
+>>> p.stat().st_mtime
+1327883547.852554
+Path.chmod(mode)
+os.chmod() のようにファイルのモードとアクセス権限を変更します:
+
+>>>
+>>> p = Path('setup.py')
+>>> p.stat().st_mode
+33277
+>>> p.chmod(0o444)
+>>> p.stat().st_mode
+33060
+Path.exists()
+パスが既存のファイルかディレクトリを指しているかどうかを返します:
+
+>>>
+>>> Path('.').exists()
+True
+>>> Path('setup.py').exists()
+True
+>>> Path('/etc').exists()
+True
+>>> Path('nonexistentfile').exists()
+False
+注釈 パスがシンボリックリンクを指している場合、exists() はシンボリックリンクが既存のファイルかディレクトリを指しているかどうかを返します。
+Path.expanduser()
+パス要素 ~ および ~user を os.path.expanduser() が返すように展開した新しいパスオブジェクトを返します:
+
+>>>
+>>> p = PosixPath('~/films/Monty Python')
+>>> p.expanduser()
+PosixPath('/home/eric/films/Monty Python')
+バージョン 3.5 で追加.
+
+Path.glob(pattern)
+Glob the given relative pattern in the directory represented by this path, yielding all matching files (of any kind):
+
+>>>
+>>> sorted(Path('.').glob('*.py'))
+[PosixPath('pathlib.py'), PosixPath('setup.py'), PosixPath('test_pathlib.py')]
+>>> sorted(Path('.').glob('*/*.py'))
+[PosixPath('docs/conf.py')]
+パターン "**" は "このディレクトリおよびすべてのサブディレクトリを再帰的に走査" を意味します。言い換えれば、再帰的な Glob 走査が可能という意味です:
+
+>>>
+>>> sorted(Path('.').glob('**/*.py'))
+[PosixPath('build/lib/pathlib.py'),
+ PosixPath('docs/conf.py'),
+ PosixPath('pathlib.py'),
+ PosixPath('setup.py'),
+ PosixPath('test_pathlib.py')]
+注釈 パターン "**" を大きなディレクトリツリーで使用するととてつもなく時間がかかるかもしれません。
+Raises an auditing event pathlib.Path.glob with arguments self, pattern.
+
+Path.group()
+ファイルを所有するグループ名を返します。ファイルの GID がシステムのデータベースに見つからなかった場合は KeyError が送出されます。
+
+Path.is_dir()
+パスがディレクトリ (またはディレクトリへのシンボリックリンク) を指していた場合 True を返し、その他の種類のファイルだった場合 False を返します。
+
+パスが存在しないか壊れたシンボリックリンクだった場合にも False が返されます; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.is_file()
+パスが一般ファイル (または一般ファイルへのシンボリックリンク) を指していた場合 True を返します。その他の種類のファイルを指していた場合 False を返します。
+
+パスが存在しないか壊れたシンボリックリンクだった場合にも False が返されます; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.is_mount()
+パス名 path がマウントポイント mount point (ファイルシステムの中で異なるファイルシステムがマウントされているところ) なら True を返します。 POSIX では、この関数は path の親ディレクトリである path/.. が path と異なるデバイス上にあるか、あるいは path/.. と path が同じデバイス上の同じ i-node を指しているかをチェックします --- これによってすべての Unix と POSIX 系システムでマウントポイントが検出できます。 この関数は Windows では実装されていません。
+
+バージョン 3.7 で追加.
+
+Path.is_symlink()
+パスがシンボリックリンクを指していた場合 True を返し、その他の場合は False を返します。
+
+パスが存在しない場合も False を返します; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.is_socket()
+パスが Unix ソケット (または Unix ソケットへのシンボリックリンク) を指していた場合 True を返します。その他の種類のファイルの場合 False を返します。
+
+パスが存在しないか壊れたシンボリックリンクだった場合にも False が返されます; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.is_fifo()
+パスが FIFO (または FIFO へのシンボリックリンク) を指していた場合 True を返します。その他の種類のファイルの場合は False を返します。
+
+パスが存在しないか壊れたシンボリックリンクだった場合にも False が返されます; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.is_block_device()
+パスがブロックデバイス (またはブロックデバイスへのシンボリックリンク) を指していた場合 True を返します。その他の種類のファイルの場合は False を返します。
+
+パスが存在しないか壊れたシンボリックリンクだった場合にも False が返されます; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.is_char_device()
+パスがキャラクターデバイス (またはキャラクターデバイスへのシンボリックリンク) を指していた場合、True を返します。その他の種類のファイルの場合 False を返します。
+
+パスが存在しないか壊れたシンボリックリンクだった場合にも False が返されます; (パーミッションエラーのような) その他のエラーは伝搬されます。
+
+Path.iterdir()
+パスがディレクトリを指していた場合、ディレクトリの内容のパスオブジェクトを yield します:
+
+>>>
+>>> p = Path('docs')
+>>> for child in p.iterdir(): child
+...
+PosixPath('docs/conf.py')
+PosixPath('docs/_templates')
+PosixPath('docs/make.bat')
+PosixPath('docs/index.rst')
+PosixPath('docs/_build')
+PosixPath('docs/_static')
+PosixPath('docs/Makefile')
+The children are yielded in arbitrary order, and the special entries '.' and '..' are not included. If a file is removed from or added to the directory after creating the iterator, whether an path object for that file be included is unspecified.
+
+Path.lchmod(mode)
+Path.chmod() のように振る舞いますが、パスがシンボリックリンクを指していた場合、リンク先ではなくシンボリックリンク自身のモードが変更されます。
+
+Path.lstat()
+Path.stat() のように振る舞いますが、パスがシンボリックリンクを指していた場合、リンク先ではなくシンボリックリンク自身の情報を返します。
+
+Path.mkdir(mode=0o777, parents=False, exist_ok=False)
+与えられたパスに新しくディレクトリを作成します。mode が与えられていた場合、プロセスの umask 値と組み合わせてファイルのモードとアクセスフラグを決定します。パスがすでに存在していた場合 FileExistsError が送出されます。
+
+parents の値が真の場合、このパスの親ディレクトリを必要に応じて作成します; それらのアクセス制限はデフォルト値が取られ、mode は使用されません (POSIX の mkdir -p コマンドを真似ています)。
+
+parents の値が偽の場合 (デフォルト)、親ディレクトリがないと FileNotFoundError を送出します。
+
+exist_ok の値が (デフォルトの) 偽の場合、対象のディレクトリがすでに存在すると FileExistsError を送出します。
+
+exist_ok の値が真の場合、パス要素の末尾がすでに存在するがディレクトリではないときは FileExistsError 例外を送出しますが、ディレクトリであれば送出しません (POSIX の mkdir -p コマンドの挙動と同じ)。
+
+バージョン 3.5 で変更: exist_ok 引数が追加されました。
+
+Path.open(mode='r', buffering=-1, encoding=None, errors=None, newline=None)
+組み込み関数 open() のようにパスが指しているファイルを開きます:
+
+>>>
+>>> p = Path('setup.py')
+>>> with p.open() as f:
+...     f.readline()
+...
+'#!/usr/bin/env python3\n'
+Path.owner()
+ファイルの所有者のユーザー名を返します。ファイルの UID がシステムのデータベースに見つからない場合 KeyError が送出されます。
+
+Path.read_bytes()
+指定されたファイルの内容をバイナリオブジェクトで返します:
+
+>>>
+>>> p = Path('my_binary_file')
+>>> p.write_bytes(b'Binary file contents')
+20
+>>> p.read_bytes()
+b'Binary file contents'
+バージョン 3.5 で追加.
+
+Path.read_text(encoding=None, errors=None)
+指定されたファイルの内容を文字列としてデコードして返します:
+
+>>>
+>>> p = Path('my_text_file')
+>>> p.write_text('Text file contents')
+18
+>>> p.read_text()
+'Text file contents'
+ファイルを開いた後に閉じます。 オプションのパラメーターの意味は open() と同じです。
+
+バージョン 3.5 で追加.
+
+Path.readlink()
+Return the path to which the symbolic link points (as returned by os.readlink()):
+
+>>>
+>>> p = Path('mylink')
+>>> p.symlink_to('setup.py')
+>>> p.readlink()
+PosixPath('setup.py')
+バージョン 3.9 で追加.
+
+Path.rename(target)
+Rename this file or directory to the given target, and return a new Path instance pointing to target. On Unix, if target exists and is a file, it will be replaced silently if the user has permission. target can be either a string or another path object:
+
+>>>
+>>> p = Path('foo')
+>>> p.open('w').write('some text')
+9
+>>> target = Path('bar')
+>>> p.rename(target)
+PosixPath('bar')
+>>> target.open().read()
+'some text'
+The target path may be absolute or relative. Relative paths are interpreted relative to the current working directory, not the directory of the Path object.
+
+バージョン 3.8 で変更: Added return value, return the new Path instance.
+
+Path.replace(target)
+Rename this file or directory to the given target, and return a new Path instance pointing to target. If target points to an existing file or directory, it will be unconditionally replaced.
+
+The target path may be absolute or relative. Relative paths are interpreted relative to the current working directory, not the directory of the Path object.
+
+バージョン 3.8 で変更: Added return value, return the new Path instance.
+
+Path.resolve(strict=False)
+パスを絶対パスにし、あらゆるシンボリックリンクを解決します。新しいパスオブジェクトが返されます:
+
+>>>
+>>> p = Path()
+>>> p
+PosixPath('.')
+>>> p.resolve()
+PosixPath('/home/antoine/pathlib')
+".." 要素は除去されます (このような挙動を示すのはこのメソッドだけです):
+
+>>>
+>>> p = Path('docs/../setup.py')
+>>> p.resolve()
+PosixPath('/home/antoine/pathlib/setup.py')
+パスが存在せず strict が True の場合、 FileNotFoundError が送出されます。 strict が False の場合は、パスは可能な限り解決され、残りの部分は存在するかのチェックをせずに追加されます。 もしパスの解決にあたって無限ループする場合は、RuntimeError が送出されます。
+
+バージョン 3.6 で追加: strict 引数 (3.6以前の挙動は strict です。)
+
+Path.rglob(pattern)
+This is like calling Path.glob() with "**/" added in front of the given relative pattern:
+
+>>>
+>>> sorted(Path().rglob("*.py"))
+[PosixPath('build/lib/pathlib.py'),
+ PosixPath('docs/conf.py'),
+ PosixPath('pathlib.py'),
+ PosixPath('setup.py'),
+ PosixPath('test_pathlib.py')]
+Raises an auditing event pathlib.Path.rglob with arguments self, pattern.
+
+Path.rmdir()
+現在のディレクトリを削除します。ディレクトリは空でなければなりません。
+
+Path.samefile(other_path)
+このパスが参照するファイルが other_path (Path オブジェクトか文字列) と同じであれば True を、異なるファイルであれば False を返します。意味的には os.path.samefile() および os.path.samestat() と同じです。
+
+なんらかの理由でどちらかのファイルにアクセスできない場合は OSError が送出されます。
+
+>>>
+>>> p = Path('spam')
+>>> q = Path('eggs')
+>>> p.samefile(q)
+False
+>>> p.samefile('spam')
+True
+バージョン 3.5 で追加.
+
+Path.symlink_to(target, target_is_directory=False)
+現在のパスに target へのシンボリックリンクを作成します。Windows では、リンク対象がディレクトリの場合 target_is_directory が真でなければなりません (デフォルトは False)。POSIX では、target_is_directory の値は無視されます。
+
+>>>
+>>> p = Path('mylink')
+>>> p.symlink_to('setup.py')
+>>> p.resolve()
+PosixPath('/home/antoine/pathlib/setup.py')
+>>> p.stat().st_size
+956
+>>> p.lstat().st_size
+8
+注釈 引数の並び (link, target) は os.symlink() とは逆です。
+Path.touch(mode=0o666, exist_ok=True)
+与えられたパスにファイルを作成します。mode が与えられた場合、プロセスの umask 値と組み合わせてファイルのモードとアクセスフラグが決定されます。ファイルがすでに存在した場合、exist_ok が真ならばこの関数は正常に終了します (そしてファイルの更新日付が現在の日時に変更されます)。その他の場合は FileExistsError が送出されます。
+
+Path.unlink(missing_ok=False)
+このファイルまたはシンボリックリンクを削除します。パスがディレクトリを指している場合は Path.rmdir() を使用してください。
+
+missing_ok の値が (デフォルトの) 偽の場合、対象のファイルが存在しないと FileNotFoundError を送出します。
+
+If missing_ok is true, FileNotFoundError exceptions will be ignored (same behavior as the POSIX rm -f command).
+
+バージョン 3.8 で変更: The missing_ok parameter was added.
+
+Path.link_to(target)
+Create a hard link pointing to a path named target.
+
+バージョン 3.8 で追加.
+
+Path.write_bytes(data)
+指定されたファイルをバイトモードで開き、data を書き込み、ファイルを閉じます:
+
+>>>
+>>> p = Path('my_binary_file')
+>>> p.write_bytes(b'Binary file contents')
+20
+>>> p.read_bytes()
+b'Binary file contents'
+同じ名前のファイルがすでにあれば上書きされます。
+
+バージョン 3.5 で追加.
+
+Path.write_text(data, encoding=None, errors=None)
+指定されたファイルをテキストモードで開き、data を書き込み、ファイルを閉じます:
+
+>>>
+>>> p = Path('my_text_file')
+>>> p.write_text('Text file contents')
+18
+>>> p.read_text()
+'Text file contents'
+An existing file of the same name is overwritten. The optional parameters have the same meaning as in open().
+
+バージョン 3.5 で追加.
+
+os モジュールにあるツールとの対応付け
+下にあるのは、様々な os 関数とそれに相当する PurePath あるいは Path の同等のものとの対応表です。
+
+注釈 os.path.relpath() および PurePath.relative_to() は使い道が重なるところもありますが、それらの意味論は同等だと見なすには違い過ぎています。
+os および os.path
+
+pathlib
+
+os.path.abspath()
+
+Path.resolve()
+
+os.chmod()
+
+Path.chmod()
+
+os.mkdir()
+
+Path.mkdir()
+
+os.makedirs()
+
+Path.mkdir()
+
+os.rename()
+
+Path.rename()
+
+os.replace()
+
+Path.replace()
+
+os.rmdir()
+
+Path.rmdir()
+
+os.remove(), os.unlink()
+
+Path.unlink()
+
+os.getcwd()
+
+Path.cwd()
+
+os.path.exists()
+
+Path.exists()
+
+os.path.expanduser()
+
+Path.expanduser() および Path.home()
+
+os.listdir()
+
+Path.iterdir()
+
+os.path.isdir()
+
+Path.is_dir()
+
+os.path.isfile()
+
+Path.is_file()
+
+os.path.islink()
+
+Path.is_symlink()
+
+os.link()
+
+Path.link_to()
+
+os.symlink()
+
+Path.symlink_to()
+
+os.readlink()
+
+Path.readlink()
+
+os.stat()
+
+Path.stat(), Path.owner(), Path.group()
+
+os.path.isabs()
+
+PurePath.is_absolute()
+
+os.path.join()
+
+PurePath.joinpath()
+
+os.path.basename()
+
+PurePath.name
+
+os.path.dirname()
+
+PurePath.parent
+
+os.path.samefile()
+
+Path.samefile()
+
+os.path.splitext()
+
+PurePath.suffix
+
+os.path --- 共通のパス名操作
+Source code: Lib/posixpath.py (for POSIX) and Lib/ntpath.py (for Windows NT).
+
+このモジュールには、パス名を操作する便利な関数が実装されています。ファイルの読み書きに関しては open() を、ファイルシステムへのアクセスに関しては os モジュールを参照してください。パスパラメータは文字列またはバイト列で渡すことができます。アプリケーションは、ファイル名を Unicode 文字列で表すことが推奨されています。残念ながら、Unix では文字列で表すことのできないファイル名があるため、Unix 上で任意のファイル名をサポートする必要のあるアプリケーションは、そのパス名にバイト列を使用すべきです。逆に、バイト列オブジェクトを使用すると Windows (標準の mbcs エンコーディング) 上ではすべてのファイル名を表すことができないため、Windows アプリケーションはファイルアクセスのために文字列オブジェクトを使用するべきです。
+
+Unix シェルとは異なり、Python はあらゆるパス展開を 自動的には 行いません。アプリケーションがシェルのようなパス展開を必要とした場合は、 expanduser() や expandvars() といった関数を明示的に呼び出すことで行えます。(glob モジュールも参照してください)
+
+参考 pathlib モジュールは高水準のパスオブジェクトを提供します。
+注釈 以下のすべての関数は、そのパラメータにバイト列のみ、あるいは文字列のみ受け付けます。パスまたはファイル名を返す場合、返り値は同じ型のオブジェクトになります。
+注釈 OS によって異なるパス名の決まりがあるため、標準ライブラリにはこのモジュールのいくつかのバージョンが含まれています。 os.path モジュールは常に現在 Python が動作している OS に適したパスモジュールであるため、ローカルのパスを扱うのに適しています。各々のモジュールをインポートして 常に 一つのフォーマットを利用することも可能です。これらはすべて同じインタフェースを持っています:
+posixpath UNIX スタイルのパス用
+
+ntpath Windows パス用
+
+バージョン 3.8 で変更: exists()、 lexists()、 isdir()、 isfile()、 islink()、および ismount() は、OS レベルで表現できない文字列を含む可能性がある例外を送出する代わりに False を返すようになりました。
+
+os.path.abspath(path)
+パス名 path の正規化された絶対パスを返します。ほとんどのプラットフォームでは、これは関数 normpath() を次のように呼び出した時と等価です: normpath(join(os.getcwd(), path))。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.basename(path)
+パス名 path の末尾のファイル名部分を返します。これは関数 split() に path を渡した時に返されるペアの 2 番めの要素です。この関数が返すのは Unix の basename とは異なります; Unix の basename は '/foo/bar/' に対して 'bar' を返しますが、関数 basename() は空文字列 ('') を返します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.commonpath(paths)
+Return the longest common sub-path of each pathname in the sequence paths. Raise ValueError if paths contain both absolute and relative pathnames, the paths are on the different drives or if paths is empty. Unlike commonprefix(), this returns a valid path.
+
+Availability: Unix, Windows.
+
+バージョン 3.5 で追加.
+
+バージョン 3.6 で変更: path-like objects のシーケンスを受け入れるようになりました。
+
+os.path.commonprefix(list)
+list 内のすべてのパスに共通する接頭辞のうち、最も長いものを (パス名の 1 文字 1 文字を判断して) 返します。list が空の場合、空文字列 ('') を返します。
+
+注釈 この関数は一度に 1 文字ずつ処理するため、不正なパスを返す場合があります。有効なパスを取得するためには、commonpath() を参照してください。
+>>>
+>>> os.path.commonprefix(['/usr/lib', '/usr/local/lib'])
+'/usr/l'
+
+>>> os.path.commonpath(['/usr/lib', '/usr/local/lib'])
+'/usr'
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.dirname(path)
+パス名 path のディレクトリ名を返します。これは関数 split() に path を渡した時に返されるペアの 1 番めの要素です。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.exists(path)
+path が実在するパスかオープンしているファイル記述子を参照している場合 True を返します。壊れたシンボリックリンクについては False を返します。一部のプラットフォームでは、たとえ path が物理的に存在していたとしても、要求されたファイルに対する os.stat() の実行権がなければこの関数が False を返すことがあります。
+
+バージョン 3.3 で変更: path は整数でも可能になりました: それがオープンしているファイル記述子なら True が返り、それ以外なら False が返ります。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.lexists(path)
+path が実在するパスなら True を返します。壊れたシンボリックリンクについては True を返します。 os.lstat() がない環境では exists() と等価です。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.expanduser(path)
+Unix および Windows では、与えられた引数の先頭のパス要素 ~ 、または ~user を、 user のホームディレクトリのパスに置き換えて返します。
+
+Unix では、先頭の ~ は、環境変数 HOME が設定されているならその値に置き換えられます。設定されていない場合は、現在のユーザのホームディレクトリをビルトインモジュール pwd を使ってパスワードディレクトリから探して置き換えます。先頭の ~user については、直接パスワードディレクトリから探します。
+
+On Windows, USERPROFILE will be used if set, otherwise a combination of HOMEPATH and HOMEDRIVE will be used. An initial ~user is handled by stripping the last directory component from the created user path derived above.
+
+置き換えに失敗したり、引数のパスがチルダで始まっていなかった場合は、パスをそのまま返します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+バージョン 3.8 で変更: Windowsで HOME が使えなくなりました。
+
+os.path.expandvars(path)
+引数のパスの環境変数を展開して返します。引数の中の $name または ${name} のような形式の文字列は環境変数、 name の値に置き換えられます。不正な変数名や存在しない変数名の場合には変換されず、そのまま返します。
+
+Windows では、 $name や ${name} の形式に加えて、 %name% の形式もサポートされています。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.getatime(path)
+path に最後にアクセスした時刻を返します。 返り値は、エポック (time モジュールを参照) からの経過秒数を与える浮動小数点数です。 ファイルが存在しない、あるいはアクセスできなかった場合は OSError を送出します。
+
+os.path.getmtime(path)
+path に最後に更新した時刻を返します。 返り値は、エポック (time モジュールを参照) からの経過秒数を与える浮動小数点数です。 ファイルが存在しない、あるいはアクセスできなかった場合は OSError を送出します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.getctime(path)
+システムの ctime、Unix系など一部のシステムでは最後にメタデータが変更された時刻、Windows などその他のシステムでは path の作成時刻を返します。返り値はエポック (time モジュールを参照) からの経過時間を示す秒数になります。ファイルが存在しない、あるいはアクセスできなかった場合は OSError を送出します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.getsize(path)
+path のサイズをバイト数で返します。ファイルが存在しない、あるいはアクセスできなかった場合は OSError を送出します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.isabs(path)
+path が絶対パスなら True を返します。すなわち、 Unix ではスラッシュで始まり、 Windows ではドライブレターに続く (バック) スラッシュで始まる場合です。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.isfile(path)
+path が 存在する 一般ファイルなら True を返します。 この関数はシンボリックリンクの先を辿るので、同じパスに対して islink() と isfile() の両方が真を返すことがあります。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.isdir(path)
+path が 存在する ディレクトリなら True を返します。 この関数はシンボリックリンクの先を辿るので、同じパスに対して islink() と isdir() の両方が真を返すことがあります。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.islink(path)
+path が 存在する ディレクトリを指すシンボリックリンクなら True を返します。 Python ランタイムがシンボリックリンクをサポートしていないプラットフォームでは、常に False を返します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.ismount(path)
+パス名 path がマウントポイント mount point (ファイルシステムの中で異なるファイルシステムがマウントされているところ) なら、 True を返します。 POSIX では、この関数は path の親ディレクトリである path/.. が path と異なるデバイス上にあるか、あるいは path/.. と path が同じデバイス上の同じ i-node を指しているかをチェックします --- これによって全ての Unix 系システムと POSIX 標準でマウントポイントが検出できます。 だたし、同じファイルシステムの bind mount の信頼できる検出はできません。 Windows では、ドライブレターを持つルートと共有 UNC は常にマウントポイントであり、また他のパスでは、入力のパスが異なるデバイスからのものか見るために GetVolumePathName が呼び出されます。
+
+バージョン 3.4 で追加: Windows での、ルートでないマウントポイントの検出をサポートするようになっています。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.join(path, *paths)
+Join one or more path components intelligently. The return value is the concatenation of path and any members of *paths with exactly one directory separator following each non-empty part except the last, meaning that the result will only end in a separator if the last part is empty. If a component is an absolute path, all previous components are thrown away and joining continues from the absolute path component.
+
+Windows の場合は、絶対パスの要素 (たとえば r'\foo') が見つかった場合はドライブレターはリセットされません。要素にドライブレターが含まれていれば、それより前の要素は全て破棄され、ドライブレターがリセットされます。各ドライブに対してカレントディレクトリがあるので、 os.path.join("c:", "foo") によって、 c:\foo ではなく、ドライブ C: 上のカレントディレクトリからの相対パス(c:foo) が返されることに注意してください。
+
+バージョン 3.6 で変更: path と paths が path-like object を受け付けるようになりました。
+
+os.path.normcase(path)
+Normalize the case of a pathname. On Windows, convert all characters in the pathname to lowercase, and also convert forward slashes to backward slashes. On other operating systems, return the path unchanged.
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.normpath(path)
+パスを正規化します。余分な区切り文字や上位レベル参照を除去し、A//B、A/B/、A/./B や A/foo/../B などはすべて A/B になります。この文字列操作は、シンボリックリンクを含むパスの意味を変えてしまう場合があります。Windows では、スラッシュをバックスラッシュに変換します。大文字小文字の正規化には normcase() を使用してください。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.realpath(path)
+パスの中のシンボリックリンク (もしそれが当該オペレーティングシステムでサポートされていれば) を取り除いて、指定されたファイル名を正規化したパスを返します。
+
+注釈 シンボリックリンクが循環している場合、循環したリンクのうちの一つのパスが返されます。ただし、どのパスが返されるかは保証されません。
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+バージョン 3.8 で変更: Windows においてシンボリックリンクとジャンクションが解決されるようになりました。
+
+os.path.relpath(path, start=os.curdir)
+カレントディレクトリあるいはオプションの start ディレクトリからの path への相対パスを返します。これはパス計算で行っており、ファイルシステムにアクセスして path や start の存在や性質を確認することはありません。
+
+start のデフォルト値は os.curdir です。
+
+Availability: Unix, Windows.
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.samefile(path1, path2)
+引数の両パス名が同じファイルまたはディレクトリを参照している場合、 True を返します。これは、デバイス番号と i-node 番号で決定されます。どちらかのパス名への os.stat() 呼び出しが失敗した場合、例外が送出されます。
+
+Availability: Unix, Windows.
+
+バージョン 3.2 で変更: Windows サポートを追加しました。
+
+バージョン 3.4 で変更: Windows が他のプラットフォームと同じ実装を使用するようになりました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.sameopenfile(fp1, fp2)
+ファイル記述子 fp1 と fp2 が同じファイルを参照していたら True を返します。
+
+Availability: Unix, Windows.
+
+バージョン 3.2 で変更: Windows サポートを追加しました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.samestat(stat1, stat2)
+stat タプル stat1 と stat2 が同じファイルを参照していれば True を返します。これらのタプルは os.fstat() 、 os.lstat() あるいは os.stat() の返り値で構いません。この関数は samefile() と sameopenfile() を使用した比較に基いて実装しています。
+
+Availability: Unix, Windows.
+
+バージョン 3.4 で変更: Windows サポートを追加しました。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.split(path)
+パス名 path を (head, tail) のペアに分割します。 tail はパス名の構成要素の末尾で、 head はそれより前の部分です。 tail はスラッシュを含みません; もし path がスラッシュで終わっていれば tail は空文字列になります。もし path にスラッシュがなければ、 head は空文字になります。 path が空文字なら、 head と tail の両方が空文字になります。 head の末尾のスラッシュは head がルートディレクトリ (または 1 個以上のスラッシュだけ) でない限り取り除かれます。 join(head, tail) は常に path と同じ場所を返しますが、文字列としては異なるかもしれません。関数 dirname(), basename() も参照してください。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.splitdrive(path)
+パス名 path を (drive, tail) のペアに分割します。drive はマウントポイントか空文字列になります。ドライブ指定をサポートしていないシステムでは、drive は常に空文字になります。どの場合でも、drive + tail は path と等しくなります。
+
+Windows では、パス名はドライブ名/UNC 共有ポイントと相対パスに分割されます。
+
+パスがドライブレターを含む場合、ドライブレターにはコロンまでが含まれます。例えば、splitdrive("c:/dir") は ("c:", "/dir") を返します。
+
+パスが UNC パスを含む場合、ドライブレターにはホスト名と共有名までが含まれますが、共有名の後の区切り文字は含まれません。例えば、splitdrive("//host/computer/dir") は ("//host/computer", "/dir") を返します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.splitext(path)
+パス名 path を (root, ext) のペアに分割します。 root + ext == path になります。 ext は空文字列か 1 つのピリオドで始まり、多くても 1 つのピリオドを含みます。ベースネームを導出するピリオドは無視されます; splitext('.cshrc') は ('.cshrc', '') を返します。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+os.path.supports_unicode_filenames
+ファイル名に任意の Unicode 文字列を (システムの制限内で) 使用できる場合は True になります。
+
+fileinput --- 複数の入力ストリームをまたいだ行の繰り返し処理をサポートする
+ソースコード: Lib/fileinput.py
+
+このモジュールは標準入力やファイルの並びにまたがるループを素早く書くためのヘルパークラスと関数を提供しています。単一のファイルを読み書きしたいだけなら、 open() を参照してください。
+
+典型的な使い方は以下の通りです:
+
+import fileinput
+for line in fileinput.input():
+    process(line)
+このスクリプトは sys.argv[1:] に列挙されている全てのファイルの行に渡って反復処理を行います。もし列挙されているものがなければ、 sys.stdin がデフォルトとして扱われます。 ファイル名として '-' が与えられた場合も、 sys.stdin に置き換えられ、 mode と openhook は無視されます。 別のファイル名リストを使いたい時には、そのリストを input() の最初の引数に与えます。 ファイル名が 1 つでも受け付けます。
+
+全てのファイルはデフォルトでテキストモードでオープンされます。しかし、 input() や FileInput をコールする際に mode パラメータを指定すれば、これをオーバーライドすることができます。オープン中あるいは読み込み中にI/Oエラーが発生した場合には、 OSError が発生します。
+
+バージョン 3.3 で変更: 以前は IOError が送出されました; それは現在 OSError のエイリアスです。
+
+sys.stdin が2回以上使われた場合は、2回目以降は行を返しません。ただしインタラクティブに利用している時や明示的にリセット (sys.stdin.seek(0) を使う) を行った場合はその限りではありません。
+
+空のファイルは開いた後すぐ閉じられます。空のファイルはファイル名リストの最後にある場合にしか外部に影響を与えません。
+
+ファイルの各行は、各種改行文字まで含めて返されます。ファイルの最後が改行文字で終っていない場合には、改行文字で終わらない行が返されます。
+
+ファイルのオープン方法を制御するためのオープン時フックは、 fileinput.input() あるいは FileInput() の openhook パラメータで設定します。このフックは、ふたつの引数 filename と mode をとる関数でなければなりません。そしてその関数の返り値はオープンしたファイルオブジェクトとなります。このモジュールには、便利なフックが既に用意されています。
+
+以下の関数がこのモジュールの基本的なインタフェースです:
+
+fileinput.input(files=None, inplace=False, backup='', *, mode='r', openhook=None)
+FileInput クラスのインスタンスを作ります。生成されたインスタンスは、このモジュールの関数群が利用するグローバルな状態として利用されます。この関数への引数は FileInput クラスのコンストラクタへ渡されます。
+
+FileInput のインスタンスは with 文の中でコンテキストマネージャーとして使用できます。 次の例では、仮に例外が生じたとしても with 文から抜けた後で input は閉じられます:
+
+with fileinput.input(files=('spam.txt', 'eggs.txt')) as f:
+    for line in f:
+        process(line)
+バージョン 3.2 で変更: コンテキストマネージャとして使うことができるようになりました。
+
+バージョン 3.8 で変更: The keyword parameters mode and openhook are now keyword-only.
+
+以下の関数は fileinput.input() 関数によって作られたグローバルな状態を利用します。アクティブな状態が無い場合には、 RuntimeError が発生します。
+
+fileinput.filename()
+現在読み込み中のファイル名を返します。一行目が読み込まれる前は None を返します。
+
+fileinput.fileno()
+現在のファイルの "ファイル記述子" を整数値で返します。ファイルがオープンされていない場合 (最初の行の前、ファイルとファイルの間) は -1 を返します。
+
+fileinput.lineno()
+最後に読み込まれた行の、累積した行番号を返します。1行目が読み込まれる前は 0 を返します。最後のファイルの最終行が読み込まれた後には、その行の行番号を返します。
+
+fileinput.filelineno()
+現在のファイル中での行番号を返します。1行目が読み込まれる前は 0 を返します。最後のファイルの最終行が読み込まれた後には、その行のファイル中での行番号を返します。
+
+fileinput.isfirstline()
+最後に読み込まれた行がファイルの1行目なら True 、そうでなければ False を返します。
+
+fileinput.isstdin()
+最後に読み込まれた行が sys.stdin から読み込まれていれば True 、そうでなければ False を返します。
+
+fileinput.nextfile()
+現在のファイルを閉じます。次の繰り返しでは(存在すれば)次のファイルの最初の行が読み込まれます。閉じたファイルの読み込まれなかった行は、累積の行数にカウントされません。ファイル名は次のファイルの最初の行が読み込まれるまで変更されません。最初の行の読み込みが行われるまでは、この関数は呼び出されても何もしませんので、最初のファイルをスキップするために利用することはできません。最後のファイルの最終行が読み込まれた後にも、この関数は呼び出されても何もしません。
+
+fileinput.close()
+シーケンスを閉じます。
+
+このモジュールのシーケンスの振舞いを実装しているクラスのサブクラスを作ることもできます:
+
+class fileinput.FileInput(files=None, inplace=False, backup='', *, mode='r', openhook=None)
+FileInput クラスはモジュールの関数に対応するメソッド filename() 、 fileno() 、 lineno() 、 filelineno() 、 isfirstline() 、 isstdin() 、 nextfile() および close() を実装しています。それに加えて、次の入力行を返す readline() メソッドと、シーケンスの振舞いの実装をしている __getitem__() メソッドがあります。シーケンスはシーケンシャルに読み込むことしかできません。つまりランダムアクセスと readline() を混在させることはできません。
+
+mode を使用すると、 open() に渡すファイルモードを指定することができます。これは 'r' 、 'rU' 、 'U' および 'rb' のうちのいずれかとなります。
+
+openhook を指定する場合は、ふたつの引数 filename と mode をとる関数でなければなりません。この関数の返り値は、オープンしたファイルオブジェクトとなります。inplace と openhook を同時に使うことはできません。
+
+FileInput のインスタンスは with 文の中でコンテキストマネージャーとして使用できます。 次の例では、仮に例外が生じたとしても with 文から抜けた後で input は閉じられます:
+
+with FileInput(files=('spam.txt', 'eggs.txt')) as input:
+    process(input)
+バージョン 3.2 で変更: コンテキストマネージャとして使うことができるようになりました。
+
+バージョン 3.4 で非推奨: 'rU' および 'U' モード。
+
+バージョン 3.8 で非推奨: Support for __getitem__() method is deprecated.
+
+バージョン 3.8 で変更: The keyword parameter mode and openhook are now keyword-only.
+
+インプレース(in-place)フィルタオプション: キーワード引数 inplace=True が fileinput.input() か FileInput クラスのコンストラクタに渡された場合には、入力ファイルはバックアップファイルに移動され、標準出力が入力ファイルに設定されます(バックアップファイルと同じ名前のファイルが既に存在していた場合には、警告無しに置き替えられます)。これによって入力ファイルをその場で書き替えるフィルタを書くことができます。キーワード引数 backup (通常は backup='.<拡張子>' という形で利用します)が与えられていた場合、バックアップファイルの拡張子として利用され、バックアップファイルは削除されずに残ります。デフォルトでは、拡張子は '.bak' になっていて、出力先のファイルが閉じられればバックアップファイルも消されます。インプレースフィルタ機能は、標準入力を読み込んでいる間は無効にされます。
+
+このモジュールには、次のふたつのオープン時フックが用意されています:
+
+fileinput.hook_compressed(filename, mode)
+gzip や bzip2 で圧縮された (拡張子が '.gz' や '.bz2' の) ファイルを、 gzip モジュールや bz2 モジュールを使って透過的にオープンします。ファイルの拡張子が '.gz' や '.bz2' でない場合は、通常通りファイルをオープンします (つまり、 open() をコールする際に伸長を行いません)。
+
+使用例: fi = fileinput.FileInput(openhook=fileinput.hook_compressed)
+
+fileinput.hook_encoded(encoding, errors=None)
+各ファイルを open() でオープンするフックを返します。指定した encoding および errors でファイルを読み込みます。
+
+使用例: fi = fileinput.FileInput(openhook=fileinput.hook_encoded("utf-8", "surrogateescape"))
+
+バージョン 3.6 で変更: オプションの errors 引数が追加されました。
+
+stat --- stat() の結果を解釈する
+ソースコード: Lib/stat.py
+
+stat モジュールでは、 os.stat() 、 os.lstat() 、および os.fstat() が存在する場合に、これらの関数が返す内容を解釈するための定数や関数を定義しています。 stat() 、 fstat() 、および lstat() の関数呼び出しについての完全な記述はシステムのドキュメントを参照してください。
+
+バージョン 3.4 で変更: stat モジュールは、C 実装に裏付けされるようになりました。
+
+stat モジュールでは、特殊なファイル型を判別するための以下の関数を定義しています:
+
+stat.S_ISDIR(mode)
+ファイルのモードがディレクトリの場合にゼロでない値を返します。
+
+stat.S_ISCHR(mode)
+ファイルのモードがキャラクタ型の特殊デバイスファイルの場合にゼロでない値を返します。
+
+stat.S_ISBLK(mode)
+ファイルのモードがブロック型の特殊デバイスファイルの場合にゼロでない値を返します。
+
+stat.S_ISREG(mode)
+ファイルのモードが通常ファイルの場合にゼロでない値を返します。
+
+stat.S_ISFIFO(mode)
+ファイルのモードが FIFO (名前つきパイプ) の場合にゼロでない値を返します。
+
+stat.S_ISLNK(mode)
+ファイルのモードがシンボリックリンクの場合にゼロでない値を返します。
+
+stat.S_ISSOCK(mode)
+ファイルのモードがソケットの場合にゼロでない値を返します。
+
+stat.S_ISDOOR(mode)
+ファイルのモードがドアの場合にゼロでない値を返します。
+
+バージョン 3.4 で追加.
+
+stat.S_ISPORT(mode)
+ファイルのモードがイベントポートの場合にゼロでない値を返します。
+
+バージョン 3.4 で追加.
+
+stat.S_ISWHT(mode)
+ファイルのモードがホワイトアウトの場合にゼロでない値を返します。
+
+バージョン 3.4 で追加.
+
+より一般的なファイルのモードを操作するための二つの関数が定義されています:
+
+stat.S_IMODE(mode)
+os.chmod() で設定することのできる一部のファイルモード --- すなわち、ファイルの許可ビット (permission bits) に加え、 (サポートされているシステムでは) スティッキービット (sticky bit)、実行グループ ID 設定 (set-group-id) および実行ユーザ ID 設定 (set-user-id) ビット --- を返します。
+
+stat.S_IFMT(mode)
+ファイルの形式を記述しているファイルモードの一部 (上記の S_IS*() 関数で使われます) を返します。
+
+通常、ファイルの形式を調べる場合には os.path.is*() 関数を使うことになります; ここで挙げた関数は同じファイルに対して複数のテストを同時に行いたいが、 stat() システムコールを何度も呼び出してオーバヘッドが生じるのを避けたい場合に便利です。これらはまた、ブロック型およびキャラクタ型デバイスに対するテストのように、 os.path で扱うことのできないファイルの情報を調べる際にも便利です。
+
+以下はプログラム例です:
+
+import os, sys
+from stat import *
+
+def walktree(top, callback):
+    '''recursively descend the directory tree rooted at top,
+       calling the callback function for each regular file'''
+
+    for f in os.listdir(top):
+        pathname = os.path.join(top, f)
+        mode = os.stat(pathname).st_mode
+        if S_ISDIR(mode):
+            # It's a directory, recurse into it
+            walktree(pathname, callback)
+        elif S_ISREG(mode):
+            # It's a file, call the callback function
+            callback(pathname)
+        else:
+            # Unknown file type, print a message
+            print('Skipping %s' % pathname)
+
+def visitfile(file):
+    print('visiting', file)
+
+if __name__ == '__main__':
+    walktree(sys.argv[1], visitfile)
+ファイルのモードを人間が可読な文字列に変換するために、追加のユーティリティ関数が提供されています。
+
+stat.filemode(mode)
+ファイルのモードを '-rwxrwxrwx' 形式の文字列に変換します。
+
+バージョン 3.3 で追加.
+
+バージョン 3.4 で変更: この関数は、S_IFDOOR 、 S_IFPORT 、 S_IFWHT をサポートしています。
+
+以下の全ての変数は、 os.stat() 、 os.fstat() 、または os.lstat() が返す 10 要素のタプルにおけるインデクスを単にシンボル定数化したものです。
+
+stat.ST_MODE
+Iノードの保護モード。
+
+stat.ST_INO
+Iノード番号。
+
+stat.ST_DEV
+Iノードが存在するデバイス。
+
+stat.ST_NLINK
+該当する Iノードへのリンク数。
+
+stat.ST_UID
+ファイルの所持者のユーザ ID。
+
+stat.ST_GID
+ファイルの所持者のグループ ID。
+
+stat.ST_SIZE
+通常ファイルではバイトサイズ; いくつかの特殊ファイルでは処理待ちのデータ量。
+
+stat.ST_ATIME
+最後にアクセスした時刻。
+
+stat.ST_MTIME
+最後に変更された時刻。
+
+stat.ST_CTIME
+オペレーティングシステムから返される"ctime"。あるOS(Unixなど)では最後にメタデータが更新された時間となり、別のOS(Windowsなど)では作成時間となります(詳細については各プラットフォームのドキュメントを参照してください)。
+
+"ファイルサイズ" の解釈はファイルの型によって異なります。通常のファイルの場合、サイズはファイルの大きさをバイトで表したものです。ほとんどの Unix 系 (特に Linux) における FIFO やソケットの場合、"サイズ" は os.stat() 、 os.fstat() 、あるいは os.lstat() を呼び出した時点で読み出し待ちであったデータのバイト数になります; この値は時に有用で、特に上記の特殊なファイルを非ブロックモードで開いた後にポーリングを行いたいといった場合に便利です。他のキャラクタ型およびブロック型デバイスにおけるサイズフィールドの意味はさらに異なっていて、背後のシステムコールの実装によります。
+
+以下の変数は、 ST_MODE フィールドで使用されるフラグを定義しています。
+
+最初に挙げる、以下のフラグを使うよりは、上記の関数を使うほうがポータブルです:
+
+stat.S_IFSOCK
+ソケット。
+
+stat.S_IFLNK
+シンボリックリンク。
+
+stat.S_IFREG
+通常のファイル。
+
+stat.S_IFBLK
+ブロックデバイス。
+
+stat.S_IFDIR
+ディレクトリ。
+
+stat.S_IFCHR
+キャラクターデバイス。
+
+stat.S_IFIFO
+FIFO。
+
+stat.S_IFDOOR
+ドア。
+
+バージョン 3.4 で追加.
+
+stat.S_IFPORT
+イベントポート。
+
+バージョン 3.4 で追加.
+
+stat.S_IFWHT
+ホワイトアウト。
+
+バージョン 3.4 で追加.
+
+注釈 S_IFDOOR 、 S_IFPORT 、または S_IFWHT は、プラットフォームがこれらのファイルタイプをサポートしていない場合、0 として定義されます。
+以下のフラグは、 os.chmod() の mode 引数に使うこともできます:
+
+stat.S_ISUID
+UID ビットを設定する。
+
+stat.S_ISGID
+グループIDビットを設定する。このビットには幾つかの特殊ケースがあります。ディレクトリに対して設定されていた場合、 BSD のセマンティクスが利用される事を示しています。すなわち、そこに作成されるファイルは、作成したプロセスの有効グループID (effective group ID) ではなくそのディレクトリのグループIDを継承し、そこに作成されるディレクトリにも S_ISGID ビットが設定されます。グループ実行ビット (S_IXGRP) が設定されていないファイルに対してこのビットが設定されていた場合、強制ファイル/レコードロックを意味します (S_ENFMT も参照してください)。
+
+stat.S_ISVTX
+スティッキービット。このビットがディレクトリに対して設定されているとき、そのディレクトリ内のファイルは、そのファイルのオーナー、あるいはそのディレクトリのオーナーか特権プロセスのみが、リネームや削除をすることが出来ることを意味しています。
+
+stat.S_IRWXU
+ファイルオーナーの権限に対するマスク。
+
+stat.S_IRUSR
+オーナーがリード権限を持っている。
+
+stat.S_IWUSR
+オーナーがライト権限を持っている。
+
+stat.S_IXUSR
+オーナーが実行権限を持っている。
+
+stat.S_IRWXG
+グループの権限に対するマスク。
+
+stat.S_IRGRP
+グループがリード権限を持っている。
+
+stat.S_IWGRP
+グループがライト権限を持っている。
+
+stat.S_IXGRP
+グループが実行権限を持っている。
+
+stat.S_IRWXO
+その他 (グループ外) の権限に対するマスク。
+
+stat.S_IROTH
+その他はリード権限を持っている。
+
+stat.S_IWOTH
+その他はライト権限を持っている。
+
+stat.S_IXOTH
+その他は実行権限を持っている。
+
+stat.S_ENFMT
+System V ファイルロック強制。このフラグは S_ISGID と共有されています。グループ実行ビット (S_IXGRP) が設定されていないファイルでは、ファイル/レコードのロックが強制されます。
+
+stat.S_IREAD
+S_IRUSR の、 Unix V7 のシノニム。
+
+stat.S_IWRITE
+S_IWUSR の、 Unix V7 のシノニム。
+
+stat.S_IEXEC
+S_IXUSR の、 Unix V7 のシノニム。
+
+以下のフラグを os.chflags() の flags 引数として利用できます:
+
+stat.UF_NODUMP
+ファイルをダンプしない。
+
+stat.UF_IMMUTABLE
+ファイルは変更されない。
+
+stat.UF_APPEND
+ファイルは追記しかされない。
+
+stat.UF_OPAQUE
+ユニオンファイルシステムのスタックを通したとき、このディレクトリは不透明です。
+
+stat.UF_NOUNLINK
+ファイルはリネームや削除されない。
+
+stat.UF_COMPRESSED
+ファイルは圧縮して保存される (Mac OS X 10.6+)。
+
+stat.UF_HIDDEN
+ファイルは GUI で表示されるべきでない (Mac OS X 10.5+)。
+
+stat.SF_ARCHIVED
+ファイルはアーカイブされているかもしれません。
+
+stat.SF_IMMUTABLE
+ファイルは変更されない。
+
+stat.SF_APPEND
+ファイルは追記しかされない。
+
+stat.SF_NOUNLINK
+ファイルはリネームや削除されない。
+
+stat.SF_SNAPSHOT
+このファイルはスナップショットファイルです。
+
+詳しい情報は *BSD か Mac OS システムの man page chflags(2) を参照してください。
+
+Windows では、os.stat() が返す st_file_attributes メンバー内のビットを検証する際に、以下のファイル属性定数を使用できます。これらの定数の意味について詳しくは、Windows API documentation を参照してください。
+
+stat.FILE_ATTRIBUTE_ARCHIVE
+stat.FILE_ATTRIBUTE_COMPRESSED
+stat.FILE_ATTRIBUTE_DEVICE
+stat.FILE_ATTRIBUTE_DIRECTORY
+stat.FILE_ATTRIBUTE_ENCRYPTED
+stat.FILE_ATTRIBUTE_HIDDEN
+stat.FILE_ATTRIBUTE_INTEGRITY_STREAM
+stat.FILE_ATTRIBUTE_NORMAL
+stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED
+stat.FILE_ATTRIBUTE_NO_SCRUB_DATA
+stat.FILE_ATTRIBUTE_OFFLINE
+stat.FILE_ATTRIBUTE_READONLY
+stat.FILE_ATTRIBUTE_REPARSE_POINT
+stat.FILE_ATTRIBUTE_SPARSE_FILE
+stat.FILE_ATTRIBUTE_SYSTEM
+stat.FILE_ATTRIBUTE_TEMPORARY
+stat.FILE_ATTRIBUTE_VIRTUAL
+バージョン 3.5 で追加.
+
+Windows では、os.lstat() が返す st_reparse_tag メンバーとの比較に次の定数が 使えます。 これらはよく知られている定数ですが、全てを網羅したリストではありません。
+
+stat.IO_REPARSE_TAG_SYMLINK
+stat.IO_REPARSE_TAG_MOUNT_POINT
+stat.IO_REPARSE_TAG_APPEXECLINK
+バージョン 3.8 で追加.
+
+filecmp --- ファイルおよびディレクトリの比較
+ソースコード: Lib/filecmp.py
+
+filecmp モジュールでは、ファイルおよびディレクトリを比較するため、様々な時間／正確性のトレードオフに関するオプションを備えた関数を定義しています。ファイルの比較については、 difflib モジュールも参照してください。
+
+filecmp モジュールでは以下の関数を定義しています:
+
+filecmp.cmp(f1, f2, shallow=True)
+名前が f1 および f2 のファイルを比較し、二つのファイルが同じらしければ True を返し、そうでなければ False を返します。
+
+shallow が真の場合、同一の os.stat() シグニチャを持つファイルは等しいとみなされます。そうでなければ、ファイルの内容が比較されます。
+
+可搬性と効率のために、この関数は外部プログラムを一切呼び出さないので注意してください。
+
+この関数は過去の比較と結果のキャッシュを使用します。ファイルの os.stat() 情報が変更された場合、キャッシュの項目は無効化されます。clear_cache() を使用して全キャッシュを削除することが出来ます。
+
+filecmp.cmpfiles(dir1, dir2, common, shallow=True)
+dir1 と dir2 ディレクトリの中の、common で指定されたファイルを比較します。
+
+ファイル名からなる3つのリスト: match, mismatch, errors を返します。match には双方のディレクトリで一致したファイルのリストが含まれ、mismatch にはそうでないファイル名のリストが入ります。そして errors は比較されなかったファイルが列挙されます。errors になるのは、片方あるいは両方のディレクトリに存在しなかった、ユーザーにそのファイルを読む権限がなかった、その他何らかの理由で比較を完了することができなかった場合です。
+
+引数 shallow はその意味も標準の設定も filecmp.cmp() と同じです。
+
+例えば、cmpfiles('a', 'b', ['c', 'd/e']) は a/c を b/c と、a/d/e を b/d/e と、それぞれ比較します。'c' と 'd/e' はそれぞれ、返される3つのリストのいずれかに登録されます。
+
+filecmp.clear_cache()
+filecmp のキャッシュをクリアします。背後のファイルシステムの mtime 分解能未満でのファイル変更後にすぐに比較するような場合に有用です。
+
+バージョン 3.4 で追加.
+
+dircmp クラス
+class filecmp.dircmp(a, b, ignore=None, hide=None)
+ディレクトリ a および b を比較するための新しいディレクトリ比較オブジェクトを生成します。 ignore は比較の際に無視するファイル名のリストで、標準の設定では filecmp.DEFAULT_IGNORES です。 hide は表示しない名前のリストで、標準の設定では [os.curdir, os.pardir] です。
+
+dircmp クラスは、 filecmp.cmp() で説明されているような 浅い 比較を行うことによりファイルを比較します。
+
+dircmp クラスは以下のメソッドを提供しています:
+
+report()
+a と b の比較を (sys.stdout に) 表示します。
+
+report_partial_closure()
+a および b およびそれらの直下にある共通のサブディレクトリ間での比較結果を出力します。
+
+report_full_closure()
+a および b およびそれらの共通のサブディレクトリ間での比較結果を (再帰的に比較して) 出力します。
+
+dircmp クラスは、比較されているディレクトリ階層に関する様々な情報のビットを得るために使用することのできる、興味深い属性を数多く提供しています。
+
+すべての属性は __getattr__() フックによって遅延評価されるので、計算が軽い属性のみを使用した場合は、属性の計算による速度の低下は起こりません。
+
+left
+ディレクトリ a です。
+
+right
+ディレクトリ b です。
+
+left_list
+a にあるファイルおよびサブディレクトリです。hide および ignore でフィルタされています。
+
+right_list
+b にあるファイルおよびサブディレクトリです。hide および ignore でフィルタされています。
+
+common
+a および b の両方にあるファイルおよびサブディレクトリです。
+
+left_only
+a だけにあるファイルおよびサブディレクトリです。
+
+right_only
+b だけにあるファイルおよびサブディレクトリです。
+
+common_dirs
+a および b の両方にあるサブディレクトリです。
+
+common_files
+a および b の両方にあるファイルです。
+
+common_funny
+a および b の両方にあり、ディレクトリ間でタイプが異なるか、 os.stat() がエラーを報告するような名前です。
+
+same_files
+クラスのファイル比較オペレータを用いて a と b の両方において同一のファイルです。
+
+diff_files
+a と b の両方に存在し、クラスのファイル比較オペレータに基づいて内容が異なるファイルです。
+
+funny_files
+a および b 両方にあるが、比較されなかったファイルです。
+
+subdirs
+common_dirs のファイル名を dircmp オブジェクトに対応付けた辞書です。
+
+filecmp.DEFAULT_IGNORES
+バージョン 3.4 で追加.
+
+デフォルトで dircmp に無視されるディレクトリのリストです。
+
+これは subdirs 属性を使用して 2 つのディレクトリを再帰的に探索して、共通の異なるファイルを示すための単純化された例です:
+
+>>>
+>>> from filecmp import dircmp
+>>> def print_diff_files(dcmp):
+...     for name in dcmp.diff_files:
+...         print("diff_file %s found in %s and %s" % (name, dcmp.left,
+...               dcmp.right))
+...     for sub_dcmp in dcmp.subdirs.values():
+...         print_diff_files(sub_dcmp)
+...
+>>> dcmp = dircmp('dir1', 'dir2') 
+>>> print_diff_files(dcmp) 
+
+tempfile --- 一時ファイルやディレクトリの作成
+ソースコード: Lib/tempfile.py
+
+このモジュールは一時ファイルやディレクトリを作成します。 サポートされている全てのプラットフォームで動作します。 TemporaryFile、NamedTemporaryFile、TemporaryDirectory、 SpooledTemporaryFile は自動的に後始末をし、コンテキストマネージャとして使うことの出来る高水準のインターフェイスです。 mkstemp() と mkdtemp() は手動で後始末をしなければならない低水準の関数です。
+
+ユーザが呼び出し可能な全ての関数とコンストラクタは追加の引数を受け取ります。 その引数によって一時ファイルやディレクトリの場所と名前を直接操作することが出来ます。 このモジュールに使用されるファイル名はランダムな文字を含みます。そのためファイルは共有された一時ディレクトリに安全に作成されます。 後方互換性を保つために引数の順序は若干奇妙です。 分かりやすさのためにキーワード引数を使用してください。
+
+このモジュールではユーザが呼び出し可能な以下の項目を定義しています:
+
+tempfile.TemporaryFile(mode='w+b', buffering=-1, encoding=None, newline=None, suffix=None, prefix=None, dir=None, *, errors=None)
+一時的な記憶領域として使うことの出来る file-like object を返します。 ファイルは mkstemp() と同じルールにより安全に作成されます。 オブジェクトは閉じられる (オブジェクトのガベージコレクションによる暗黙的なものも含みます) とすぐに破壊されます。 Unix では、そのファイルのディレクトリエントリは全く作成されないか、ファイル作成後すぐに削除されます。 これは他のプラットフォームではサポートされません。 よって、この関数で作成された一時ファイルがファイルシステムで可視な名前を持つかどうかをコードで当てにすべきではありません。
+
+返されたオブジェクトをコンテキストマネージャとして使うことが出来ます （使用例 を参照してください）。 コンテキストの完了やファイルオブジェクトの破壊で、一時ファイルはファイルシステムから削除されます。
+
+The mode parameter defaults to 'w+b' so that the file created can be read and written without being closed. Binary mode is used so that it behaves consistently on all platforms without regard for the data that is stored. buffering, encoding, errors and newline are interpreted as for open().
+
+dir、prefix、suffix 引数の意味とデフォルトは mkstemp() のものと同じです。
+
+返されたオブジェクトは、POSIXプラットフォームでは本物のファイルオブジェクトです。 それ以外のプラットフォームでは、file 属性が下層の本物のファイルであるファイル様オブジェクトです。
+
+os.O_TMPFILE フラグは、利用可能で動作する場合に用いられます (Linux 固有で、Linux kernel 3.11 以降)。
+
+Raises an auditing event tempfile.mkstemp with argument fullpath.
+
+バージョン 3.5 で変更: 利用可能であれば os.O_TMPFILE フラグが使用されます。
+
+バージョン 3.8 で変更: Added errors parameter.
+
+tempfile.NamedTemporaryFile(mode='w+b', buffering=-1, encoding=None, newline=None, suffix=None, prefix=None, dir=None, delete=True, *, errors=None)
+この関数は、ファイルシステム上でファイルが可視の名前を持つことが保証される (Unix においてはディレクトリエントリが unlink されない) 点以外は TemporaryFile() と正確に同じことを行います。 その名前は、返されたファイル様オブジェクトの name 属性から取得することができます。 名前付き一時ファイルがまだ開かれている間にこの名前を使って再度ファイルを開くことができるかどうかは、プラットフォームによって異なります (Unix 上では可能ですが、 Windows NT 以降ではできません)。 delete が真の場合 (デフォルト)、ファイルは閉じられたら即座に削除されます。 返されたオブジェクトは常にファイル様オブジェクトで、その file 属性は元になった本物のファイルオブジェクトです。 このファイルライクオブジェクトは、通常のファイルのように with 文の中で使用することができます。
+
+Raises an auditing event tempfile.mkstemp with argument fullpath.
+
+バージョン 3.8 で変更: Added errors parameter.
+
+tempfile.SpooledTemporaryFile(max_size=0, mode='w+b', buffering=-1, encoding=None, newline=None, suffix=None, prefix=None, dir=None, *, errors=None)
+この関数はファイルサイズが max_size を超えるかファイルの fileno() メソッドが呼ばれるまで、データがメモリにスプールされる点以外は TemporaryFile() と正確に同じことを行います。 上記条件を満たすと内容はディスクに書き込まれ、操作は TemporaryFile() と同様に進みます。
+
+この関数が返すファイルは、追加で1つのメソッド rollover() を持っています。このメソッドが呼ばれると、(サイズに関係なく)メモリからディスクへのロールオーバーが実行されます。
+
+返されたオブジェクトはファイル様オブジェクトで、その _file 属性は (バイナリかテキスト mode が指定されたかどうかに依存して) io.BytesIO か io.TextIOWrapper オブジェクト、あるいは rollover() が呼ばれたかどうかに依存して本物のファイルオブジェクトになります。 このファイル様オブジェクトは、通常のファイルオブジェクトと同じように with 文中で使用することが出来ます。
+
+バージョン 3.3 で変更: truncate メソッドが size 引数を受け取るようになりました。
+
+バージョン 3.8 で変更: Added errors parameter.
+
+tempfile.TemporaryDirectory(suffix=None, prefix=None, dir=None)
+この関数は mkdtemp() と同じルールを使用して安全に一時ディレクトリを作成します。 返されたオブジェクトは、コンテキストマネージャとして使用することができます (使用例 を参照)。 コンテキストの完了や一時ディレクトリの破壊で新規作成された一時ディレクトリとその中身はファイルシステムから削除されます。
+
+ディレクトリ名は返されたオブジェクトの name 属性から取得できます。返されたオブジェクトがコンテキストマネージャとして使用された場合、 name は with 文内の as 節のターゲットがあればそれに割り当てられます。
+
+cleanup() メソッドを呼んでディレクトリを明示的に片付けることができます。
+
+Raises an auditing event tempfile.mkdtemp with argument fullpath.
+
+バージョン 3.2 で追加.
+
+tempfile.mkstemp(suffix=None, prefix=None, dir=None, text=False)
+可能な限り最も安全な手段で一時ファイルを生成します。 プラットフォームが os.open() の os.O_EXCL フラグを正しく実装している限り、ファイルの作成で競合が起こることはありません。 作成したユーザのユーザ ID からのみファイルを読み書き出来ます。 プラットフォームがファイルが実行可能かどうかを示す許可ビットを使用している場合、ファイルは誰からも実行不可です。 このファイルのファイル記述子は子プロセスに継承されません。
+
+TemporaryFile() と違って、 mkstemp() のユーザは用済みになった時に一時ファイルを削除しなければなりません。
+
+suffix が None でない場合、ファイル名はその接尾辞で終わります。 そうでない場合、接尾辞はありません。 mkstemp() はファイル名と接尾辞の間にドットを追加しません。 必要であれば suffix の先頭につけてください。
+
+prefix が None でない場合、ファイル名はその接頭辞で始まります。 そうでない場合、デフォルトの接頭辞が使われます。 必要に応じ、デフォルトは gettempprefix() または gettempprefixb() の返り値です。
+
+dir が None でない場合、ファイルはそのディレクトリ下に作成されます。 None の場合、デフォルトのディレクトリが使われます。デフォルトのディレクトリはプラットフォームに依存するリストから選ばれますが、アプリケーションのユーザは TMPDIR、TEMP、または TMP 環境変数を設定することでディレクトリの場所を管理することができます。そのため、生成されるファイル名が、os.popen() で外部コマンドにクォーティング無しで渡すことができるなどといった、扱いやすい性質を持つ保証はありません。
+
+suffix、prefix、dir のいずれかが None でない場合、それらは同じ型でなければなりません。 bytes の場合、返された名前は str でなはく bytes です。 他の挙動はデフォルトで返り値を bytes に強制的にしたい場合は suffix=b'' を渡してください。
+
+If text is specified and true, the file is opened in text mode. Otherwise, (the default) the file is opened in binary mode.
+
+mkstemp() は開かれたファイルを扱うための OS レベルのハンドル (os.open() が返すものと同じ) とファイルの絶対パス名が順番に並んだタプルを返します。
+
+Raises an auditing event tempfile.mkstemp with argument fullpath.
+
+バージョン 3.5 で変更: suffix、prefix、dir は bytes の返り値を得るために bytes で渡すことが出来ます。 それ以前は str のみ許されていました。 適切なデフォルト値を使用するよう、suffix と prefix は None を受け入れ、デフォルトにするようになりました。
+
+バージョン 3.6 で変更: dir パラメタが path-like object を受け付けるようになりました。
+
+tempfile.mkdtemp(suffix=None, prefix=None, dir=None)
+可能な限り安全な方法で一時ディレクトリを作成します。 ディレクトリの生成で競合は発生しません。 ディレクトリを作成したユーザ ID だけが、このディレクトリに対して内容を読み出したり、書き込んだり、検索したりすることができます。
+
+mkdtemp() のユーザは用済みになった時に一時ディレクトリとその中身を削除しなければなりません。
+
+prefix, suffix, dir 引数は mkstemp() 関数のものと同じです。
+
+mkdtemp() は新たに生成されたディレクトリの絶対パス名を返します。
+
+Raises an auditing event tempfile.mkdtemp with argument fullpath.
+
+バージョン 3.5 で変更: suffix、prefix、dir は bytes の返り値を得るために bytes で渡すことが出来ます。 それ以前は str のみ許されていました。 適切なデフォルト値を使用するよう、suffix と prefix は None を受け入れ、デフォルトにするようになりました。
+
+バージョン 3.6 で変更: dir パラメタが path-like object を受け付けるようになりました。
+
+tempfile.gettempdir()
+一時ファイルに用いられるディレクトリの名前を返します。 これはモジュール内の全ての関数の dir 引数のデフォルト値を定義します。
+
+Python は呼び出したユーザがファイルを作ることの出来るディレクトリを検索するのに標準的なリストを使用します。 そのリストは:
+
+環境変数 TMPDIR で与えられているディレクトリ名。
+
+環境変数 TEMP で与えられているディレクトリ名。
+
+環境変数 TMP で与えられているディレクトリ名。
+
+プラットフォーム依存の場所:
+
+Windows ではディレクトリ C:\TEMP 、 C:\TMP 、 \TEMP 、および \TMP の順。
+
+その他の全てのプラットフォームでは、 /tmp 、 /var/tmp 、および /usr/tmp の順。
+
+最後の手段として、現在の作業ディレクトリ。
+
+この検索の結果はキャッシュされます。以下の tempdir の記述を参照してください。
+
+tempfile.gettempdirb()
+gettempdir() と同じですが返り値は bytesです。
+
+バージョン 3.5 で追加.
+
+tempfile.gettempprefix()
+一時ファイルを生成する際に使われるファイル名の接頭辞を返します。 これにはディレクトリ部は含まれません。
+
+tempfile.gettempprefixb()
+gettempprefix() と同じですが返り値は bytes です。
+
+バージョン 3.5 で追加.
+
+モジュールはグローバル変数を使用して、 gettempdir() が返す、一時ファイルに用いられるディレクトリ名を記憶します。 直接設定して選考過程を上書き出来ますが、推奨されません。 このモジュールの全ての関数はディレクトリを指定する dir 引数を受け取ります。 この方法が推奨されます。
+
+tempfile.tempdir
+None 以外の値に設定された場合、このモジュールで定義されている全ての関数の dir 引数のデフォルト値として定義されます。
+
+tempdir が (デフォルトの) None の場合、 gettempprefix() を除く上記のいずれかの関数を呼び出す際は常に gettempdir() で述べられているアルゴリズムによって初期化されます。
+
+使用例
+tempfile モジュールの典型的な使用法のいくつかの例を挙げます:
+
+>>>
+>>> import tempfile
+
+# create a temporary file and write some data to it
+>>> fp = tempfile.TemporaryFile()
+>>> fp.write(b'Hello world!')
+# read data from file
+>>> fp.seek(0)
+>>> fp.read()
+b'Hello world!'
+# close the file, it will be removed
+>>> fp.close()
+
+# create a temporary file using a context manager
+>>> with tempfile.TemporaryFile() as fp:
+...     fp.write(b'Hello world!')
+...     fp.seek(0)
+...     fp.read()
+b'Hello world!'
+>>>
+# file is now closed and removed
+
+# create a temporary directory using the context manager
+>>> with tempfile.TemporaryDirectory() as tmpdirname:
+...     print('created temporary directory', tmpdirname)
+>>>
+# directory and contents have been removed
+非推奨の関数と変数
+一時ファイルを作成する歴史的な手法は、まず mktemp() 関数でファイル名を作り、その名前を使ってファイルを作成するというものでした。 残念ながらこの方法は安全ではありません。 なぜなら、mktemp() の呼び出しと最初のプロセスが続いてファイル作成を試みる間に、異なるプロセスがその名前でファイルを同時に作成するかもしれないからです。 解決策は二つのステップを同時に行い、ファイルをすぐに作成するというものです。 この方法は mkstemp() や上述している他の関数で使用されています。
+
+tempfile.mktemp(suffix='', prefix='tmp', dir=None)
+バージョン 2.3 で非推奨: 代わりに mkstemp() を使って下さい。
+
+呼び出し時には存在しなかった、ファイルの絶対パス名を返します。 prefix、suffix、dir 引数は mkstemp() のものと似ていますが、bytes のファイル名、suffix=None、そして prefix=None がサポートされていない点で異なります。
+
+警告 この関数を使うとプログラムのセキュリティホールになる可能性があります。この関数がファイル名を返した後、あなたがそのファイル名を使って次に何かをしようとする段階に至る前に、誰か他の人間があなたを出し抜くことができてしまいます。 mktemp() の利用は、 NamedTemporaryFile() に delete=False 引数を渡すことで、簡単に置き換えることができます:
+>>>
+>>> f = NamedTemporaryFile(delete=False)
+>>> f.name
+'/tmp/tmptjujjt'
+>>> f.write(b"Hello World!\n")
+13
+>>> f.close()
+>>> os.unlink(f.name)
+>>> os.path.exists(f.name)
+False
+
+glob --- Unix 形式のパス名のパターン展開
+ソースコード: Lib/glob.py
+
+glob モジュールは Unix シェルで使われているルールに従い指定されたパターンに一致するすべてのパス名を見つけ出します。返される結果の順序は不定です。チルダ展開は行われませんが、*, ?, および [] で表現される文字範囲については正しくマッチされます。これは、関数 os.scandir() および fnmatch.fnmatch() を使用して行われており、実際にサブシェルを呼び出しているわけではありません。fnmatch.fnmatch() と異なり、glob はドット (.) で始まるファイル名は特別扱いする点に注意してください。(チルダおよびシェル変数の展開を利用したい場合は os.path.expanduser() および os.path.expandvars() を使用してください。)
+
+リテラルにマッチさせるには、メタ文字を括弧に入れてください。例えば、'[?]' は文字 '?' にマッチします。
+
+参考 pathlib モジュールは高水準のパスオブジェクトを提供します。
+glob.glob(pathname, *, recursive=False)
+Return a possibly-empty list of path names that match pathname, which must be a string containing a path specification. pathname can be either absolute (like /usr/src/Python-1.5/Makefile) or relative (like ../../Tools/*/*.gif), and can contain shell-style wildcards. Broken symlinks are included in the results (as in the shell). Whether or not the results are sorted depends on the file system. If a file that satisfies conditions is removed or added during the call of this function, whether a path name for that file be included is unspecified.
+
+recursive が真の場合、パターン "**" はあらゆるファイルや0個以上のディレクトリ、サブディレクトリおよびディレクトリへのシンボリックリンクにマッチします。パターンの末尾が os.sep または os.altsep の場合、ファイルは一致しません。
+
+引数 pathname, recursive を指定して 監査イベント glob.glob を送出します。
+
+注釈 パターン "**" を大きなディレクトリツリーで使用するととてつもなく時間がかかるかもしれません。
+バージョン 3.5 で変更: "**" を使った再帰的な glob がサポートされました。
+
+glob.iglob(pathname, *, recursive=False)
+実際には一度にすべてを格納せずに、glob() と同じ値を順に生成する イテレーター を返します。
+
+引数 pathname, recursive を指定して 監査イベント glob.glob を送出します。
+
+glob.escape(pathname)
+すべての特殊文字 ('?' 、 '*' 、 '[') をエスケープします。特殊文字を含んでいる可能性のある任意のリテラル文字列をマッチさせたいときに便利です。drive/UNC sharepoints の特殊文字はエスケープされません。たとえば Windows では escape('//?/c:/Quo vadis?.txt') は '//?/c:/Quo vadis[?].txt' を返します。
+
+バージョン 3.4 で追加.
+
+たとえば、次の 3 個のファイル 1.gif, 2.txt, card.gif と、ファイル 3.txt だけを含んだサブディレクトリ sub があった場合、glob() は以下の結果を返します。パスに接頭する要素がどう維持されるかに注意してください。:
+
+>>>
+>>> import glob
+>>> glob.glob('./[0-9].*')
+['./1.gif', './2.txt']
+>>> glob.glob('*.gif')
+['1.gif', 'card.gif']
+>>> glob.glob('?.gif')
+['1.gif']
+>>> glob.glob('**/*.txt', recursive=True)
+['2.txt', 'sub/3.txt']
+>>> glob.glob('./**/', recursive=True)
+['./', './sub/']
+ディレクトリが . で始まるファイルを含んでいる場合、デフォルトでそれらはマッチしません。例えば、 card.gif と .card.gif を含むディレクトリを考えてください:
+
+>>>
+>>> import glob
+>>> glob.glob('*.gif')
+['card.gif']
+>>> glob.glob('.c*')
+['.card.gif']
+参考
+fnmatch モジュール
+シェル形式の (パスではない) ファイル名展開
+
+fnmatch --- Unix ファイル名のパターンマッチ
+ソースコード: Lib/fnmatch.py
+
+このモジュールは Unix のシェル形式のワイルドカードに対応しています。これらは、 (re モジュールでドキュメント化されている) 正規表現とは 異なります 。シェル形式のワイルドカードで使われる特殊文字は、次のとおりです。
+
+Pattern
+
+意味
+
+*
+
+すべてにマッチします
+
+?
+
+任意の一文字にマッチします
+
+[seq]
+
+seq にある任意の文字にマッチします
+
+[!seq]
+
+seq にない任意の文字にマッチします
+
+リテラルにマッチさせるには、メタ文字を括弧に入れてください。例えば、'[?]' は文字 '?' にマッチします。
+
+ファイル名の区切り文字 (Unixでは '/') はこのモジュールに固有なものでは ない ことに注意してください。パス名展開については、 glob モジュールを参照してください (glob はパス名の部分にマッチさせるのに filter() を使っています)。同様に、ピリオドで始まるファイル名はこのモジュールに固有ではなくて、 * と ? のパターンでマッチします。
+
+fnmatch.fnmatch(filename, pattern)
+filename の文字列が pattern の文字列にマッチするかテストして、 True 、 False のいずれかを返します。 どちらの引数とも os.path.normcase() を使って、大文字、小文字が正規化されます。 オペレーティングシステムが標準でどうなっているかに関係なく、大文字、小文字を区別して比較する場合には、 fnmatchcase() が使えます。
+
+次の例では、カレントディレクトリにある、拡張子が .txt である全てのファイルを表示しています:
+
+import fnmatch
+import os
+
+for file in os.listdir('.'):
+    if fnmatch.fnmatch(file, '*.txt'):
+        print(file)
+fnmatch.fnmatchcase(filename, pattern)
+filename が pattern にマッチするかテストして、 True 、 False を返します。比較は大文字、小文字を区別し、 os.path.normcase() は適用しません。
+
+fnmatch.filter(names, pattern)
+Construct a list from those elements of the iterable names that match pattern. It is the same as [n for n in names if fnmatch(n, pattern)], but implemented more efficiently.
+
+fnmatch.translate(pattern)
+シェルスタイルの pattern を、re.match() で使用するための正規表現に変換して返します。
+
+例:
+
+>>>
+import fnmatch, re
+>>>
+regex = fnmatch.translate('*.txt')
+regex
+'(?s:.*\\.txt)\\Z'
+reobj = re.compile(regex)
+reobj.match('foobar.txt')
+<re.Match object; span=(0, 10), match='foobar.txt'>
+参考
+glob モジュール
+Unix シェル形式のパス展開。
+
+linecache --- テキストラインにランダムアクセスする
+ソースコード: Lib/linecache.py
+
+linecache モジュールは、キャッシュ (一つのファイルから何行も読んでおくのが一般的です) を使って、内部で最適化を図りつつ、Python ソースファイルの任意の行を取得するのを可能にします。 traceback モジュールは、整形されたトレースバックにソースコードを含めるためにこのモジュールを利用しています。
+
+tokenize.open() 関数は、ファイルを開くために使用されます。この関数は、 tokenize.detect_encoding() を使用してファイルのエンコーディングを取得します。エンコーディングトークンが存在しない場合、デフォルトの UTF-8 になります。
+
+linecache モジュールでは次の関数が定義されています:
+
+linecache.getline(filename, lineno, module_globals=None)
+filename という名前のファイルから lineno 行目を取得します。この関数は決して例外を発生させません --- エラーの際には '' を返します (行末の改行文字は、見つかった行に含まれます)。
+
+filename という名前のファイルが見付からなかった場合、この関数は最初に module_globals にある PEP 302 __loader__ を確認します。 ローダーが存在していて、 get_source メソッドが実装されていた場合、ソースコードの行を決定します (get_source() が None を返した場合は、 '' が返ります)。 最後に、 filename が相対ファイル名だった場合、モジュール検索パス sys.path のエントリからの相対パスを探します。
+
+linecache.clearcache()
+キャッシュをクリアします。それまでに getline() を使って読み込んだファイルの行が必要でなくなったら、この関数を使ってください。
+
+linecache.checkcache(filename=None)
+キャッシュが有効かどうかを確認します。キャッシュしたファイルがディスク上で変更された可能性があり、更新後のバージョンが必要な場合にこの関数を使用します。 filename が与えられない場合、全てのキャッシュエントリを確認します。
+
+linecache.lazycache(filename, module_globals)
+後々の呼び出しで module_globals が None となっていても、ファイルの形式でないモジュールの行を後から getline() で取得するのに十分な詳細を把握しておきます。 この関数により、モジュールの globals を無限に持ち運ぶ必要無しに、実際に必要な行まで
+
+バージョン 3.5 で追加.
+
+以下はプログラム例です:
+
+>>>
+>>> import linecache
+>>> linecache.getline(linecache.__file__, 8)
+'import sys\n'
+
+shutil --- 高水準のファイル操作
+ソースコード: Lib/shutil.py
+
+shutil モジュールはファイルやファイルの集まりに対する高水準の操作方法を多数提供します。特にファイルのコピーや削除のための関数が用意されています。個別のファイルに対する操作については、 os モジュールも参照してください。
+
+警告 高水準のファイルコピー関数 (shutil.copy(), shutil.copy2()) でも、ファイルのメタデータの全てをコピーすることはできません。
+POSIXプラットフォームでは、これはACLやファイルのオーナー、グループが失われることを意味しています。 Mac OSでは、リソースフォーク(resource fork)やその他のメタデータが利用されません。これは、リソースが失われ、ファイルタイプや生成者コード(creator code)が正しくなくなることを意味しています。 Windowsでは、ファイルオーナー、ACL、代替データストリームがコピーされません。
+
+ディレクトリとファイルの操作
+shutil.copyfileobj(fsrc, fdst[, length])
+ファイル形式のオブジェクト fsrc の内容を fdst へコピーします。整数値 length は与えられた場合バッファサイズを表します。特に length が負の場合、チャンク内のソースデータを繰り返し操作することなくデータをコピーします。デフォルトでは、制御不能なメモリ消費を避けるためにデータはチャンク内に読み込まれます。 fsrc オブジェクトの現在のファイル位置が0でない場合、現在の位置からファイル終端までの内容のみがコピーされることに注意してください。
+
+shutil.copyfile(src, dst, *, follow_symlinks=True)
+Copy the contents (no metadata) of the file named src to a file named dst and return dst in the most efficient way possible. src and dst are path-like objects or path names given as strings.
+
+dst must be the complete target file name; look at copy() for a copy that accepts a target directory path. If src and dst specify the same file, SameFileError is raised.
+
+dst は書き込み可能でなければなりません。そうでない場合、 OSError 例外を送出します。 dst がすでに存在する場合、そのファイルは置き換えられます。キャラクタデバイスやブロックデバイスなどの特殊なファイルとパイプをこの関数でコピーすることはできません。
+
+follow_symlinks が偽で src がシンボリックリンクの場合、 src のリンク先をコピーする代わりに新しいシンボリックリンクを作成します。
+
+Raises an auditing event shutil.copyfile with arguments src, dst.
+
+バージョン 3.3 で変更: 以前は OSError の代わりに IOError が送出されていました。 follow_symlinks 引数が追加されました。 dst を返すようになりました。
+
+バージョン 3.4 で変更: Error の代わりに SameFileError を送出します。後者は前者のサブクラスなのでこの変更は後方互換です。
+
+バージョン 3.8 で変更: Platform-specific fast-copy syscalls may be used internally in order to copy the file more efficiently. See Platform-dependent efficient copy operations section.
+
+exception shutil.SameFileError
+copyfile() のコピー元と先が同じファイルの場合送出されます。
+
+バージョン 3.4 で追加.
+
+shutil.copymode(src, dst, *, follow_symlinks=True)
+Copy the permission bits from src to dst. The file contents, owner, and group are unaffected. src and dst are path-like objects or path names given as strings. If follow_symlinks is false, and both src and dst are symbolic links, copymode() will attempt to modify the mode of dst itself (rather than the file it points to). This functionality is not available on every platform; please see copystat() for more information. If copymode() cannot modify symbolic links on the local platform, and it is asked to do so, it will do nothing and return.
+
+Raises an auditing event shutil.copymode with arguments src, dst.
+
+バージョン 3.3 で変更: follow_symlinks 引数が追加されました。
+
+shutil.copystat(src, dst, *, follow_symlinks=True)
+Copy the permission bits, last access time, last modification time, and flags from src to dst. On Linux, copystat() also copies the "extended attributes" where possible. The file contents, owner, and group are unaffected. src and dst are path-like objects or path names given as strings.
+
+follow_symlinks が偽の場合、 src と dst の両方がシンボリックリンクであれば、 copystat() はリンク先ではなくてシンボリックリンク自体を操作します。 src からシンボリックリンクの情報を読み込み、 dst のシンボリックリンクにその情報を書き込みます。
+
+注釈 すべてのプラットフォームでシンボリックリンクの検査と変更ができるわけではありません。 Python はその機能が利用かどうかを調べる方法を用意しています。
+os.chmod in os.supports_follow_symlinks が True の場合 copystat() はシンボリックリンクのパーミッションを変更できます。
+
+os.utime in os.supports_follow_symlinks が True の場合 copystat() はシンボリックリンクの最終アクセス時間と最終変更時間を変更できます。
+
+os.chflags in os.supports_follow_symlinks が True の場合 copystat() はシンボリックリンクのフラグを変更できます。 (os.chflags がないプラットフォームもあります。)
+
+機能の幾つか、もしくは全てが利用できないプラットフォームでシンボリックリンクを変更しようとした場合、 copystat() は可能な限り全てをコピーします。copystat() が失敗を返すことはありません。
+
+より詳しい情報は os.supports_follow_symlinks を参照して下さい。
+
+Raises an auditing event shutil.copystat with arguments src, dst.
+
+バージョン 3.3 で変更: follow_symlinks 引数と Linux の拡張属性がサポートされました。
+
+shutil.copy(src, dst, *, follow_symlinks=True)
+Copies the file src to the file or directory dst. src and dst should be path-like objects or strings. If dst specifies a directory, the file will be copied into dst using the base filename from src. Returns the path to the newly created file.
+
+follow_symlinks が偽で、 src がシンボリックリンクの場合、 dst はシンボリックリンクとして作成されます。 follow_symlinks が真で src がシンボリックリンクの場合、 dst には src のリンク先のファイルがコピーされます。
+
+copy() はファイルのデータとパーミッションをコピーします。 (os.chmod() を参照) その他の、ファイルの作成時間や変更時間などのメタデータはコピーしません。 コピー元のファイルのメタデータを保存したい場合は、 copy2() を利用してください。
+
+Raises an auditing event shutil.copyfile with arguments src, dst.
+
+Raises an auditing event shutil.copymode with arguments src, dst.
+
+バージョン 3.3 で変更: follow_symlinks 引数が追加されました。新しく作成されたファイルのパスを返すようになりました。
+
+バージョン 3.8 で変更: Platform-specific fast-copy syscalls may be used internally in order to copy the file more efficiently. See Platform-dependent efficient copy operations section.
+
+shutil.copy2(src, dst, *, follow_symlinks=True)
+copy2() はファイルのメタデータを保持しようとすることを除けば copy() と等価です。
+
+When follow_symlinks is false, and src is a symbolic link, copy2() attempts to copy all metadata from the src symbolic link to the newly-created dst symbolic link. However, this functionality is not available on all platforms. On platforms where some or all of this functionality is unavailable, copy2() will preserve all the metadata it can; copy2() never raises an exception because it cannot preserve file metadata.
+
+copy2() はファイルのメタデータをコピーするために copystat() を利用します。シンボリックリンクのメタデータを変更するためのプラットフォームサポートについては copystat() を参照して下さい。
+
+Raises an auditing event shutil.copyfile with arguments src, dst.
+
+Raises an auditing event shutil.copystat with arguments src, dst.
+
+バージョン 3.3 で変更: follow_symlinks 引数が追加されました。 拡張ファイルシステム属性もコピーしようと試みます (現在は Linux のみ)。新しく作成されたファイルへのパスを返すようになりました。
+
+バージョン 3.8 で変更: Platform-specific fast-copy syscalls may be used internally in order to copy the file more efficiently. See Platform-dependent efficient copy operations section.
+
+shutil.ignore_patterns(*patterns)
+このファクトリ関数は、 copytree() 関数の ignore 引数に渡すための呼び出し可能オブジェクトを作成します。 glob形式の patterns にマッチするファイルやディレクトリが無視されます。下の例を参照してください。
+
+shutil.copytree(src, dst, symlinks=False, ignore=None, copy_function=copy2, ignore_dangling_symlinks=False, dirs_exist_ok=False)
+Recursively copy an entire directory tree rooted at src to a directory named dst and return the destination directory. dirs_exist_ok dictates whether to raise an exception in case dst or any missing parent directory already exists.
+
+Permissions and times of directories are copied with copystat(), individual files are copied using copy2().
+
+symlinks が真の場合、ソースツリー内のシンボリックリンクは新しいツリーでもシンボリックになり、元のシンボリックリンクのメタデータはプラットフォームが許す限りコピーされます。偽の場合や省略された場合、リンク先のファイルの内容とメタデータが新しいツリーにコピーされます。
+
+symlinks が偽の場合、リンク先のファイルが存在しなければ、コピー処理終了時に送出される Error 例外のエラーリストに例外が追加されます。オプションの ignore_dangling_symlinks フラグを真に設定してこのエラーを送出させないこともできます。このオプションは os.symlink() をサポートしていないプラットフォーム上では効果がないことに注意してください。
+
+ignore は copytree() が走査しているディレクトリと os.listdir() が返すその内容のリストを引数として受け取ることのできる呼び出し可能オブジェクトでなければなりません。 copytree() は再帰的に呼び出されるので、 ignore はコピーされる各ディレクトリ毎に呼び出されます。 ignore の戻り値はカレントディレクトリに相対的なディレクトリ名およびファイル名のシーケンス（すなわち第二引数の項目のサブセット）でなければなりません。それらの名前はコピー中に無視されます。 ignore_patterns() を用いて glob 形式のパターンによって無視する呼び出し可能オブジェクトを作成することが出来ます。
+
+例外が発生した場合、理由のリストとともに Error を送出します。
+
+If copy_function is given, it must be a callable that will be used to copy each file. It will be called with the source path and the destination path as arguments. By default, copy2() is used, but any function that supports the same signature (like copy()) can be used.
+
+Raises an auditing event shutil.copytree with arguments src, dst.
+
+バージョン 3.3 で変更: symlinks が偽の場合メタデータをコピーします。 dst を返すようになりました。
+
+バージョン 3.2 で変更: カスタムコピー機能を提供できるように copy_function 引数が追加されました。 symlinks が偽の時にダングリング (宙ぶらりんの) シンボリックリンクエラーを送出させないために ignore_dangling_symlinks 引数が追加されました。
+
+バージョン 3.8 で変更: Platform-specific fast-copy syscalls may be used internally in order to copy the file more efficiently. See Platform-dependent efficient copy operations section.
+
+バージョン 3.8 で追加: The dirs_exist_ok parameter.
+
+shutil.rmtree(path, ignore_errors=False, onerror=None)
+ディレクトリツリー全体を削除します。 path はディレクトリを指していなければなりません (ただしディレクトリに対するシンボリックリンクではいけません)。ignore_errors が真である場合、削除に失敗したことによるエラーは無視されます。偽や省略された場合はこれらのエラーは onerror で与えられたハンドラを呼び出して処理され、onerror が省略された場合は例外を送出します。
+
+注釈 必要な fd ベースの関数をサポートしているプラットフォームでは、 シンボリックリンク攻撃に耐性のあるバージョンの rmtree() がデフォルトで利用されます。それ以外のプラットフォームでは、 rmtree() の実装はシンボリックリンク攻撃の影響を受けます。適当なタイミングと環境で攻撃者はファイルシステム上のシンボリックリンクを操作して、それ以外の方法ではアクセス不可能なファイルを削除することが出来ます。アプリケーションは、どちらのバージョンの rmtree() が利用されているかを知るために関数のデータ属性 rmtree.avoids_symlink_attacks を利用することができます。
+onerror を指定する場合、 function, path, excinfo の3つの引数を受け取る呼び出し可能オブジェクトでなければなりません。
+
+最初の引数 function は例外を送出した関数で、プラットフォームや実装に依存します。第二引数 path は function に渡されたパス名です。第三引数 excinfo は sys.exc_info() が返した例外の情報です。 onerror が送出した例外は捕捉されません。
+
+Raises an auditing event shutil.rmtree with argument path.
+
+バージョン 3.3 で変更: プラットフォームが fd ベースの関数をサポートする場合に自動的に使用されるシンボリックリンク攻撃に耐性のあるバージョンが追加されました。
+
+バージョン 3.8 で変更: On Windows, will no longer delete the contents of a directory junction before removing the junction.
+
+rmtree.avoids_symlink_attacks
+プラットフォームと実装がシンボリックリンク攻撃に耐性のあるバージョンの rmtree() を提供しているかどうかを示します。現在のところ、この属性は fd ベースのディレクトリアクセス関数をサポートしているプラットフォームでのみ真になります。
+
+バージョン 3.3 で追加.
+
+shutil.move(src, dst, copy_function=copy2)
+ファイルまたはディレクトリ (src) を再帰的に別の場所 (dst) に移動して、移動先を返します。
+
+移動先が存在するディレクトリの場合、 src はそのディレクトリの中へ移動します。移動先が存在していてそれがディレクトリでない場合、 os.rename() の動作によっては上書きされることがあります。
+
+ターゲットが現在のファイルシステム上にある場合、 os.rename() が使用されます。 それ以外の場合 copy_function を使用して src を dst にコピーし、その後削除します。 シンボリックリンクの場合には、 src のターゲットを指す新しいシンボリックリンクが、 dst の中または dst として作成され、 src が削除されます。
+
+If copy_function is given, it must be a callable that takes two arguments src and dst, and will be used to copy src to dst if os.rename() cannot be used. If the source is a directory, copytree() is called, passing it the copy_function(). The default copy_function is copy2(). Using copy() as the copy_function allows the move to succeed when it is not possible to also copy the metadata, at the expense of not copying any of the metadata.
+
+Raises an auditing event shutil.move with arguments src, dst.
+
+バージョン 3.3 で変更: 異なるファイルシステムに対する明示的なシンボリックリンク処理が追加されました。これにより GNU mv の振る舞いに適応するようになります。 dst を返すようになりました。
+
+バージョン 3.5 で変更: キーワード引数 copy_function が追加されました。
+
+バージョン 3.8 で変更: Platform-specific fast-copy syscalls may be used internally in order to copy the file more efficiently. See Platform-dependent efficient copy operations section.
+
+バージョン 3.9 で変更: Accepts a path-like object for both src and dst.
+
+shutil.disk_usage(path)
+Return disk usage statistics about the given path as a named tuple with the attributes total, used and free, which are the amount of total, used and free space, in bytes. path may be a file or a directory.
+
+バージョン 3.3 で追加.
+
+バージョン 3.8 で変更: On Windows, path can now be a file or directory.
+
+Availability: Unix, Windows.
+
+shutil.chown(path, user=None, group=None)
+指定された path のオーナー user と/または group を変更します。
+
+user はシステムのユーザー名か uid です。 group も同じです。少なくともどちらかの引数を指定する必要があります。
+
+内部で利用している os.chown() も参照してください。
+
+Raises an auditing event shutil.chown with arguments path, user, group.
+
+利用可能な環境: Unix。
+
+バージョン 3.3 で追加.
+
+shutil.which(cmd, mode=os.F_OK | os.X_OK, path=None)
+cmd を実行しようとした時に実行される実行ファイルのパスを返します。 cmd を呼び出せない場合は None を返します。
+
+mode は os.access() に渡すパーミッションマスクで、デフォルトではファイルが存在して実行可能であることを確認します。
+
+path が指定されなかった場合、 os.environ() が利用され、 "PATH" の値を返すか os.defpath にフォールバックします。
+
+Windows では、 path を指定した場合もデフォルト値を使った場合も、カレントディレクトリが最初に探されます。これはコマンドシェルが実行ファイルを探すときの動作です。また、 cmd を path から検索するときに、 PATHEXT 環境変数も利用します。例えば、 shutil.which("python") を実行した場合、 which() は PATHEXT を参照して path ディレクトリから python.exe を探すべきだということを把握します。例えば、 Windows では:
+
+>>>
+>>> shutil.which("python")
+'C:\\Python33\\python.EXE'
+バージョン 3.3 で追加.
+
+バージョン 3.8 で変更: The bytes type is now accepted. If cmd type is bytes, the result type is also bytes.
+
+exception shutil.Error
+この例外は複数ファイルの操作を行っているときに生じる例外をまとめたものです。 copytree() に対しては例外の引数は3つのタプル(srcname, dstname, exception)からなるリストです。
+
+Platform-dependent efficient copy operations
+Starting from Python 3.8, all functions involving a file copy (copyfile(), copy(), copy2(), copytree(), and move()) may use platform-specific "fast-copy" syscalls in order to copy the file more efficiently (see bpo-33671). "fast-copy" means that the copying operation occurs within the kernel, avoiding the use of userspace buffers in Python as in "outfd.write(infd.read())".
+
+On macOS fcopyfile is used to copy the file content (not metadata).
+
+On Linux os.sendfile() is used.
+
+On Windows shutil.copyfile() uses a bigger default buffer size (1 MiB instead of 64 KiB) and a memoryview()-based variant of shutil.copyfileobj() is used.
+
+If the fast-copy operation fails and no data was written in the destination file then shutil will silently fallback on using less efficient copyfileobj() function internally.
+
+バージョン 3.8 で変更.
+
+copytree の例
+以下は前述の copytree() 関数のドキュメント文字列を省略した実装例です。本モジュールで提供される他の関数の使い方を示しています。
+
+def copytree(src, dst, symlinks=False):
+    names = os.listdir(src)
+    os.makedirs(dst)
+    errors = []
+    for name in names:
+        srcname = os.path.join(src, name)
+        dstname = os.path.join(dst, name)
+        try:
+            if symlinks and os.path.islink(srcname):
+                linkto = os.readlink(srcname)
+                os.symlink(linkto, dstname)
+            elif os.path.isdir(srcname):
+                copytree(srcname, dstname, symlinks)
+            else:
+                copy2(srcname, dstname)
+            # XXX What about devices, sockets etc.?
+        except OSError as why:
+            errors.append((srcname, dstname, str(why)))
+        # catch the Error from the recursive copytree so that we can
+        # continue with other files
+        except Error as err:
+            errors.extend(err.args[0])
+    try:
+        copystat(src, dst)
+    except OSError as why:
+        # can't copy file access times on Windows
+        if why.winerror is None:
+            errors.extend((src, dst, str(why)))
+    if errors:
+        raise Error(errors)
+ignore_patterns() ヘルパ関数を利用する、もう1つの例です。
+
+from shutil import copytree, ignore_patterns
+
+copytree(source, destination, ignore=ignore_patterns('*.pyc', 'tmp*'))
+この例では、 .pyc ファイルと、 tmp で始まる全てのファイルやディレクトリを除いて、全てをコピーします。
+
+ignore 引数にロギングさせる別の例です。
+
+from shutil import copytree
+import logging
+
+def _logpath(path, names):
+    logging.info('Working in %s', path)
+    return []   # nothing will be ignored
+
+copytree(source, destination, ignore=_logpath)
+rmtree の例
+次の例は、Windows で一部のファイルが読み取り専用のビットセットを含む場合に、ディレクトリツリーを削除する方法を示します。onerror コールバックを使用して、読み取り専用のビットを消去し、削除を再試行します。結果として失敗が発生した場合、それらは伝搬されます:
+
+import os, stat
+import shutil
+
+def remove_readonly(func, path, _):
+    "Clear the readonly bit and reattempt the removal"
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+shutil.rmtree(directory, onerror=remove_readonly)
+アーカイブ化操作
+バージョン 3.2 で追加.
+
+バージョン 3.5 で変更: xztar 形式のサポートが追加されました。
+
+圧縮とアーカイブ化されているファイルの読み書きの高水準なユーティリティも提供されています。これらは zipfile 、 tarfile モジュールに依拠しています。
+
+shutil.make_archive(base_name, format[, root_dir[, base_dir[, verbose[, dry_run[, owner[, group[, logger]]]]]]])
+アーカイブファイル (zip や tar) を作成してその名前を返します。
+
+base_name は、作成するファイルの、パスを含み、フォーマットごとの拡張子を抜いた名前です。 format はアーカイブフォーマットで "zip" (zlib モジュールが利用可能な場合), "tar", "gztar" (zlib モジュールが利用可能な場合), "bztar" (bz2 モジュールが利用可能な場合), "xztar" (lzma モジュールが利用可能な場合) のいずれかです。
+
+root_dir is a directory that will be the root directory of the archive, all paths in the archive will be relative to it; for example, we typically chdir into root_dir before creating the archive.
+
+base_dir is the directory where we start archiving from; i.e. base_dir will be the common prefix of all files and directories in the archive. base_dir must be given relative to root_dir. See Archiving example with base_dir for how to use base_dir and root_dir together.
+
+root_dir と base_dir のどちらも、デフォルトはカレントディレクトリです。
+
+dry_run が真の場合、アーカイブは作成されませんが実行される操作は logger に記録されます。
+
+owner と group は、tar アーカイブを作成するときに使われます。デフォルトでは、カレントのオーナーとグループを使います。
+
+logger は PEP 282 に互換なオブジェクトでなければなりません。これは普通は logging.Logger のインスタンスです。
+
+verbose 引数は使用されず、非推奨です。
+
+Raises an auditing event shutil.make_archive with arguments base_name, format, root_dir, base_dir.
+
+バージョン 3.8 で変更: The modern pax (POSIX.1-2001) format is now used instead of the legacy GNU format for archives created with format="tar".
+
+shutil.get_archive_formats()
+アーカイブ化をサポートしているフォーマットのリストを返します。返されるシーケンスのそれぞれの要素は、タプル (name, description) です。
+
+デフォルトでは、 shutil は次のフォーマットを提供しています。
+
+zip: ZIP ファイル (zlib モジュールが利用可能な場合)。
+
+tar: Uncompressed tar file. Uses POSIX.1-2001 pax format for new archives.
+
+gztar: gzip で圧縮された tar ファイル (zlib モジュールが利用可能な場合)。
+
+bztar: bzip2 で圧縮された tar ファイル (bz2 モジュールが利用可能な場合)。
+
+xztar: xz で圧縮された tar ファイル (lzma モジュールが利用可能な場合)。
+
+register_archive_format() を使って、新しいフォーマットを登録したり、既存のフォーマットに独自のアーカイバを提供したりできます。
+
+shutil.register_archive_format(name, function[, extra_args[, description]])
+アーカイバをフォーマット name に登録します。
+
+function はアーカイブのアンパックに使用される呼び出し可能オブジェクトです。funciton は作成するファイルの base_name、続いてアーカイブを開始する元の base_dir (デフォルトは os.curdir) を受け取ります。さらなる引数は、次のキーワード引数として渡されます: owner, group, dry_run ならびに logger (make_archive() に渡されます)。
+
+extra_args は、与えられた場合、 (name, value) の対のシーケンスで、アーカイバ呼び出し可能オブジェクトが使われるときに追加のキーワード引数として使われます。
+
+description は、アーカイバのリストを返す get_archive_formats() で使われます。デフォルトでは空の文字列です。
+
+shutil.unregister_archive_format(name)
+アーカイブフォーマット name を、サポートされているフォーマットのリストから取り除きます。
+
+shutil.unpack_archive(filename[, extract_dir[, format]])
+アーカイブをアンパックします。 filename はアーカイブのフルパスです。
+
+extract_dir はアーカイブをアンパックする先のディレクトリ名です。指定されなかった場合は現在の作業ディレクトリを利用します。
+
+format はアーカイブフォーマットで、 "zip", "tar", "gztar", "bztar", "xztar" あるいは register_unpack_format() で登録したその他のフォーマットのどれかです。 指定されなかった場合、 unpack_archive() はアーカイブファイル名の拡張子に対して登録されたアンパッカーを利用します。 アンパッカーが見つからなかった場合、 ValueError を発生させます。
+
+Raises an auditing event shutil.unpack_archive with arguments filename, extract_dir, format.
+
+バージョン 3.7 で変更: filename と extract_dir が path-like object を受け付けるようになりました。
+
+shutil.register_unpack_format(name, extensions, function[, extra_args[, description]])
+アンパック用のフォーマットを登録します。 name はフォーマット名で、 extensions はそのフォーマットに対応する拡張子 (例えば Zip ファイルに対して .zip) のリストです。
+
+function はアーカイブをアンパックするための呼び出し可能オブジェクトです。このオブジェクトはアーカイブのパスと、アーカイブを展開するディレクトリのパスを引数に受け取ります。
+
+extra_args は省略可能な引数で、呼び出し可能オブジェクトに渡すキーワード引数を (name, value) というタプルのシーケンスにしたものです。
+
+フォーマットの説明として description を指定することができます。これは get_unpack_formats() 関数によって返されます。
+
+shutil.unregister_unpack_format(name)
+アンパックフォーマットを登録解除します。 name はフォーマットの名前です。
+
+shutil.get_unpack_formats()
+登録されているすべてのアンパックフォーマットをリストで返します。戻り値のリストの各要素は (name, extensions, description) の形のタプルです。
+
+デフォルトでは、 shutil は次のフォーマットを提供しています。
+
+zip: ZIP ファイル (対応するモジュールが利用可能な場合にのみ圧縮ファイルはアンパックされます)。
+
+tar: 圧縮されていない tar ファイル。
+
+gztar: gzip で圧縮された tar ファイル (zlib モジュールが利用可能な場合)。
+
+bztar: bzip2 で圧縮された tar ファイル (bz2 モジュールが利用可能な場合)。
+
+xztar: xz で圧縮された tar ファイル (lzma モジュールが利用可能な場合)。
+
+register_unpack_format() を使って新しいフォーマットや既存のフォーマットに対する別のアンパッカーを登録することができます。
+
+アーカイブ化の例
+この例では、ユーザの .ssh ディレクトリにあるすべてのファイルを含む、 gzip された tar ファイルアーカイブを作成します:
+
+>>>
+>>> from shutil import make_archive
+>>> import os
+>>> archive_name = os.path.expanduser(os.path.join('~', 'myarchive'))
+>>> root_dir = os.path.expanduser(os.path.join('~', '.ssh'))
+>>> make_archive(archive_name, 'gztar', root_dir)
+'/Users/tarek/myarchive.tar.gz'
+結果のアーカイブは、以下のものを含みます:
+
+$ tar -tzvf /Users/tarek/myarchive.tar.gz
+drwx------ tarek/staff       0 2010-02-01 16:23:40 ./
+-rw-r--r-- tarek/staff     609 2008-06-09 13:26:54 ./authorized_keys
+-rwxr-xr-x tarek/staff      65 2008-06-09 13:26:54 ./config
+-rwx------ tarek/staff     668 2008-06-09 13:26:54 ./id_dsa
+-rwxr-xr-x tarek/staff     609 2008-06-09 13:26:54 ./id_dsa.pub
+-rw------- tarek/staff    1675 2008-06-09 13:26:54 ./id_rsa
+-rw-r--r-- tarek/staff     397 2008-06-09 13:26:54 ./id_rsa.pub
+-rw-r--r-- tarek/staff   37192 2010-02-06 18:23:10 ./known_hosts
+Archiving example with base_dir
+In this example, similar to the one above, we show how to use make_archive(), but this time with the usage of base_dir. We now have the following directory structure:
+
+$ tree tmp
+tmp
+└── root
+    └── structure
+        ├── content
+            └── please_add.txt
+        └── do_not_add.txt
+In the final archive, please_add.txt should be included, but do_not_add.txt should not. Therefore we use the following:
+
+>>>
+>>> from shutil import make_archive
+>>> import os
+>>> archive_name = os.path.expanduser(os.path.join('~', 'myarchive'))
+>>> make_archive(
+...     archive_name,
+...     'tar',
+...     root_dir='tmp/root',
+...     base_dir='structure/content',
+... )
+'/Users/tarek/my_archive.tar'
+Listing the files in the resulting archive gives us:
+
+$ python -m tarfile -l /Users/tarek/myarchive.tar
+structure/content/
+structure/content/please_add.txt
+出力ターミナルのサイズの取得
+shutil.get_terminal_size(fallback=(columns, lines))
+ターミナルウィンドウのサイズを取得します。
+
+幅と高さについて、それぞれ COLUMNS と LINES という環境変数をチェックします。その変数が定義されていて値が正の整数であればそれを利用します。
+
+典型的な COLUMNS や LINES が定義されていない場合には、 sys.__stdout__ に接続されているターミナルに os.get_terminal_size() を呼び出して問い合わせます。
+
+システムが対応していない場合やターミナルに接続していないなどの理由でターミナルサイズの問い合わせに失敗した場合、 fallback 引数に与えられた値を利用します。 fallback のデフォルト値は (80, 24) で、これは多くのターミナルエミュレーターが利用しているデフォルトサイズです。
+
+戻り値は os.terminal_size 型の名前付きタプルです。
+
+参考: The Single UNIX Specification, Version 2, Other Environment Variables.
+
+バージョン 3.3 で追加.

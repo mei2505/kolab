@@ -1,0 +1,2887 @@
+numbers --- 数の抽象基底クラス
+ソースコード: Lib/numbers.py
+
+numbers モジュール (PEP 3141) は数の 抽象基底クラス の階層を定義します。この階層では、さらに多くの演算が順番に定義されます。このモジュールで定義される型はどれもインスタンス化できません。
+
+class numbers.Number
+数の階層の根。引数 x が、種類は何であれ、数であるということだけチェックしたい場合、isinstance(x, Number) が使えます。
+
+数値塔
+class numbers.Complex
+この型のサブクラスは複素数を表し、組み込みの complex 型を受け付ける演算を含みます。それらは: complex および bool への変換、 real, imag, +, -, *, /, abs(), conjugate(), ==, != です。 - と != 以外の全てのものは抽象メソッドや抽象プロパティです。
+
+real
+抽象プロパティ。この数の実部を取り出します。
+
+imag
+抽象プロパティ。この数の虚部を取り出します。
+
+abstractmethod conjugate()
+抽象プロパティ。複素共役を返します。たとえば、(1+3j).conjugate() == (1-3j) です。
+
+class numbers.Real
+Real は、Complex 上に、 実数に対して行える演算を加えます。
+
+簡潔に言うとそれらは: float への変換, math.trunc(), round(), math.floor(), math.ceil(), divmod(), //, %, <, <=, > および >= です。
+
+Real はまた complex(), real, imag および conjugate() のデフォルトを提供します。
+
+class numbers.Rational
+Real をサブタイプ化し numerator と denominator のプロパティを加えたものです。これらは既約分数のものでなければなりません。この他に float() のデフォルトも提供します。
+
+numerator
+抽象プロパティ。
+
+denominator
+抽象プロパティ。
+
+class numbers.Integral
+Rational をサブタイプ化し int への変換が加わります。 float(), numerator, denominator のデフォルトを提供します。 ** に対する抽象メソッドと、ビット列演算 <<, >>, &, ^, |, ~ を追加します。
+
+型実装者のための注意事項
+実装する人は等しい数が等しく扱われるように同じハッシュを与えるように気を付けねばなりません。これは二つの異なった実数の拡張があるような場合にはややこしいことになるかもしれません。たとえば、 fractions.Fraction は hash() を以下のように実装しています:
+
+def __hash__(self):
+    if self.denominator == 1:
+        # Get integers right.
+        return hash(self.numerator)
+    # Expensive check, but definitely correct.
+    if self == float(self):
+        return hash(float(self))
+    else:
+        # Use tuple's hash to avoid a high collision rate on
+        # simple fractions.
+        return hash((self.numerator, self.denominator))
+さらに数のABCを追加する
+数に対する ABC が他にも多く存在しうることは、言うまでもありません。それらの ABC を階層に追加する可能性が閉ざされるとしたら、その階層は貧相な階層でしかありません。たとえば、 MyFoo を Complex と Real の間に付け加えるには、次のようにします:
+
+class MyFoo(Complex): ...
+MyFoo.register(Real)
+算術演算の実装
+算術演算を実装する際には、型混合(mixed-mode)演算を行うと、作者が両方の引数の型について知っているような実装を呼び出すか、両方の引数をそれぞれ最も似ている組み込み型に変換してその型で演算を行うか、どちらになるのが望ましい実装です。つまり、 Integral のサブタイプに対しては __add__() と __radd__() を次のように定義するべきです:
+
+class MyIntegral(Integral):
+
+    def __add__(self, other):
+        if isinstance(other, MyIntegral):
+            return do_my_adding_stuff(self, other)
+        elif isinstance(other, OtherTypeIKnowAbout):
+            return do_my_other_adding_stuff(self, other)
+        else:
+            return NotImplemented
+
+    def __radd__(self, other):
+        if isinstance(other, MyIntegral):
+            return do_my_adding_stuff(other, self)
+        elif isinstance(other, OtherTypeIKnowAbout):
+            return do_my_other_adding_stuff(other, self)
+        elif isinstance(other, Integral):
+            return int(other) + int(self)
+        elif isinstance(other, Real):
+            return float(other) + float(self)
+        elif isinstance(other, Complex):
+            return complex(other) + complex(self)
+        else:
+            return NotImplemented
+ここには5つの異なる Complex のサブクラス間の混在型の演算があります。上のコードの中で MyIntegral と OtherTypeIKnowAbout に触れない部分を "ボイラープレート" と呼ぶことにしましょう。 a を Complex のサブタイプである A のインスタンス (a : A <: Complex)、同様に b : B <: Complex として、 a + b を考えます:
+
+A が b を受け付ける __add__() を定義している場合、何も問題はありません。
+
+A でボイラープレート部分に落ち込み、その結果 __add__() が値を返すならば、 B に良く考えられた __radd__() が定義されている可能性を見逃してしまいますので、ボイラープレートは __add__() から NotImplemented を返すのが良いでしょう。(若しくは、 A はまったく __add__() を実装すべきではなかったかもしれません。)
+
+そうすると、 B の __radd__() にチャンスが巡ってきます。ここで a が受け付けられるならば、結果は上々です。
+
+ここでボイラープレートに落ち込むならば、もう他に試すべきメソッドはありませんので、デフォルト実装の出番です。
+
+もし B <: A ならば、Python は A.__add__ の前に B.__radd__ を試します。これで良い理由は、 A についての知識を持って実装しており、 Complex に委ねる前にこれらのインスタンスを扱えるはずだからです。
+
+もし A <: Complex かつ B <: Real で他に共有された知識が無いならば、適切な共通の演算は組み込みの complex を使ったものになり、どちらの __radd__() ともそこに着地するでしょうから、 a+b == b+a です。
+
+ほとんどの演算はどのような型についても非常に良く似ていますので、与えられた演算子について順結合(forward)および逆結合(reverse)のメソッドを生成する支援関数を定義することは役に立ちます。たとえば、 fractions.Fraction では次のようなものを利用しています:
+
+def _operator_fallbacks(monomorphic_operator, fallback_operator):
+    def forward(a, b):
+        if isinstance(b, (int, Fraction)):
+            return monomorphic_operator(a, b)
+        elif isinstance(b, float):
+            return fallback_operator(float(a), b)
+        elif isinstance(b, complex):
+            return fallback_operator(complex(a), b)
+        else:
+            return NotImplemented
+    forward.__name__ = '__' + fallback_operator.__name__ + '__'
+    forward.__doc__ = monomorphic_operator.__doc__
+
+    def reverse(b, a):
+        if isinstance(a, Rational):
+            # Includes ints.
+            return monomorphic_operator(a, b)
+        elif isinstance(a, numbers.Real):
+            return fallback_operator(float(a), float(b))
+        elif isinstance(a, numbers.Complex):
+            return fallback_operator(complex(a), complex(b))
+        else:
+            return NotImplemented
+    reverse.__name__ = '__r' + fallback_operator.__name__ + '__'
+    reverse.__doc__ = monomorphic_operator.__doc__
+
+    return forward, reverse
+
+def _add(a, b):
+    """a + b"""
+    return Fraction(a.numerator * b.denominator +
+                    b.numerator * a.denominator,
+                    a.denominator * b.denominator)
+
+__add__, __radd__ = _operator_fallbacks(_add, operator.add)
+
+# ...
+
+math --- 数学関数
+このモジュールは、 C 標準で定義された数学関数へのアクセスを提供します。
+
+これらの関数で複素数を使うことはできません。複素数に対応する必要があるならば、 cmath モジュールにある同じ名前の関数を使ってください。ほとんどのユーザーは複素数を理解するのに必要なだけの数学を勉強したくないので、複素数に対応した関数と対応していない関数の区別がされています。これらの関数では複素数が利用できないため、引数に複素数を渡されると、複素数の結果が返るのではなく例外が発生します。その結果、どういった理由で例外が送出されたかに早い段階で気づく事ができます。
+
+このモジュールでは次の関数を提供しています。明示的な注記のない限り、戻り値は全て浮動小数点数になります。
+
+数論および数表現の関数
+math.ceil(x)
+x の「天井」 (x 以上の最小の整数) を返します。 x が浮動小数点数でなければ、内部的に x.__ceil__() が実行され、 Integral 値が返されます。
+
+math.comb(n, k)
+Return the number of ways to choose k items from n items without repetition and without order.
+
+Evaluates to n! / (k! * (n - k)!) when k <= n and evaluates to zero when k > n.
+
+Also called the binomial coefficient because it is equivalent to the coefficient of k-th term in polynomial expansion of the expression (1 + x) ** n.
+
+Raises TypeError if either of the arguments are not integers. Raises ValueError if either of the arguments are negative.
+
+バージョン 3.8 で追加.
+
+math.copysign(x, y)
+x の大きさ (絶対値) で y と同じ符号の浮動小数点数を返します。符号付きのゼロをサポートしているプラットフォームでは、copysign(1.0, -0.0) は -1.0 を返します。
+
+math.fabs(x)
+x の絶対値を返します。
+
+math.factorial(x)
+x の階乗を整数で返します。 x が整数でないか、負の数の場合は、 ValueError を送出します。
+
+バージョン 3.9 で非推奨: Accepting floats with integral values (like 5.0) is deprecated.
+
+math.floor(x)
+x の「床」 (x 以下の最大の整数) を返します。 x が浮動小数点数でなければ、内部的に x.__floor__() が実行され、 Integral 値が返されます。
+
+math.fmod(x, y)
+プラットフォームの C ライブラリで定義されている fmod(x, y) を返します。 Python の x % y という式は必ずしも同じ結果を返さないということに注意してください。 C 標準の要求では、 fmod() は除算の結果が x と同じ符号になり、大きさが abs(y) より小さくなるような整数 n については fmod(x, y) が厳密に (数学的に、つまり無限の精度で) x - n*y と等価であるよう求めています。 Python の x % y は、 y と同じ符号の結果を返し、浮動小数点の引数に対して厳密な解を出せないことがあります。例えば、 fmod(-1e-100, 1e100) は -1e-100 ですが、 Python の -1e-100 % 1e100 は 1e100-1e-100 になり、浮動小数点型で厳密に表現できず、ややこしいことに 1e100 に丸められます。このため、一般には浮動小数点の場合には関数 fmod() 、整数の場合には x % y を使う方がよいでしょう。
+
+math.frexp(x)
+x の仮数と指数を (m, e) のペアとして返します。m はfloat型で、e は厳密に x == m * 2**e であるような整数型です。x がゼロの場合は、(0.0, 0) を返し、それ以外の場合は、0.5 <= abs(m) < 1 を返します。これは浮動小数点型の内部表現を可搬性を保ったまま "分解 (pick apart)" するためです。
+
+math.fsum(iterable)
+iterable 中の値の浮動小数点数の正確な和を返します。複数の部分和を追跡することで精度のロスを防ぎます:
+
+>>>
+>>> sum([.1, .1, .1, .1, .1, .1, .1, .1, .1, .1])
+0.9999999999999999
+>>> fsum([.1, .1, .1, .1, .1, .1, .1, .1, .1, .1])
+1.0
+アルゴリズムの正確性は、 IEEE-754 演算の保証と、丸めモードが偶数丸め (half-even) である典型的な場合に依存します。Windows 以外のいくつかのビルドでは、下層の C ライブラリが拡張精度の加算を行い、時々計算途中の和を double 型へ丸めてしまうため、最下位ビットが消失することがあります。
+
+より詳細な議論と代替となる二つのアプローチについては、ASPN cookbook recipes for accurate floating point summation をご覧下さい。
+
+math.gcd(*integers)
+Return the greatest common divisor of the specified integer arguments. If any of the arguments is nonzero, then the returned value is the largest positive integer that is a divisor of all arguments. If all arguments are zero, then the returned value is 0. gcd() without arguments returns 0.
+
+バージョン 3.5 で追加.
+
+バージョン 3.9 で変更: Added support for an arbitrary number of arguments. Formerly, only two arguments were supported.
+
+math.isclose(a, b, *, rel_tol=1e-09, abs_tol=0.0)
+値 a と b が互いに近い場合 True を、そうでない場合は False を返します。
+
+2値が近いと見なされるかどうかは与えられた絶対または相対許容差により決定されます。
+
+rel_tol は相対許容差、すなわち a と b の絶対値の大きい方に対する a と b の許容される最大の差です。 例えば許容差を 5% に設定する場合 rel_tol=0.05 を渡します。 デフォルトの許容差は 1e-09 で、2値が9桁同じことを保証します。 rel_tol は0より大きくなければなりません。
+
+abs_tol は最小の絶対許容差です。0に近い値を比較するのに有用です。abs_tol は0より大きくなければなりません。
+
+エラーが起こらなければ結果は abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol) です。
+
+IEEE 754 特殊値 NaN、inf、-inf は IEEE の規則に従って処理されます。 具体的には、NaN は自身を含めたあらゆる値に近いとは見なされません。 inf と -inf は自身とのみ近いと見なされます。
+
+バージョン 3.5 で追加.
+
+参考 PEP 485 -- A function for testing approximate equality
+math.isfinite(x)
+x が無限でも NaN でもない場合に True を返します。それ以外の時には False を返します。 (注意: 0.0 は有限数と扱われます。)
+
+バージョン 3.2 で追加.
+
+math.isinf(x)
+x が正ないし負の無限数ならば True を返します。それ以外の時には False を返します。
+
+math.isnan(x)
+x がNaN (not a number、非数) の時に True を返します。それ以外の場合には False を返します。
+
+math.isqrt(n)
+Return the integer square root of the nonnegative integer n. This is the floor of the exact square root of n, or equivalently the greatest integer a such that a² ≤ n.
+
+For some applications, it may be more convenient to have the least integer a such that n ≤ a², or in other words the ceiling of the exact square root of n. For positive n, this can be computed using a = 1 + isqrt(n - 1).
+
+バージョン 3.8 で追加.
+
+math.lcm(*integers)
+Return the least common multiple of the specified integer arguments. If all arguments are nonzero, then the returned value is the smallest positive integer that is a multiple of all arguments. If any of the arguments is zero, then the returned value is 0. lcm() without arguments returns 1.
+
+バージョン 3.9 で追加.
+
+math.ldexp(x, i)
+x * (2**i) を返します。これは本質的に frexp() の逆関数です。
+
+math.modf(x)
+x の小数部分と整数部分を返します。両方の結果は x の符号を受け継ぎます。整数部はfloat型で返されます。
+
+math.nextafter(x, y)
+Return the next floating-point value after x towards y.
+
+If x is equal to y, return y.
+
+例:
+
+math.nextafter(x, math.inf) goes up: towards positive infinity.
+
+math.nextafter(x, -math.inf) goes down: towards minus infinity.
+
+math.nextafter(x, 0.0) goes towards zero.
+
+math.nextafter(x, math.copysign(math.inf, x)) goes away from zero.
+
+See also math.ulp().
+
+バージョン 3.9 で追加.
+
+math.perm(n, k=None)
+Return the number of ways to choose k items from n items without repetition and with order.
+
+Evaluates to n! / (n - k)! when k <= n and evaluates to zero when k > n.
+
+If k is not specified or is None, then k defaults to n and the function returns n!.
+
+Raises TypeError if either of the arguments are not integers. Raises ValueError if either of the arguments are negative.
+
+バージョン 3.8 で追加.
+
+math.prod(iterable, *, start=1)
+Calculate the product of all the elements in the input iterable. The default start value for the product is 1.
+
+When the iterable is empty, return the start value. This function is intended specifically for use with numeric values and may reject non-numeric types.
+
+バージョン 3.8 で追加.
+
+math.remainder(x, y)
+IEEE 754 標準方式の x を y で割った剰余を返します。 有限な x と有限な y では、分数 x / y の厳密な値に最も近い整数を n として、 x - n*y がこの返り値となります。 x / y が隣り合う 2 つの整数のちょうど真ん中だった場合は、最も近い 偶数 が n として使われます。 従って、剰余 r = remainder(x, y) は常に abs(r) <= 0.5 * abs(y) を満たします。
+
+特殊なケースについては IEEE 754 に従います: 任意の有限な x に対する remainder(x, math.inf) 、および任意の非 NaN の x に対する remainder(x, 0) と remainder(math.inf, x) は ValueError を送出します。 剰余演算の結果がゼロの場合、そのゼロは x と同じ符号を持ちます。
+
+IEEE 754 の二進浮動小数点数を使用しているプラットフォームでは、この演算の結果は常に厳密に表現可能です。丸め誤差は発生しません。
+
+バージョン 3.7 で追加.
+
+math.trunc(x)
+x の Integral 値 (たいていは整数) へ切り捨てられた Real 値を返します。 x.__trunc__() に処理を委譲します。
+
+math.ulp(x)
+Return the value of the least significant bit of the float x:
+
+If x is a NaN (not a number), return x.
+
+If x is negative, return ulp(-x).
+
+If x is a positive infinity, return x.
+
+If x is equal to zero, return the smallest positive denormalized representable float (smaller than the minimum positive normalized float, sys.float_info.min).
+
+If x is equal to the largest positive representable float, return the value of the least significant bit of x, such that the first float smaller than x is x - ulp(x).
+
+Otherwise (x is a positive finite number), return the value of the least significant bit of x, such that the first float bigger than x is x + ulp(x).
+
+ULP stands for "Unit in the Last Place".
+
+See also math.nextafter() and sys.float_info.epsilon.
+
+バージョン 3.9 で追加.
+
+frexp() と modf() は C のものとは異なった呼び出し/返しパターンを持っていることに注意してください。引数を1つだけ受け取り、1組のペアになった値を返すので、2つ目の戻り値を '出力用の引数' 経由で返したりはしません (Python には出力用の引数はありません)。
+
+ceil() 、 floor() 、および modf() 関数については、非常に大きな浮動小数点数が 全て 整数そのものになるということに注意してください。通常、Python の浮動小数点型は 53 ビット以上の精度をもたない (プラットフォームにおける C double 型と同じ) ので、結果的に abs(x) >= 2**52 であるような浮動小数点型 x は小数部分を持たなくなるのです。
+
+指数関数と対数関数
+math.exp(x)
+e = 2.718281... を自然対数の底として、 e の x 乗を返します。 この値は、通常は math.e ** x や pow(math.e, x) よりも精度が高いです。
+
+math.expm1(x)
+e の x 乗から 1 を引いた値を返します。 ここでの e は自然対数の底です。 小さい浮動小数点数の x において、減算 exp(x) - 1 は 桁落ち が発生します。 expm1() 関数は、この量を最大精度で計算する方法を提供します。
+
+>>>
+>>> from math import exp, expm1
+>>> exp(1e-5) - 1  # gives result accurate to 11 places
+1.0000050000069649e-05
+>>> expm1(1e-5)    # result accurate to full precision
+1.0000050000166668e-05
+バージョン 3.2 で追加.
+
+math.log(x[, base])
+引数が1つの場合、x の (e を底とする)自然対数を返します。
+
+引数が2つの場合、log(x)/log(base) として求められる base を底とした x の対数を返します。
+
+math.log1p(x)
+1+x の自然対数(つまり底 e の対数)を返します。結果はゼロに近い x に対して正確になるような方法で計算されます。
+
+math.log2(x)
+2を底とする x の対数を返します。この関数は、一般に log(x, 2) よりも正確な値を返します。
+
+バージョン 3.3 で追加.
+
+参考 int.bit_length() は、その整数を二進法で表すのに何ビット必要かを返す関数です。符号と先頭のゼロは無視されます。
+math.log10(x)
+x の10を底とした対数(常用対数)を返します。この関数は通常、log(x, 10) よりも高精度です。
+
+math.pow(x, y)
+x の y 乗を返します。例外的な場合については、 C99 標準の付録 'F' に可能な限り従います。特に、 pow(1.0, x) と pow(x, 0.0) は、たとえ x が零や NaN でも、常に 1.0 を返します。もし x と y の両方が有限の値で、 x が負、 y が整数でない場合、 pow(x, y) は未定義で、 ValueError を送出します。
+
+組み込みの ** 演算子と違って、 math.pow() は両方の引数を float 型に変換します。正確な整数の冪乗を計算するには ** もしくは組み込みの pow() 関数を使ってください。
+
+math.sqrt(x)
+x の平方根を返します。
+
+三角関数
+math.acos(x)
+Return the arc cosine of x, in radians. The result is between 0 and pi.
+
+math.asin(x)
+Return the arc sine of x, in radians. The result is between -pi/2 and pi/2.
+
+math.atan(x)
+Return the arc tangent of x, in radians. The result is between -pi/2 and pi/2.
+
+math.atan2(y, x)
+atan(y / x) を、ラジアンで返します。戻り値は -pi から pi の間になります。この角度は、極座標平面において原点から (x, y) へのベクトルが X 軸の正の方向となす角です。 atan2() のポイントは、両方の入力の符号が既知であるために、位相角の正しい象限を計算できることにあります。例えば、 atan(1) と atan2(1, 1) はいずれも pi/4 ですが、 atan2(-1, -1) は -3*pi/4 になります。
+
+math.cos(x)
+x ラジアンの余弦を返します。
+
+math.dist(p, q)
+Return the Euclidean distance between two points p and q, each given as a sequence (or iterable) of coordinates. The two points must have the same dimension.
+
+およそ次と等価です:
+
+sqrt(sum((px - qx) ** 2.0 for px, qx in zip(p, q)))
+バージョン 3.8 で追加.
+
+math.hypot(*coordinates)
+Return the Euclidean norm, sqrt(sum(x**2 for x in coordinates)). This is the length of the vector from the origin to the point given by the coordinates.
+
+For a two dimensional point (x, y), this is equivalent to computing the hypotenuse of a right triangle using the Pythagorean theorem, sqrt(x*x + y*y).
+
+バージョン 3.8 で変更: Added support for n-dimensional points. Formerly, only the two dimensional case was supported.
+
+math.sin(x)
+x ラジアンの正弦を返します。
+
+math.tan(x)
+x ラジアンの正接を返します。
+
+角度変換
+math.degrees(x)
+角 x をラジアンから度に変換します。
+
+math.radians(x)
+角 x を度からラジアンに変換します。
+
+双曲線関数
+双曲線関数 は円ではなく双曲線を元にした三角関数のようなものです。
+
+math.acosh(x)
+x の逆双曲線余弦を返します。
+
+math.asinh(x)
+x の逆双曲線正弦を返します。
+
+math.atanh(x)
+x の逆双曲線正接を返します。
+
+math.cosh(x)
+x の双曲線余弦を返します。
+
+math.sinh(x)
+x の双曲線正弦を返します。
+
+math.tanh(x)
+x の双曲線正接を返します。
+
+特殊関数
+math.erf(x)
+x の 誤差関数 を返します。
+
+erf() 関数は、伝統的な統計関数を計算するのに使うことができます。例えば、 累積標準正規分布 を計算する関数は次のように定義できます:
+
+def phi(x):
+    'Cumulative distribution function for the standard normal distribution'
+    return (1.0 + erf(x / sqrt(2.0))) / 2.0
+バージョン 3.2 で追加.
+
+math.erfc(x)
+x の相補誤差関数を返します。相補誤差関数 は 1.0 - erf(x) と定義されます。この関数は、1との引き算では 桁落ち をするような大きな x に対し使われます。
+
+バージョン 3.2 で追加.
+
+math.gamma(x)
+x の ガンマ関数 を返します。
+
+バージョン 3.2 で追加.
+
+math.lgamma(x)
+x のガンマ関数の絶対値の自然対数を返します。
+
+バージョン 3.2 で追加.
+
+定数
+math.pi
+利用可能なだけの精度の数学定数 π = 3.141592... (円周率)。
+
+math.e
+利用可能なだけの精度の数学定数 e = 2.718281... (自然対数の底)。
+
+math.tau
+利用可能なだけの精度の数学定数 τ = 6.283185... です。 タウは 2π に等しい円定数で、円周と半径の比です。 タウについて学ぶには Vi Hart のビデオ Pi is (still) Wrong をチェックして、パイを二倍食べて Tau day を祝い始めましょう！
+
+バージョン 3.6 で追加.
+
+math.inf
+浮動小数の正の無限大です。(負の無限大には -math.inf を使います。) float('inf') の出力と等価です。
+
+バージョン 3.5 で追加.
+
+math.nan
+浮動小数の非数 "not a number" (NaN) です。float('nan') の出力と等価です。
+
+バージョン 3.5 で追加.
+
+CPython implementation detail: math モジュールは、ほとんどが実行プラットフォームにおける C 言語の数学ライブラリ関数に対する薄いラッパでできています。 例外時の挙動は、適切である限り C99 標準の Annex F に従います。 現在の実装では、sqrt(-1.0) や log(0.0) といった (C99 Annex F で不正な演算やゼロ除算を通知することが推奨されている) 不正な操作に対して ValueError を送出し、(例えば exp(1000.0) のような) 演算結果がオーバーフローする場合には OverflowError を送出します。 上記の関数群は、1つ以上の引数が NaN であった場合を除いて NaN を返しません。 引数に NaN が与えられた場合は、殆どの関数は NaN を返しますが、 (C99 Annex F に従って) 別の動作をする場合があります。 例えば、 pow(float('nan'), 0.0) や hypot(float('nan'), float('inf')) といった場合です。 訳注: 例外が発生せずに結果が返ると、計算結果がおかしくなった原因が複素数を渡したためだということに気づくのが遅れる可能性があります。
+
+Python は signaling NaN と quiet NaN を区別せず、signaling NaN に対する挙動は未定義とされていることに注意してください。典型的な挙動は、全ての NaN を quiet NaN として扱うことです。
+
+cmath --- 複素数のための数学関数
+このモジュールは、複素数を扱う数学関数へのアクセスを提供しています。 このモジュール中の関数は整数、浮動小数点数または複素数を引数にとります。 また、 __complex__() または __float__() どちらかのメソッドを提供している Python オブジェクトも受け付けます。 これらのメソッドはそのオブジェクトを複素数または浮動小数点数に変換するのにそれぞれ使われ、呼び出された関数はそうして変換された結果を利用します。
+
+注釈 ハードウェア及びシステムレベルでの符号付きゼロのサポートがあるプラットフォームでは、分枝切断 (branch cut) の関わる関数において切断された 両側 の分枝で連続になります。ゼロの符号でどちらの分枝であるかを区別するのです。符号付きゼロがサポートされないプラットフォームでは連続性は以下の仕様で述べるようになります。
+極座標変換
+Python の複素数 z は内部的には 直交座標 もしくは デカルト座標 と呼ばれる座標を使って格納されています。この座標はその複素数の 実部 z.real と 虚部 z.imag で決まります。言い換えると:
+
+z == z.real + z.imag*1j
+極座標 は複素数を表現する別の方法です。極座標では、複素数 z は半径 r と位相角 phi で定義されます。半径 r は z から原点までの距離です。位相 phi は x 軸の正の部分から原点と z を結んだ線分までの角度を反時計回りにラジアンで測った値です。
+
+次の関数はネイティブの直交座標を極座標に変換したりその逆を行うのに使えます。
+
+cmath.phase(x)
+x の位相 (x の 偏角 とも呼びます) を浮動小数点数で返します。phase(x) は math.atan2(x.imag, x.real) と同等です。返り値は [-π, π] の範囲にあり、この演算の分枝切断は負の実軸に沿って延びていて、上から連続です。(現在のほとんどのシステムはそうですが) 符号付きゼロをサポートしているシステムでは、結果の符号は x.imag がゼロであってさえ x.imag の符号と等しくなります:
+
+>>>
+>>> phase(complex(-1.0, 0.0))
+3.141592653589793
+>>> phase(complex(-1.0, -0.0))
+-3.141592653589793
+注釈 複素数 x のモジュラス (絶対値) は組み込みの abs() 関数で計算できます。この演算を行う cmath モジュールの関数はありません。
+cmath.polar(x)
+x の極座標表現を返します。x の半径 r と x の位相 phi の組 (r, phi) を返します。polar(x) は (abs(x), phase(x)) に等しいです。
+
+cmath.rect(r, phi)
+極座標 r, phi を持つ複素数 x を返します。値は r * (math.cos(phi) + math.sin(phi)*1j) に等しいです。
+
+指数関数と対数関数
+cmath.exp(x)
+e を自然対数の底として、 e の x 乗を返します。
+
+cmath.log(x[, base])
+base を底とする x の対数を返します。もし base が指定されていない場合には、x の自然対数を返します。分枝切断を一つもち、0 から負の実数軸に沿って -∞ へと延びており、上から連続しています。
+
+cmath.log10(x)
+x の底を 10 とする対数を返します。 log() と同じ分枝切断を持ちます。
+
+cmath.sqrt(x)
+x の平方根を返します。 log() と同じ分枝切断を持ちます。
+
+三角関数
+cmath.acos(x)
+x の逆余弦を返します。この関数には二つの分枝切断 (branch cut) があります: 一つは 1 から右側に実数軸に沿って∞へと延びていて、下から連続しています。もう一つは -1 から左側に実数軸に沿って -∞へと延びていて、上から連続しています。
+
+cmath.asin(x)
+x の逆正弦を返します。 acos() と同じ分枝切断を持ちます。
+
+cmath.atan(x)
+x の逆正接を返します。二つの分枝切断があります: 一つは 1j から虚数軸に沿って ∞j へと延びており、右から連続です。もう一つは -1j から虚数軸に沿って -∞j へと延びており、左から連続です。
+
+cmath.cos(x)
+x の余弦を返します。
+
+cmath.sin(x)
+x の正弦を返します。
+
+cmath.tan(x)
+x の正接を返します。
+
+双曲線関数
+cmath.acosh(x)
+x の逆双曲線余弦を返します。分枝切断が一つあり、1 の左側に実数軸に沿って -∞へと延びていて、上から連続しています。
+
+cmath.asinh(x)
+x の逆双曲線正弦を返します。二つの分枝切断があります: 一つは 1j から虚数軸に沿って ∞j へと延びており、右から連続です。もう一つは -1j から虚数軸に沿って -∞j へと延びており、左から連続です。
+
+cmath.atanh(x)
+x の逆双曲線正接を返します。二つの分枝切断があります: 一つは 1 から実数軸に沿って ∞ へと延びており、下から連続です。もう一つは -1 から実数軸に沿って -∞ へと延びており、上から連続です。
+
+cmath.cosh(x)
+x の双曲線余弦を返します。
+
+cmath.sinh(x)
+x の双曲線正弦を返します。
+
+cmath.tanh(x)
+x の双曲線正接を返します。
+
+類別関数
+cmath.isfinite(x)
+x の実部、虚部ともに有限であれば True を返し、それ以外の場合 False を返します。
+
+バージョン 3.2 で追加.
+
+cmath.isinf(x)
+x の実数部または虚数部が正または負の無限大であれば True を、そうでなければ False を返します。
+
+cmath.isnan(x)
+x の実部と虚部のどちらかが NaN のとき True を返し、それ以外の場合 False を返します。
+
+cmath.isclose(a, b, *, rel_tol=1e-09, abs_tol=0.0)
+値 a と b が互いに近い場合 True を、そうでない場合は False を返します。
+
+2値が近いと見なされるかどうかは与えられた絶対または相対許容差により決定されます。
+
+rel_tol は相対許容差、すなわち a と b の絶対値の大きい方に対する a と b の許容される最大の差です。 例えば許容差を 5% に設定する場合 rel_tol=0.05 を渡します。 デフォルトの許容差は 1e-09 で、2値が9桁同じことを保証します。 rel_tol は0より大きくなければなりません。
+
+abs_tol は最小の絶対許容差です。0に近い値を比較するのに有用です。abs_tol は0より大きくなければなりません。
+
+エラーが起こらなければ結果は abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol) です。
+
+IEEE 754 特殊値 NaN、inf、-inf は IEEE の規則に従って処理されます。 具体的には、NaN は自身を含めたあらゆる値に近いとは見なされません。 inf と -inf は自身とのみ近いと見なされます。
+
+バージョン 3.5 で追加.
+
+参考 PEP 485 -- A function for testing approximate equality
+定数
+cmath.pi
+定数 π (円周率)で、浮動小数点数です。
+
+cmath.e
+定数 e (自然対数の底)で、浮動小数点数です。
+
+cmath.tau
+数学定数 τ で、浮動小数点数です。
+
+バージョン 3.6 で追加.
+
+cmath.inf
+浮動小数点数の正の無限大です。float('inf') と等価です。
+
+バージョン 3.6 で追加.
+
+cmath.infj
+実部がゼロ、虚部が正の無限大の複素数です。complex(0.0, float('inf')) と等価です。
+
+バージョン 3.6 で追加.
+
+cmath.nan
+浮動小数点数の非数 "not a number" (NaN) です。float('nan') と等価です。
+
+バージョン 3.6 で追加.
+
+cmath.nanj
+実部がゼロ、虚部が NaN の複素数です。complex(0.0, float('nan')) と等価です。
+
+バージョン 3.6 で追加.
+
+math と同じような関数が選ばれていますが、全く同じではないので注意してください。機能を二つのモジュールに分けているのは、複素数に興味がなかったり、もしかすると複素数とは何かすら知らないようなユーザがいるからです。そういった人たちはむしろ、 math.sqrt(-1) が複素数を返すよりも例外を送出してほしいと考えます。また、 cmath で定義されている関数は、たとえ結果が実数で表現可能な場合 (虚数部がゼロの複素数) でも、常に複素数を返すので注意してください。
+
+分枝切断 (branch cut) に関する注釈: 分枝切断を持つ曲線上では、与えられた関数は連続ではなくなります。これらは多くの複素関数における必然的な特性です。複素関数を計算する必要がある場合、これらの分枝に関して理解しているものと仮定しています。悟りに至るために何らかの (到底基礎的とはいえない) 複素数に関する書をひもといてください。数値計算を目的とした分枝切断の正しい選択方法についての情報としては、以下がよい参考文献となります:
+
+decimal --- 十進固定及び浮動小数点数の算術演算
+ソースコード: Lib/decimal.py
+
+decimal モジュールは正確に丸められた十進浮動小数点算術をサポートします。 decimal には、 float データ型に比べて、以下のような利点があります:
+
+「(Decimal は) 人々を念頭にデザインされた浮動小数点モデルを元にしており、必然的に最も重要な指針があります -- コンピュータは人々が学校で習った算術と同じように動作する算術を提供しなければならない」 -- 十進数演算仕様より。
+
+十進数を正確に表現できます。 1.1 や 2.2 のような数は、二進数の浮動小数点型では正しく表現できません。エンドユーザは普通、 二進数における 1.1 + 2.2 の近似値が 3.3000000000000003 だからといって、そのように表示してほしいとは考えないものです。
+
+値の正確さは算術にも及びます。十進の浮動小数点による計算では、 0.1 + 0.1 + 0.1 - 0.3 は厳密にゼロに等しくなります。 二進浮動小数点では 5.5511151231257827e-017 になってしまいます。ゼロに近い値とはいえ、この誤差は数値間の等価性テストの信頼性を阻害します。また、誤差が蓄積されることもあります。こうした理由から、数値間の等価性を厳しく保たなければならないようなアプリケーションを考えるなら、十進数による数値表現が望ましいということになります。
+
+decimal モジュールでは、有効桁数の表記が取り入れられており、例えば 1.30 + 1.20 は 2.50 になります。すなわち、末尾のゼロは有効数字を示すために残されます。こうした仕様は通貨計算を行うアプリケーションでは慣例です。乗算の場合、「教科書的な」アプローチでは、乗算の被演算子すべての桁数を使います。例えば、 1.3 * 1.2 は 1.56 になり、 1.30 * 1.20 は 1.5600 になります。
+
+ハードウェアによる 2 進浮動小数点表現と違い、decimal モジュールでは計算精度をユーザが変更できます(デフォルトでは 28 桁です)。この桁数はほとんどの問題解決に十分な大きさです:
+
+>>>
+from decimal import *
+getcontext().prec = 6
+Decimal(1) / Decimal(7)
+Decimal('0.142857')
+getcontext().prec = 28
+Decimal(1) / Decimal(7)
+Decimal('0.1428571428571428571428571429')
+二進と十進の浮動小数点は、いずれも広く公開されている標準仕様のもとに実装されています。組み込みの浮動小数点型では、標準仕様で提唱されている機能のほんのささやかな部分を利用できるにすぎませんが、decimal では標準仕様が要求している全ての機能を利用できます。必要に応じて、プログラマは値の丸めやシグナル処理を完全に制御できます。この中には全ての不正確な操作を例外でブロックして正確な算術を遵守させるオプションもあります。
+
+decimal モジュールは「偏見なく、正確な丸めなしの十進算術(固定小数点算術と呼ばれることもある)と丸めありの浮動小数点数算術」(十進数演算仕様より引用)をサポートするようにデザインされました。
+
+このモジュールは、十進数型、算術コンテキスト (context for arithmetic)、そしてシグナル (signal) という三つの概念を中心に設計されています。
+
+十進数型は変更不能です。これは符号、係数部、そして指数を持ちます。有効桁数を残すために、仮数部の末尾にあるゼロは切り詰められません。 decimal では、 Infinity, -Infinity, および NaN といった特殊な値も定義されています。標準仕様では -0 と +0 も区別します。
+
+算術コンテキストとは、精度や値丸めの規則、指数部の制限を決めている環境です。この環境では、演算結果を表すためのフラグや、演算上発生した特定のシグナルを例外として扱うかどうかを決めるトラップイネーブラも定義しています。丸め規則には ROUND_CEILING, ROUND_DOWN, ROUND_FLOOR, ROUND_HALF_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_UP, および ROUND_05UP があります。
+
+シグナルとは、演算の過程で生じる例外的条件です。個々のシグナルは、アプリケーションそれぞれの要求に従って、無視されたり、単なる情報とみなされたり、例外として扱われたりします。 decimal モジュールには、 Clamped, InvalidOperation, DivisionByZero, Inexact, Rounded, Subnormal, Overflow, Underflow, および FloatOperation といったシグナルがあります。
+
+各シグナルには、フラグとトラップイネーブラがあります。演算上何らかのシグナルに遭遇すると、フラグは 1 にセットされます。このとき、もしトラップイネーブラが 1 にセットされていれば、例外を送出します。フラグの値は膠着型 (sticky) なので、演算によるフラグの変化をモニタしたければ、予めフラグをリセットしておかなければなりません。
+
+参考
+IBM による汎用十進演算仕様、The General Decimal Arithmetic Specification。
+
+クイックスタートチュートリアル
+普通、 decimal を使うときには、モジュールをインポートし、現在の演算コンテキストを getcontext() で調べ、必要なら、精度、丸め、有効なトラップを設定します:
+
+>>>
+>>> from decimal import *
+>>> getcontext()
+Context(prec=28, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999,
+        capitals=1, clamp=0, flags=[], traps=[Overflow, DivisionByZero,
+        InvalidOperation])
+
+>>> getcontext().prec = 7       # Set a new precision
+Decimal インスタンスは、整数、文字列、浮動小数点数、またはタプルから構成できます。整数や浮動小数点数からの構成は、整数や浮動小数点数の値を正確に変換します。 Decimal は "非数 (Not a Number)" を表す NaN や正負の Infinity (無限大)、 -0 といった特殊な値も表現できます:
+
+>>>
+>>> getcontext().prec = 28
+>>> Decimal(10)
+Decimal('10')
+>>> Decimal('3.14')
+Decimal('3.14')
+>>> Decimal(3.14)
+Decimal('3.140000000000000124344978758017532527446746826171875')
+>>> Decimal((0, (3, 1, 4), -2))
+Decimal('3.14')
+>>> Decimal(str(2.0 ** 0.5))
+Decimal('1.4142135623730951')
+>>> Decimal(2) ** Decimal('0.5')
+Decimal('1.414213562373095048801688724')
+>>> Decimal('NaN')
+Decimal('NaN')
+>>> Decimal('-Infinity')
+Decimal('-Infinity')
+FloatOperation シグナルがトラップされる場合、コンストラクタや順序比較において誤って decimal と float が混ざると、例外が送出されます:
+
+>>>
+>>> c = getcontext()
+>>> c.traps[FloatOperation] = True
+>>> Decimal(3.14)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+decimal.FloatOperation: [<class 'decimal.FloatOperation'>]
+>>> Decimal('3.5') < 3.7
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+decimal.FloatOperation: [<class 'decimal.FloatOperation'>]
+>>> Decimal('3.5') == 3.5
+True
+バージョン 3.3 で追加.
+
+新たな Decimal の有効桁数は入力の桁数だけで決まります。演算コンテキストにおける精度や値丸めの設定が影響するのは算術演算の間だけです。
+
+>>> getcontext().prec = 6
+>>> Decimal('3.0')
+Decimal('3.0')
+>>> Decimal('3.1415926535')
+Decimal('3.1415926535')
+>>> Decimal('3.1415926535') + Decimal('2.7182818285')
+Decimal('5.85987')
+>>> getcontext().rounding = ROUND_UP
+>>> Decimal('3.1415926535') + Decimal('2.7182818285')
+Decimal('5.85988')
+C バージョンの内部制限を超えた場合、decimal の構成は InvalidOperation を送出します:
+
+>>>
+>>> Decimal("1e9999999999999999999")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+decimal.InvalidOperation: [<class 'decimal.InvalidOperation'>]
+バージョン 3.3 で変更.
+
+decimal はほとんどの場面で Python の他の機能とうまくやりとりできます。decimal 浮動小数点の空飛ぶサーカス (flying circus) をお見せしましょう:
+
+>>> data = list(map(Decimal, '1.34 1.87 3.45 2.35 1.00 0.03 9.25'.split()))
+>>> max(data)
+Decimal('9.25')
+>>> min(data)
+Decimal('0.03')
+>>> sorted(data)
+[Decimal('0.03'), Decimal('1.00'), Decimal('1.34'), Decimal('1.87'),
+ Decimal('2.35'), Decimal('3.45'), Decimal('9.25')]
+>>> sum(data)
+Decimal('19.29')
+>>> a,b,c = data[:3]
+>>> str(a)
+'1.34'
+>>> float(a)
+1.34
+>>> round(a, 1)
+Decimal('1.3')
+>>> int(a)
+1
+>>> a * 5
+Decimal('6.70')
+>>> a * b
+Decimal('2.5058')
+>>> c % a
+Decimal('0.77')
+いくつかの数学的関数も Decimal には用意されています:
+
+>>>
+getcontext().prec = 28
+Decimal(2).sqrt()
+Decimal('1.414213562373095048801688724')
+Decimal(1).exp()
+Decimal('2.718281828459045235360287471')
+Decimal('10').ln()
+Decimal('2.302585092994045684017991455')
+Decimal('10').log10()
+Decimal('1')
+quantize() メソッドは位を固定して数値を丸めます。このメソッドは、結果を固定の桁数で丸めることがよくある、金融アプリケーションで便利です:
+
+>>>
+Decimal('7.325').quantize(Decimal('.01'), rounding=ROUND_DOWN)
+Decimal('7.32')
+Decimal('7.325').quantize(Decimal('1.'), rounding=ROUND_UP)
+Decimal('8')
+前述のように、 getcontext() 関数を使うと現在の演算コンテキストにアクセスでき、設定を変更できます。ほとんどのアプリケーションはこのアプローチで十分です。
+
+より高度な作業を行う場合、 Context() コンストラクタを使って別の演算コンテキストを作っておくと便利なことがあります。別の演算コンテキストをアクティブにしたければ、 setcontext() を使います。
+
+decimal モジュールでは、標準仕様に従って、すぐ利用できる二つの標準コンテキスト、 BasicContext および ExtendedContext を提供しています。前者はほとんどのトラップが有効になっており、とりわけデバッグの際に便利です:
+
+>>> myothercontext = Context(prec=60, rounding=ROUND_HALF_DOWN)
+>>> setcontext(myothercontext)
+>>> Decimal(1) / Decimal(7)
+Decimal('0.142857142857142857142857142857142857142857142857142857142857')
+
+>>> ExtendedContext
+Context(prec=9, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999,
+        capitals=1, clamp=0, flags=[], traps=[])
+>>> setcontext(ExtendedContext)
+>>> Decimal(1) / Decimal(7)
+Decimal('0.142857143')
+>>> Decimal(42) / Decimal(0)
+Decimal('Infinity')
+
+>>> setcontext(BasicContext)
+>>> Decimal(42) / Decimal(0)
+Traceback (most recent call last):
+  File "<pyshell#143>", line 1, in -toplevel-
+    Decimal(42) / Decimal(0)
+DivisionByZero: x / 0
+演算コンテキストには、演算中に遭遇した例外的状況をモニタするためのシグナルフラグがあります。フラグが一度セットされると、明示的にクリアするまで残り続けます。そのため、フラグのモニタを行いたいような演算の前には clear_flags() メソッドでフラグをクリアしておくのがベストです。
+
+>>>
+>>> setcontext(ExtendedContext)
+>>> getcontext().clear_flags()
+>>> Decimal(355) / Decimal(113)
+Decimal('3.14159292')
+>>> getcontext()
+Context(prec=9, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999,
+        capitals=1, clamp=0, flags=[Inexact, Rounded], traps=[])
+flags エントリから、 Pi の有理数による近似値が丸められた (コンテキスト内で決められた精度を超えた桁数が捨てられた) ことと、計算結果が厳密でない (無視された桁の値に非ゼロのものがあった) ことがわかります。
+
+コンテキストの traps フィールドに入っている辞書を使うと、個々のトラップをセットできます:
+
+>>> setcontext(ExtendedContext)
+>>> Decimal(1) / Decimal(0)
+Decimal('Infinity')
+>>> getcontext().traps[DivisionByZero] = 1
+>>> Decimal(1) / Decimal(0)
+Traceback (most recent call last):
+  File "<pyshell#112>", line 1, in -toplevel-
+    Decimal(1) / Decimal(0)
+DivisionByZero: x / 0
+ほとんどのプログラムでは、開始時に一度だけ現在の演算コンテキストを修正します。また、多くのアプリケーションでは、データから Decimal への変換はループ内で一度だけキャストして行います。コンテキストを設定し、 Decimal オブジェクトを生成できたら、ほとんどのプログラムは他の Python 数値型と全く変わらないかのように Decimal を操作できます。
+
+Decimal オブジェクト
+class decimal.Decimal(value="0", context=None)
+value に基づいて新たな Decimal オブジェクトを構築します。
+
+value は整数、文字列、タプル、 float および他の Decimal オブジェクトにできます。 value を指定しない場合、 Decimal('0') を返します。 value が文字列の場合、先頭と末尾の空白および全てのアンダースコアを取り除いた後には以下の 10進数文字列の文法に従わなければなりません:
+
+sign           ::=  '+' | '-'
+digit          ::=  '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+indicator      ::=  'e' | 'E'
+digits         ::=  digit [digit]...
+decimal-part   ::=  digits '.' [digits] | ['.'] digits
+exponent-part  ::=  indicator [sign] digits
+infinity       ::=  'Infinity' | 'Inf'
+nan            ::=  'NaN' [digits] | 'sNaN' [digits]
+numeric-value  ::=  decimal-part [exponent-part] | infinity
+numeric-string ::=  [sign] numeric-value | [sign] nan
+他の Unicode 数字も上の digit の場所に使うことができます。つまり各書記体系における(アラビア-インド系やデーヴァナーガリーなど)の数字や、全角数字０('\uff10')から９('\uff19')までなどです。
+
+value を tuple にする場合、タプルは三つの要素を持ち、それぞれ符号 (正なら 0 、負なら 1)、仮数部を表す数字の tuple 、そして指数を表す整数でなければなりません。例えば、 Decimal((0, (1, 4, 1, 4), -3)) は Decimal('1.414') を返します。
+
+value を float にする場合、二進浮動小数点数値が損失なく正確に等価な Decimal に変換されます。この変換はしばしば 53 桁以上の精度を要求します。例えば、 Decimal(float('1.1')) は Decimal('1.100000000000000088817841970012523233890533447265625') に変換されます。
+
+context の精度 (precision) は、記憶される桁数には影響しません。桁数は value に指定した桁数だけから決定されます。例えば、演算コンテキストに指定された精度が 3 桁しかなくても、Decimal('3.00000') は 5 つのゼロを全て記憶します。
+
+context 引数の目的は、 value が正しくない形式の文字列であった場合に行う処理を決めることにあります; 演算コンテキストが InvalidOperation をトラップするようになっていれば、例外を送出します。それ以外の場合には、コンストラクタは値が NaN の Decimal を返します。
+
+一度生成すると、 Decimal オブジェクトは変更不能 (immutable) になります。
+
+バージョン 3.2 で変更: コンストラクタに対する引数に float インスタンスも許されるようになりました。
+
+バージョン 3.3 で変更: FloatOperation トラップがセットされていた場合 float 引数は例外を送出します。デフォルトでトラップはオフです。
+
+バージョン 3.6 で変更: コード中の整数リテラルや浮動小数点リテラルと同様に、アンダースコアを用いて桁をグルーピングできます。
+
+十進浮動小数点オブジェクトは、 float や int のような他の組み込み型と多くの点で似ています。通常の数学演算や特殊メソッドを適用できます。また、 Decimal オブジェクトはコピーでき、pickle 化でき、print で出力でき、辞書のキーにでき、集合の要素にでき、比較、保存、他の型 (float や int) への型強制を行えます。
+
+十進オブジェクトの算術演算と整数や浮動小数点数の算術演算には少々違いがあります。十進オブジェクトに対して剰余演算を適用すると、計算結果の符号は除数の符号ではなく 被除数 の符号と一致します:
+
+>>>
+>>> (-7) % 4
+1
+>>> Decimal(-7) % Decimal(4)
+Decimal('-3')
+整数除算演算子 // も同様に、実際の商の切り捨てではなく (0に近付くように丸めた) 整数部分を返します。そのため通常の恒等式 x == (x // y) * y + x % y が維持されます:
+
+>>>
+>>> -7 // 4
+-2
+>>> Decimal(-7) // Decimal(4)
+Decimal('-1')
+演算子 % と演算子 // は (それぞれ) 仕様にあるような 剰余 操作と 整数除算 操作を実装しています。
+
+Decimal オブジェクトは一般に、算術演算で浮動小数点数や fractions.Fraction オブジェクトと組み合わせることができません。例えば、 Decimal に float を足そうとすると、 TypeError が送出されます。ただし、Python の比較演算子を使って Decimal インスタンス x と別の数 y を比較することができます。これにより、異なる型の数間の等価比較の際に、紛らわしい結果を避けます。
+
+バージョン 3.2 で変更: Decimal インスタンスと他の数値型が混在する比較が完全にサポートされるようになりました。
+
+こうした標準的な数値型の特性の他に、十進浮動小数点オブジェクトには様々な特殊メソッドがあります:
+
+adjusted()
+仮数の先頭の一桁だけが残るように右側の数字を追い出す桁シフトを行い、その結果の指数部を返します: Decimal('321e+5').adjusted() は 7 を返します。最上桁の小数点からの相対位置を調べる際に使います。
+
+as_integer_ratio()
+与えられた Decimal インスタンスを、既約分数で分母が正数の分数として表現した整数のペア (n, d) を返します。
+
+>>>
+>>> Decimal('-3.14').as_integer_ratio()
+(-157, 50)
+変換は正確に行われます。無限大に対してはOverflowErrorを、NaNに対してはValueError を送出します。
+
+バージョン 3.6 で追加.
+
+as_tuple()
+数値を表現するための 名前付きタプル: DecimalTuple(sign, digittuple, exponent) を返します。
+
+canonical()
+引数の標準的(canonical)エンコーディングを返します。現在のところ、 Decimal インスタンスのエンコーディングは常に標準的なので、この操作は引数に手を加えずに返します。
+
+compare(other, context=None)
+二つの Decimal インスタンスの値を比較します。 compare() は Decimal インスタンスを返し、被演算子のどちらかが NaN ならば結果は NaN です:
+
+a or b is a NaN  ==> Decimal('NaN')
+a < b            ==> Decimal('-1')
+a == b           ==> Decimal('0')
+a > b            ==> Decimal('1')
+compare_signal(other, context=None)
+この演算は compare() とほとんど同じですが、全ての NaN がシグナルを送るところが異なります。すなわち、どちらの比較対象も発信 (signaling) NaN でないならば無言 (quiet) NaN である比較対象があたかも発信 NaN であるかのように扱われます。
+
+compare_total(other, context=None)
+二つの対象を数値によらず抽象表現によって比較します。 compare() に似ていますが、結果は Decimal に全順序を与えます。この順序づけによると、数値的に等しくても異なった表現を持つ二つの Decimal インスタンスの比較は等しくなりません:
+
+>>>
+Decimal('12.0').compare_total(Decimal('12'))
+Decimal('-1')
+無言 NaN と発信 NaN もこの全順序に位置付けられます。この関数の結果は、もし比較対象が同じ表現を持つならば Decimal('0') であり、一つめの比較対象が二つめより下位にあれば Decimal('-1')、上位にあれば Decimal('1') です。全順序の詳細については仕様を参照してください。
+
+この演算はコンテキストに影響されず、静かです。すなわち、フラグは変更されず、丸めは行われません。例外として、2番目の比較対象の厳密な変換ができない場合、C バージョンのライブラリでは InvalidOperation 例外を送出するかもしれません。
+
+compare_total_mag(other, context=None)
+二つの対象を compare_total() のように数値によらず抽象表現によって比較しますが、両者の符号を無視します。 x.compare_total_mag(y) は x.copy_abs().compare_total(y.copy_abs()) と等価です。
+
+この演算はコンテキストに影響されず、静かです。すなわち、フラグは変更されず、丸めは行われません。例外として、2番目の比較対象の厳密な変換ができない場合、C バージョンのライブラリでは InvalidOperation 例外を送出するかもしれません。
+
+conjugate()
+self を返すだけです。このメソッドは十進演算仕様に適合するためだけのものです。
+
+copy_abs()
+引数の絶対値を返します。この演算はコンテキストに影響されず、静かです。すなわち、フラグは変更されず、丸めは行われません。
+
+copy_negate()
+引数の符号を変えて返します。この演算はコンテキストに影響されず、静かです。すなわち、フラグは変更されず、丸めは行われません。
+
+copy_sign(other, context=None)
+最初の演算対象のコピーに二つめと同じ符号を付けて返します。たとえば:
+
+>>>
+Decimal('2.3').copy_sign(Decimal('-1.5'))
+Decimal('-2.3')
+この演算はコンテキストに影響されず、静かです。すなわち、フラグは変更されず、丸めは行われません。例外として、2番目の比較対象の厳密な変換ができない場合、C バージョンのライブラリでは InvalidOperation 例外を送出するかもしれません。
+
+exp(context=None)
+与えられた数での(自然)指数関数 e**x の値を返します。結果は ROUND_HALF_EVEN 丸めモードで正しく丸められます。
+
+>>>
+Decimal(1).exp()
+Decimal('2.718281828459045235360287471')
+Decimal(321).exp()
+Decimal('2.561702493119680037517373933E+139')
+from_float(f)
+浮動小数点数を正確に小数に変換するクラスメソッドです。
+
+なお、Decimal.from_float(0.1) は Decimal('0.1') と同じではありません。0.1 は二進浮動小数点数で正確に表せないので、その値は表現できる最も近い値、0x1.999999999999ap-4 として記憶されます。浮動小数点数での等価な値は 0.1000000000000000055511151231257827021181583404541015625 です。
+
+注釈 Python 3.2 以降では、 Decimal インスタンスは float から直接構成できるようになりました。
+>>> Decimal.from_float(0.1)
+Decimal('0.1000000000000000055511151231257827021181583404541015625')
+>>> Decimal.from_float(float('nan'))
+Decimal('NaN')
+>>> Decimal.from_float(float('inf'))
+Decimal('Infinity')
+>>> Decimal.from_float(float('-inf'))
+Decimal('-Infinity')
+バージョン 3.1 で追加.
+
+fma(other, third, context=None)
+融合積和(fused multiply-add)です。self*other+third を途中結果の積 self*other で丸めを行わずに計算して返します。
+
+>>>
+Decimal(2).fma(3, 5)
+Decimal('11')
+is_canonical()
+引数が標準的(canonical)ならば True を返し、そうでなければ False を返します。現在のところ、 Decimal のインスタンスは常に標準的なのでこのメソッドの結果はいつでも True です。
+
+is_finite()
+引数が有限の数値ならば True を、無限大か NaN ならば False を返します。
+
+is_infinite()
+引数が正または負の無限大ならば True を、そうでなければ False を返します。
+
+is_nan()
+引数が (無言か発信かは問わず) NaN であれば True を、そうでなければ False を返します。
+
+is_normal(context=None)
+引数が 正規(normal) の有限数値ならば True を返します。引数がゼロ、非正規(subnormal)、無限大または NaN であれば False を返します。
+
+is_qnan()
+引数が無言 NaN であれば True を、そうでなければ False を返します。
+
+is_signed()
+引数に負の符号がついていれば True を、そうでなければ False を返します。注意すべきはゼロや NaN なども符号を持ち得ることです。
+
+is_snan()
+引数が発信 NaN であれば True を、そうでなければ False を返します。
+
+is_subnormal(context=None)
+引数が非正規数(subnormal)であれば True を、そうでなければ False を返します。
+
+is_zero()
+引数が(正または負の)ゼロであれば True を、そうでなければ False を返します。
+
+ln(context=None)
+演算対象の自然対数(底 e の対数)を返します。結果は ROUND_HALF_EVEN 丸めモードで正しく丸められます。
+
+log10(context=None)
+演算対象の底 10 の対数を返します。結果は ROUND_HALF_EVEN 丸めモードで正しく丸められます。
+
+logb(context=None)
+非零の数値については、 Decimal インスタンスとして調整された指数を返します。演算対象がゼロだった場合、 Decimal('-Infinity') が返され DivisionByZero フラグが送出されます。演算対象が無限大だった場合、 Decimal('Infinity') が返されます。
+
+logical_and(other, context=None)
+logical_and() は二つの 論理引数 (論理引数 参照)を取る論理演算です。結果は二つの引数の数字ごとの and です。
+
+logical_invert(context=None)
+logical_invert() は論理演算です。結果は引数の数字ごとの反転です。
+
+logical_or(other, context=None)
+logical_or() は二つの 論理引数 (論理引数 参照)を取る論理演算です。結果は二つの引数の数字ごとの or です。
+
+logical_xor(other, context=None)
+logical_xor() は二つの 論理引数 (論理引数 参照)を取る論理演算です。結果は二つの引数の数字ごとの排他的論理和です。
+
+max(other, context=None)
+max(self, other) と同じですが、値を返す前に現在のコンテキストに即した丸め規則を適用します。また、 NaN に対して、(コンテキストの設定と、発信か無言どちらのタイプであるかに応じて) シグナルを発行するか無視します。
+
+max_mag(other, context=None)
+max() メソッドに似ていますが、比較は絶対値で行われます。
+
+min(other, context=None)
+min(self, other) と同じですが、値を返す前に現在のコンテキストに即した丸め規則を適用します。また、 NaN に対して、(コンテキストの設定と、発信か無言どちらのタイプであるかに応じて) シグナルを発行するか無視します。
+
+min_mag(other, context=None)
+min() メソッドに似ていますが、比較は絶対値で行われます。
+
+next_minus(context=None)
+与えられたコンテキスト(またはコンテキストが渡されなければ現スレッドのコンテキスト)において表現可能な、操作対象より小さい最大の数を返します。
+
+next_plus(context=None)
+与えられたコンテキスト(またはコンテキストが渡されなければ現スレッドのコンテキスト)において表現可能な、操作対象より大きい最小の数を返します。
+
+next_toward(other, context=None)
+二つの比較対象が等しくなければ、一つめの対象に最も近く二つめの対象へ近付く方向の数を返します。もし両者が数値的に等しければ、二つめの対象の符号を採った一つめの対象のコピーを返します。
+
+normalize(context=None)
+数値を正規化 (normalize) して、右端に連続しているゼロを除去し、 Decimal('0') と同じ結果はすべて Decimal('0e0') に変換します。等価クラスの属性から基準表現を生成する際に用います。たとえば、 Decimal('32.100') と Decimal('0.321000e+2') の正規化は、いずれも同じ値 Decimal('32.1') になります。
+
+number_class(context=None)
+操作対象の クラス を表す文字列を返します。返されるのは以下の10種類のいずれかです。
+
+"-Infinity", 負の無限大であることを示します。
+
+"-Normal", 負の通常数であることを示します。
+
+"-Subnormal", 負の非正規数であることを示します。
+
+"-Zero", 負のゼロであることを示します。
+
+"+Zero", 正のゼロであることを示します。
+
+"+Subnormal", 正の非正規数であることを示します。
+
+"+Normal", 正の通常数であることを示します。
+
+"+Infinity", 正の無限大であることを示します。
+
+"NaN", 無言 (quiet) NaN (Not a Number) であることを示します。
+
+"sNaN", 発信(signaling) NaN であることを示します。
+
+quantize(exp, rounding=None, context=None)
+二つ目の操作対象と同じ指数を持つように丸めを行った、一つめの操作対象と等しい値を返します。
+
+>>>
+Decimal('1.41421356').quantize(Decimal('1.000'))
+Decimal('1.414')
+他の操作と違い、打ち切り(quantize)操作後の係数の長さが精度を越えた場合には、 InvalidOperation がシグナルされます。これによりエラー条件がない限り打ち切られた指数が常に右側の引数と同じになることが保証されます。
+
+同様に、他の操作と違い、quantize は Underflow を、たとえ結果が非正規になったり不正確になったとしても、シグナルしません。
+
+二つ目の演算対象の指数が一つ目のそれよりも大きければ丸めが必要かもしれません。この場合、丸めモードは以下のように決められます。rounding 引数が与えられていればそれが使われます。そうでなければ context 引数で決まります。どちらの引数も渡されなければ現在のスレッドのコンテキストの丸めモードが使われます。
+
+処理結果の指数が Emax よりも大きい場合や Etiny よりも小さい場合にエラーが返されます。
+
+radix()
+Decimal(10) つまり Decimal クラスがその全ての算術を実行する基数を返します。仕様との互換性のために取り入れられています。
+
+remainder_near(other, context=None)
+self を other で割った剰余を返します。これは self % other とは違って、剰余の絶対値を小さくするように符号が選ばれます。より詳しく言うと、n を self / other の正確な値に最も近い整数としたときの self - n * other が返り値になります。最も近い整数が2つある場合には偶数のものが選ばれます。
+
+結果が0になる場合の符号は self の符号と同じになります。
+
+>>>
+Decimal(18).remainder_near(Decimal(10))
+Decimal('-2')
+Decimal(25).remainder_near(Decimal(10))
+Decimal('5')
+Decimal(35).remainder_near(Decimal(10))
+Decimal('-5')
+rotate(other, context=None)
+一つ目の演算対象の数字を二つ目で指定された量だけ巡回(rotate)した結果を返します。二つめの演算対象は -precision から precision までの範囲の整数でなければなりません。この二つ目の演算対象の絶対値を何桁ずらすかを決めます。そしてもし正の数ならば巡回の方向は左に、そうでなければ右になります。一つ目の演算対象の仮数部は必要ならば精度いっぱいまでゼロで埋められます。符号と指数は変えられません。
+
+same_quantum(other, context=None)
+self と other が同じ指数を持っているか、あるいは双方とも NaN である場合に真を返します。
+
+この演算はコンテキストに影響されず、静かです。すなわち、フラグは変更されず、丸めは行われません。例外として、2番目の比較対象の厳密な変換ができない場合、C バージョンのライブラリでは InvalidOperation 例外を送出するかもしれません。
+
+scaleb(other, context=None)
+二つ目の演算対象で調整された指数の一つ目の演算対象を返します。同じことですが、一つめの演算対象を 10**other 倍したものを返します。二つ目の演算対象は整数でなければなりません。
+
+shift(other, context=None)
+一つ目の演算対象の数字を二つ目で指定された量だけシフトした結果を返します。二つ目の演算対象は -precision から precision までの範囲の整数でなければなりません。この二つ目の演算対象の絶対値が何桁ずらすかを決めます。そしてもし正の数ならばシフトの方向は左に、そうでなければ右になります。一つ目の演算対象の係数は必要ならば精度いっぱいまでゼロで埋められます。符号と指数は変えられません。
+
+sqrt(context=None)
+引数の平方根を最大精度で求めます。
+
+to_eng_string(context=None)
+文字列に変換します。指数が必要なら工学表記が使われます。
+
+工学表記法では指数は 3 の倍数になります。これにより、基数の小数部には最大で 3 桁までの数字が残されるとともに、末尾に 1 つまたは 2 つの 0 の付加が必要とされるかもしれません。
+
+たとえば、Decimal('123E+1') は Decimal('1.23E+3') に変換されます。
+
+to_integral(rounding=None, context=None)
+to_integral_value() メソッドと同じです。to_integral の名前は古いバージョンとの互換性のために残されています。
+
+to_integral_exact(rounding=None, context=None)
+最近傍の整数に値を丸め、丸めが起こった場合には Inexact または Rounded のシグナルを適切に出します。丸めモードは以下のように決められます。 rounding 引数が与えられていればそれが使われます。そうでなければ context 引数で決まります。どちらの引数も渡されなければ現在のスレッドのコンテキストの丸めモードが使われます。
+
+to_integral_value(rounding=None, context=None)
+Inexact や Rounded といったシグナルを出さずに最近傍の整数に値を丸めます。 rounding が指定されていれば適用されます; それ以外の場合、値丸めの方法は context の設定か現在のコンテキストの設定になります。
+
+論理引数
+logical_and(), logical_invert(), logical_or(), および logical_xor() メソッドはその引数が 論理引数 であると想定しています。 論理引数 とは Decimal インスタンスで指数と符号は共にゼロであり、各桁の数字が 0 か 1 であるものです。
+
+Context オブジェクト
+コンテキスト (context) とは、算術演算における環境設定です。コンテキストは計算精度を決定し、値丸めの方法を設定し、シグナルのどれが例外になるかを決め、指数の範囲を制限しています。
+
+多重スレッドで処理を行う場合には各スレッドごとに現在のコンテキストがあり、 getcontext() や setcontext() といった関数でアクセスしたり設定変更できます:
+
+decimal.getcontext()
+アクティブなスレッドの現在のコンテキストを返します。
+
+decimal.setcontext(c)
+アクティブなスレッドのコンテキストを c に設定します。
+
+with 文と localcontext() 関数を使って実行するコンテキストを一時的に変更することもできます。
+
+decimal.localcontext(ctx=None)
+with 文の入口でアクティブなスレッドのコンテキストを ctx のコピーに設定し、with 文を抜ける時に元のコンテキストに復旧する、コンテキストマネージャを返します。コンテキストが指定されなければ、現在のコンテキストのコピーが使われます。
+
+たとえば、以下のコードでは精度を42桁に設定し、計算を実行し、そして元のコンテキストに復帰します:
+
+from decimal import localcontext
+
+with localcontext() as ctx:
+    ctx.prec = 42   # Perform a high precision calculation
+    s = calculate_something()
+s = +s  # Round the final result back to the default precision
+新たなコンテキストは、以下で説明する Context コンストラクタを使って生成できます。その他にも、 decimal モジュールでは作成済みのコンテキストを提供しています:
+
+class decimal.BasicContext
+汎用十進演算仕様で定義されている標準コンテキストの一つです。精度は 9 桁に設定されています。丸め規則は ROUND_HALF_UP です。すべての演算結果フラグはクリアされています。 Inexact, Rounded, Subnormal を除く全ての演算エラートラップが有効 (例外として扱う) になっています。
+
+多くのトラップが有効になっているので、デバッグの際に便利なコンテキストです。
+
+class decimal.ExtendedContext
+汎用十進演算仕様で定義されている標準コンテキストの一つです。精度は 9 桁に設定されています。丸め規則は ROUND_HALF_EVEN です。すべての演算結果フラグはクリアされています。トラップは全て無効(演算中に一切例外を送出しない) になっています。
+
+トラップが無効になっているので、エラーの伴う演算結果を NaN や Infinity にし、例外を送出しないようにしたいアプリケーションに向いたコンテキストです。このコンテキストを使うと、他の場合にはプログラムが停止してしまうような状況があっても実行を完了させられます。
+
+class decimal.DefaultContext
+Context コンストラクタが新たなコンテキストを作成するさいに雛形にするコンテキストです。このコンテキストのフィールド (精度の設定など) を変更すると、 Context コンストラクタが生成する新たなコンテキストに影響を及ぼします。
+
+このコンテキストは、主に多重スレッド環境で便利です。スレッドを開始する前に何らかのフィールドを変更しておくと、システム全体のデフォルト設定に効果を及ぼすことができます。スレッドを開始した後にフィールドを変更すると、競合条件を抑制するためにスレッドを同期化しなければならないので、推奨しません。
+
+単一スレッドの環境では、このコンテキストを使わないよう薦めます。下で述べるように明示的にコンテキストを作成してください。
+
+デフォルトの値は、 prec=28, rounding=ROUND_HALF_EVEN で、トラップ Overflow, InvalidOperation, および DivisionByZero が有効になっています。
+
+上に挙げた三つのコンテキストに加え、 Context コンストラクタを使って新たなコンテキストを生成できます。
+
+class decimal.Context(prec=None, rounding=None, Emin=None, Emax=None, capitals=None, clamp=None, flags=None, traps=None)
+新たなコンテキストを生成します。あるフィールドが定義されていないか None であれば、 DefaultContext からデフォルト値をコピーします。 flags フィールドが設定されていいか None の場合には、全てのフラグがクリアされます。
+
+prec フィールドは範囲 [1, MAX_PREC] 内の整数で、コンテキストにおける算術演算の計算精度を設定します。
+
+rounding オプションは、節 丸めモード で挙げられる定数の一つです。
+
+traps および flags フィールドには、セットしたいシグナルを列挙します。一般的に、新たなコンテキストを作成するときにはトラップだけを設定し、フラグはクリアしておきます。
+
+Emin および Emax フィールドは、許容する指数の外限を指定する整数です。 Emin は範囲 [MIN_EMIN, 0] 内で、 Emax は範囲 [0, MAX_EMAX] 内でなければなりません。
+
+capitals フィールドは 0 または 1 (デフォルト) にします。 1 に設定すると、指数記号を大文字 E で出力します。それ以外の場合には Decimal('6.02e+23') のように e を使います。
+
+clamp フィールドは、 0 (デフォルト) または 1 です。 1 に設定されると、このコンテキストにおける Decimal インスタンスの指数 e は厳密に範囲 Emin - prec + 1 <= e <= Emax - prec + 1 に制限されます。 clamp が 0 なら、それより弱い条件が支配します: 調整された Decimal インスタンスの指数は最大で Emax です。 clamp が 1 なら、大きな正規数は、可能なら、指数が減らされ、対応する数の 0 が係数に加えられ、指数の制約に合わせられます; これは数の値を保存しますが、有効な末尾の 0 に関する情報を失います。例えば:
+
+>>>
+>>> Context(prec=6, Emax=999, clamp=1).create_decimal('1.23e999')
+Decimal('1.23000E+999')
+clamp の値 1 は、IEEE 754 で規定された固定幅十進交換形式と互換にできます。
+
+Context クラスでは、いくつかの汎用のメソッドの他、現在のコンテキストで算術演算を直接行うためのメソッドを数多く定義しています。加えて、 Decimal の各メソッドについて(adjusted() および as_tuple() メソッドを例外として)対応する Context のメソッドが存在します。たとえば、 Context インスタンス C と Decimal インスタンス x に対して、 C.exp(x) は x.exp(context=C) と等価です。それぞれの Context メソッドは、Decimal インスタンスが受け付けられるところならどこでも、Python の整数 (int のインスタンス) を受け付けます。
+
+clear_flags()
+フラグを全て 0 にリセットします。
+
+clear_traps()
+トラップを全て 0 にリセットします。
+
+バージョン 3.3 で追加.
+
+copy()
+コンテキストの複製を返します。
+
+copy_decimal(num)
+Decimal インスタンス num のコピーを返します。
+
+create_decimal(num)
+self をコンテキストとする新たな Decimal インスタンスを num から生成します。 Decimal コンストラクタと違い、数値を変換する際にコンテキストの精度、値丸め方法、フラグ、トラップを適用します。
+
+定数値はしばしばアプリケーションの要求よりも高い精度を持っているため、このメソッドが役に立ちます。また、値丸めを即座に行うため、例えば以下のように、入力値に値丸めを行わないために合計値にゼロの加算を追加するだけで結果が変わってしまうといった、現在の精度よりも細かい値の影響が紛れ込む問題を防げるという恩恵もあります。以下の例は、丸められていない入力を使うということは和にゼロを加えると結果が変わり得るという見本です:
+
+>>> getcontext().prec = 3
+>>> Decimal('3.4445') + Decimal('1.0023')
+Decimal('4.45')
+>>> Decimal('3.4445') + Decimal(0) + Decimal('1.0023')
+Decimal('4.44')
+このメソッドは IBM 仕様の to-number 演算を実装したものです。引数が文字列の場合、前や後ろに余計な空白を付けたり、アンダースコアを含めたりすることは許されません。
+
+create_decimal_from_float(f)
+浮動小数点数 f から新しい Decimal インスタンスを生成しますが、 self をコンテキストとして丸めます。 Decimal.from_float() クラスメソッドとは違い、変換にコンテキストの精度、丸めメソッド、フラグ、そしてトラップが適用されます。
+
+>>> context = Context(prec=5, rounding=ROUND_DOWN)
+>>> context.create_decimal_from_float(math.pi)
+Decimal('3.1415')
+>>> context = Context(prec=5, traps=[Inexact])
+>>> context.create_decimal_from_float(math.pi)
+Traceback (most recent call last):
+    ...
+decimal.Inexact: None
+バージョン 3.1 で追加.
+
+Etiny()
+Emin - prec + 1 に等しい値を返します。演算結果の劣化が起こる桁の最小値です。アンダーフローが起きた場合、指数は Etiny に設定されます。
+
+Etop()
+Emax - prec + 1 に等しい値を返します。
+
+Decimal を使った処理を行う場合、通常は Decimal インスタンスを生成して、算術演算を適用するというアプローチをとります。演算はアクティブなスレッドにおける現在のコンテキストの下で行われます。もう一つのアプローチは、コンテキストのメソッドを使った特定のコンテキスト下での計算です。コンテキストのメソッドは Decimal クラスのメソッドに似ているので、ここでは簡単な説明にとどめます。
+
+abs(x)
+x の絶対値を返します。
+
+add(x, y)
+x と y の和を返します。
+
+canonical(x)
+同じ Decimal オブジェクト x を返します。
+
+compare(x, y)
+x と y を数値として比較します。
+
+compare_signal(x, y)
+二つの演算対象の値を数値として比較します。
+
+compare_total(x, y)
+二つの演算対象を抽象的な表現を使って比較します。
+
+compare_total_mag(x, y)
+二つの演算対象を抽象的な表現を使い符号を無視して比較します。
+
+copy_abs(x)
+x のコピーの符号を 0 にセットして返します。
+
+copy_negate(x)
+x のコピーの符号を反転して返します。
+
+copy_sign(x, y)
+y から x に符号をコピーします。
+
+divide(x, y)
+x を y で除算した値を返します。
+
+divide_int(x, y)
+x を y で除算した値を整数に切り捨てて返します。
+
+divmod(x, y)
+二つの数値間の除算を行い、結果の整数部を返します。
+
+exp(x)
+e ** x を返します。
+
+fma(x, y, z)
+x を y 倍したものに z を加えて返します。
+
+is_canonical(x)
+x が標準的(canonical)ならば True を返します。そうでなければ False です。
+
+is_finite(x)
+x が有限ならば True を返します。そうでなければ False です。
+
+is_infinite(x)
+x が無限ならば True を返します。そうでなければ False です。
+
+is_nan(x)
+x が qNaN か sNaN であれば True を返します。そうでなければ False です。
+
+is_normal(x)
+x が通常の数ならば True を返します。そうでなければ False です。
+
+is_qnan(x)
+x が無言 NaN であれば True を返します。そうでなければ False です。
+
+is_signed(x)
+x が負の数であれば True を返します。そうでなければ False です。
+
+is_snan(x)
+x が発信 NaN であれば True を返します。そうでなければ False です。
+
+is_subnormal(x)
+x が非正規数であれば True を返します。そうでなければ False です。
+
+is_zero(x)
+x がゼロであれば True を返します。そうでなければ False です。
+
+ln(x)
+x の自然対数(底 e の対数)を返します。
+
+log10(x)
+x の底 10 の対数を返します。
+
+logb(x)
+演算対象の MSD の大きさの指数部を返します。
+
+logical_and(x, y)
+それぞれの桁に論理演算 and を当てはめます。
+
+logical_invert(x)
+x の全ての桁を反転させます。
+
+logical_or(x, y)
+それぞれの桁に論理演算 or を当てはめます。
+
+logical_xor(x, y)
+それぞれの桁に論理演算 xor を当てはめます。
+
+max(x, y)
+二つの値を数値として比較し、大きいほうを返します。
+
+max_mag(x, y)
+値を符号を無視して数値として比較します。
+
+min(x, y)
+二つの値を数値として比較し、小さいほうを返します。
+
+min_mag(x, y)
+値を符号を無視して数値として比較します。
+
+minus(x)
+Python における単項マイナス演算子に対応する演算です。
+
+multiply(x, y)
+x と y の積を返します。
+
+next_minus(x)
+x より小さい最大の表現可能な数を返します。
+
+next_plus(x)
+x より大きい最小の表現可能な数を返します。
+
+next_toward(x, y)
+x に y の方向に向かって最も近い数を返します。
+
+normalize(x)
+x をもっとも単純な形にします。
+
+number_class(x)
+x のクラスを指し示すものを返します。
+
+plus(x)
+Python における単項のプラス演算子に対応する演算です。コンテキストにおける精度や値丸めを適用するので、等値 (identity) 演算とは 違います。
+
+power(x, y, modulo=None)
+x の y 乗を計算します。modulo が指定されていればモジュロを取ります。
+
+引数が 2 つの場合、 x**y を計算します。x が負の場合、 y は整数でなければなりません。y が整数、結果が有限、結果が 'precision' 桁で正確に表現できる、という条件をすべて満たさない場合、結果は不正確になります。結果はコンテキストの丸めモードを使って丸められます。結果は常に、Python バージョンにおいて正しく丸められます。
+
+Decimal(0) ** Decimal(0) results in InvalidOperation, and if InvalidOperation is not trapped, then results in Decimal('NaN').
+
+バージョン 3.3 で変更: C モジュールは power() を適切に丸められた exp() および ln() 関数によって計算します。結果は well-defined ですが、「ほとんどの場合には適切に丸められる」だけです。
+
+引数が 3 つの場合、 (x**y) % modulo を計算します。この 3 引数の形式の場合、引数には以下の制限が課せられます。
+
+全ての引数は整数
+
+y は非負でなければならない
+
+x と y の少なくともどちらかはゼロでない
+
+modulo は非零で大きくても 'precision' 桁
+
+Context.power(x, y, modulo) で得られる値は (x**y) % modulo を精度無制限で計算して得られるものと同じ値ですが、より効率的に計算されます。結果の指数は x, y, modulo の指数に関係なくゼロです。この計算は常に正確です。
+
+quantize(x, y)
+x に値丸めを適用し、指数を y にした値を返します。
+
+radix()
+単に 10 を返します。何せ十進ですから :)
+
+remainder(x, y)
+整数除算の剰余を返します。
+
+剰余がゼロでない場合、符号は割られる数の符号と同じになります。
+
+remainder_near(x, y)
+x - y * n を返します。ここで n は x / y の正確な値に一番近い整数です (この結果が 0 ならばその符号は x の符号と同じです)。
+
+rotate(x, y)
+x の y 回巡回したコピーを返します。
+
+same_quantum(x, y)
+2つの演算対象が同じ指数を持っている場合に True を返します。
+
+scaleb(x, y)
+一つめの演算対象の指数部に二つめの値を加えたものを返します。
+
+shift(x, y)
+x を y 回シフトしたコピーを返します。
+
+sqrt(x)
+x の平方根を精度いっぱいまで求めます。
+
+subtract(x, y)
+x と y の間の差を返します。
+
+to_eng_string(x)
+文字列に変換します。指数が必要なら工学表記が使われます。
+
+工学表記法では指数は 3 の倍数になります。これにより、基数の小数部には最大で 3 桁までの数字が残されるとともに、末尾に 1 つまたは 2 つの 0 の付加が必要とされるかもしれません。
+
+to_integral_exact(x)
+最近傍の整数に値を丸めます。
+
+to_sci_string(x)
+数値を科学表記で文字列に変換します。
+
+定数
+この節の定数は C モジュールにのみ意味があります。互換性のために、pure Python 版も含まれます。
+
+32-bit
+
+64-bit
+
+decimal.MAX_PREC
+425000000
+
+999999999999999999
+
+decimal.MAX_EMAX
+425000000
+
+999999999999999999
+
+decimal.MIN_EMIN
+-425000000
+
+-999999999999999999
+
+decimal.MIN_ETINY
+-849999999
+
+-1999999999999999997
+
+decimal.HAVE_THREADS
+The value is True. Deprecated, because Python now always has threads.
+
+バージョン 3.9 で非推奨.
+
+decimal.HAVE_CONTEXTVAR
+The default value is True. If Python is compiled --without-decimal-contextvar, the C version uses a thread-local rather than a coroutine-local context and the value is False. This is slightly faster in some nested context scenarios.
+
+バージョン 3.9 で追加: backported to 3.7 and 3.8.
+
+丸めモード
+decimal.ROUND_CEILING
+Infinity 方向に丸めます。
+
+decimal.ROUND_DOWN
+ゼロ方向に丸めます。
+
+decimal.ROUND_FLOOR
+-Infinity 方向に丸めます。
+
+decimal.ROUND_HALF_DOWN
+近い方に、引き分けはゼロ方向に向けて丸めます。
+
+decimal.ROUND_HALF_EVEN
+近い方に、引き分けは偶数整数方向に向けて丸めます。
+
+decimal.ROUND_HALF_UP
+近い方に、引き分けはゼロから遠い方向に向けて丸めます。
+
+decimal.ROUND_UP
+ゼロから遠い方向に丸めます。
+
+decimal.ROUND_05UP
+ゼロ方向に丸めた後の最後の桁が 0 または 5 ならばゼロから遠い方向に、そうでなければゼロ方向に丸めます。
+
+シグナル
+シグナルは、計算中に生じた様々なエラー条件を表現します。各々のシグナルは一つのコンテキストフラグと一つのトラップイネーブラに対応しています。
+
+コンテキストフラグは、該当するエラー条件に遭遇するたびにセットされます。演算後にフラグを調べれば、演算に関する情報 (例えば計算が厳密だったかどうか) がわかります。フラグを調べたら、次の計算を始める前にフラグを全てクリアするようにしてください。
+
+あるコンテキストのトラップイネーブラがあるシグナルに対してセットされている場合、該当するエラー条件が生じると Python の例外を送出します。例えば、 DivisionByZero が設定されていると、エラー条件が生じた際に DivisionByZero 例外を送出します。
+
+class decimal.Clamped
+値の表現上の制限に沿わせるために指数部が変更されたことを通知します。
+
+通常、クランプ (clamp) は、指数部がコンテキストにおける指数桁の制限値 Emin および Emax を越えた場合に発生します。可能な場合には、係数部にゼロを加えた表現に合わせて指数部を減らします。
+
+class decimal.DecimalException
+他のシグナルの基底クラスで、 ArithmeticError のサブクラスです。
+
+class decimal.DivisionByZero
+有限値をゼロで除算したときのシグナルです。
+
+除算やモジュロ除算、数を負の値で累乗した場合に起きることがあります。このシグナルをトラップしない場合、演算結果は Infinity または -Infinity になり、その符号は演算に使った入力に基づいて決まります。
+
+class decimal.Inexact
+値の丸めによって演算結果から厳密さが失われたことを通知します。
+
+このシグナルは値丸め操作中にゼロでない桁を無視した際に生じます。演算結果は値丸め後の値です。シグナルのフラグやトラップは、演算結果の厳密さが失われたことを検出するために使えるだけです。
+
+class decimal.InvalidOperation
+無効な演算が実行されたことを通知します。
+
+ユーザが有意な演算結果にならないような操作を要求したことを示します。このシグナルをトラップしない場合、 NaN を返します。このシグナルの発生原因として考えられるのは、以下のような状況です:
+
+Infinity - Infinity
+0 * Infinity
+Infinity / Infinity
+x % 0
+Infinity % x
+sqrt(-x) and x > 0
+0 ** 0
+x ** (non-integer)
+x ** Infinity
+class decimal.Overflow
+数値オーバフローを示すシグナルです。
+
+このシグナルは、値丸めを行った後の指数部が Emax より大きいことを示します。シグナルをトラップしない場合、演算結果は値丸めのモードにより、表現可能な最大の数値になるように内側へ引き込んで丸めを行った値か、 Infinity になるように外側に丸めた値のいずれかになります。いずれの場合も、 Inexact および Rounded が同時にシグナルされます。
+
+class decimal.Rounded
+情報が全く失われていない場合も含み、値丸めが起きたときのシグナルです。
+
+このシグナルは、値丸めによって桁がなくなると常に発生します。なくなった桁がゼロ (例えば 5.00 を丸めて 5.0 になった場合) であってもです。このシグナルをトラップしなければ、演算結果をそのまま返します。このシグナルは有効桁数の減少を検出する際に使います。
+
+class decimal.Subnormal
+値丸めを行う前に指数部が Emin より小さかったことを示すシグナルです。
+
+演算結果が微小である場合 (指数が小さすぎる場合) に発生します。このシグナルをトラップしなければ、演算結果をそのまま返します。
+
+class decimal.Underflow
+演算結果が値丸めによってゼロになった場合に生じる数値アンダフローです。
+
+演算結果が微小なため、値丸めによってゼロになった場合に発生します。 Inexact および Subnormal シグナルも同時に発生します。
+
+class decimal.FloatOperation
+float と Decimal の混合の厳密なセマンティクスを有効にします。
+
+シグナルがトラップされなかった場合 (デフォルト)、Decimal コンストラクタ、 create_decimal() 、およびすべての比較演算子において float と Decimal の混合が許されます。変換も比較も正確です。コンテキストフラグ内に FloatOperation を設定することで、混合操作は現れるたびに暗黙に記録されます。 from_float() や create_decimal_from_float() による明示的な変換はフラグを設定しません。
+
+そうでなければ (シグナルがトラップされれば)、等価性比較および明示的な変換のみが静かにに行われ、その他の混合演算は FloatOperation を送出します。
+
+これらのシグナルの階層構造をまとめると、以下の表のようになります:
+
+exceptions.ArithmeticError(exceptions.Exception)
+    DecimalException
+        Clamped
+        DivisionByZero(DecimalException, exceptions.ZeroDivisionError)
+        Inexact
+            Overflow(Inexact, Rounded)
+            Underflow(Inexact, Rounded, Subnormal)
+        InvalidOperation
+        Rounded
+        Subnormal
+        FloatOperation(DecimalException, exceptions.TypeError)
+浮動小数点数に関する注意
+精度を上げて丸め誤差を抑制する
+十進浮動小数点数を使うと、十進数表現による誤差を抑制できます (0.1 を正確に表現できるようになります); しかし、ゼロでない桁が一定の精度を越えている場合には、演算によっては依然として値丸めによる誤差を引き起こします。
+
+値丸めによる誤差の影響は、桁落ちを生じるような、ほとんど相殺される量での加算や減算によって増幅されます。Knuth は、十分でない計算精度の下で値丸めを伴う浮動小数点演算を行った結果、加算の結合則や分配則における恒等性が崩れてしまう例を二つ示しています:
+
+# Examples from Seminumerical Algorithms, Section 4.2.2.
+>>> from decimal import Decimal, getcontext
+>>> getcontext().prec = 8
+
+>>> u, v, w = Decimal(11111113), Decimal(-11111111), Decimal('7.51111111')
+>>> (u + v) + w
+Decimal('9.5111111')
+>>> u + (v + w)
+Decimal('10')
+
+>>> u, v, w = Decimal(20000), Decimal(-6), Decimal('6.0000003')
+>>> (u*v) + (u*w)
+Decimal('0.01')
+>>> u * (v+w)
+Decimal('0.0060000')
+decimal モジュールでは、最下桁を失わないように十分に計算精度を広げることで、上で問題にしたような恒等性をとりもどせます:
+
+>>> getcontext().prec = 20
+>>> u, v, w = Decimal(11111113), Decimal(-11111111), Decimal('7.51111111')
+>>> (u + v) + w
+Decimal('9.51111111')
+>>> u + (v + w)
+Decimal('9.51111111')
+>>>
+>>> u, v, w = Decimal(20000), Decimal(-6), Decimal('6.0000003')
+>>> (u*v) + (u*w)
+Decimal('0.0060000')
+>>> u * (v+w)
+Decimal('0.0060000')
+特殊値
+decimal モジュールの数体系では、 NaN, sNaN, -Infinity, Infinity, および二つのゼロ、 +0 と -0 といった特殊な値を提供しています。
+
+無限大 (Infinity) は Decimal('Infinity') で直接構築できます。また、 DivisionByZero をトラップせずにゼロで除算を行った場合にも出てきます。同様に、 Overflow シグナルをトラップしなければ、表現可能な最大の数値の制限を越えた値を丸めたときに出てきます。
+
+無限大には符号があり (アフィン: affine であり)、算術演算に使用でき、非常に巨大で不確定の(indeterminate)値として扱われます。例えば、無限大に何らかの定数を加算すると、演算結果は別の無限大になります。
+
+演算によっては結果が不確定になるものがあり、 NaN を返します。ただし、 InvalidOperation シグナルをトラップするようになっていれば例外を送出します。例えば、 0/0 は NaN を返します。 NaN は「非数値 (not a number)」を表します。このような NaN は暗黙のうちに生成され、一度生成されるとそれを他の計算にも流れてゆき、関係する個々の演算全てが個別の NaN を返すようになります。この挙動は、たまに入力値が欠けるような状況で一連の計算を行う際に便利です --- 特定の計算に対しては無効な結果を示すフラグを立てつつ計算を進められるからです。
+
+一方、 NaN の変種である sNaN は関係する全ての演算で演算後にシグナルを送出します。 sNaN は、無効な演算結果に対して特別な処理を行うために計算を停止する必要がある場合に便利です。
+
+Python の比較演算は NaN が関わってくると少し驚くようなことがあります。等価性のテストの一方の対象が無言または発信 NaN である場合いつでも False を返し(たとえ Decimal('NaN')==Decimal('NaN') でも)、一方で不等価をテストするといつでも True を返します。二つの Decimal を <, <=, > または >= を使って比較する試みは一方が NaN である場合には InvalidOperation シグナルを送出し、このシグナルをトラップしなければ結果は False に終わります。汎用十進演算仕様は直接の比較の振る舞いについて定めていないことに注意しておきましょう。ここでの NaN が関係する比較ルールは IEEE 854 標準から持ってきました (section 5.7 の Table 3 を見て下さい)。厳格に標準遵守を貫くなら、 compare() および compare-signal() メソッドを代わりに使いましょう。
+
+アンダフローの起きた計算は、符号付きのゼロ (signed zero) を返すことがあります。符号は、より高い精度で計算を行った結果の符号と同じになります。符号付きゼロの大きさはやはりゼロなので、正のゼロと負のゼロは等しいとみなされ、符号は単なる参考にすぎません。
+
+二つの符号付きゼロが区別されているのに等価であることに加えて、異なる精度におけるゼロの表現はまちまちなのに、値は等価とみなされるということがあります。これに慣れるには多少時間がかかります。正規化浮動小数点表現に目が慣れてしまうと、以下の計算でゼロに等しい値が返っているとは即座に分かりません:
+
+>>>
+1 / Decimal('Infinity')
+Decimal('0E-1000026')
+スレッドを使った処理
+関数 getcontext() は、スレッド毎に別々の Context オブジェクトにアクセスします。別のスレッドコンテキストを持つということは、複数のスレッドが互いに影響を及ぼさずに (getcontext().prec=10 のような) 変更を適用できるということです。
+
+同様に、setcontext() 関数は自動的に引数のコンテキストを現在のスレッドのコンテキストに設定します。
+
+getcontext() を呼び出す前に setcontext() が呼び出されていなければ、現在のスレッドで使うための新たなコンテキストを生成するために getcontext() が自動的に呼び出されます。
+
+新たなコンテキストは、DefaultContext と呼ばれる雛形からコピーされます。アプリケーションを通じて全てのスレッドに同じ値を使うようにデフォルトを設定したければ、DefaultContext オブジェクトを直接変更します。 getcontext() を呼び出すスレッド間で競合条件が生じないようにするため、DefaultContext への変更はいかなるスレッドを開始するよりも 前に 行わなければなりません。以下に例を示します:
+
+# Set applicationwide defaults for all threads about to be launched
+DefaultContext.prec = 12
+DefaultContext.rounding = ROUND_DOWN
+DefaultContext.traps = ExtendedContext.traps.copy()
+DefaultContext.traps[InvalidOperation] = 1
+setcontext(DefaultContext)
+
+# Afterwards, the threads can be started
+t1.start()
+t2.start()
+t3.start()
+ . . .
+レシピ
+Decimal クラスの利用を実演している例をいくつか示します。これらはユーティリティ関数としても利用できます:
+
+def moneyfmt(value, places=2, curr='', sep=',', dp='.',
+             pos='', neg='-', trailneg=''):
+    """Convert Decimal to a money formatted string.
+
+    places:  required number of places after the decimal point
+    curr:    optional currency symbol before the sign (may be blank)
+    sep:     optional grouping separator (comma, period, space, or blank)
+    dp:      decimal point indicator (comma or period)
+             only specify as blank when places is zero
+    pos:     optional sign for positive numbers: '+', space or blank
+    neg:     optional sign for negative numbers: '-', '(', space or blank
+    trailneg:optional trailing minus indicator:  '-', ')', space or blank
+
+    >>> d = Decimal('-1234567.8901')
+    >>> moneyfmt(d, curr='$')
+    '-$1,234,567.89'
+    >>> moneyfmt(d, places=0, sep='.', dp='', neg='', trailneg='-')
+    '1.234.568-'
+    >>> moneyfmt(d, curr='$', neg='(', trailneg=')')
+    '($1,234,567.89)'
+    >>> moneyfmt(Decimal(123456789), sep=' ')
+    '123 456 789.00'
+    >>> moneyfmt(Decimal('-0.02'), neg='<', trailneg='>')
+    '<0.02>'
+
+    """
+    q = Decimal(10) ** -places      # 2 places --> '0.01'
+    sign, digits, exp = value.quantize(q).as_tuple()
+    result = []
+    digits = list(map(str, digits))
+    build, next = result.append, digits.pop
+    if sign:
+        build(trailneg)
+    for i in range(places):
+        build(next() if digits else '0')
+    if places:
+        build(dp)
+    if not digits:
+        build('0')
+    i = 0
+    while digits:
+        build(next())
+        i += 1
+        if i == 3 and digits:
+            i = 0
+            build(sep)
+    build(curr)
+    build(neg if sign else pos)
+    return ''.join(reversed(result))
+
+def pi():
+    """Compute Pi to the current precision.
+
+    >>> print(pi())
+    3.141592653589793238462643383
+
+    """
+    getcontext().prec += 2  # extra digits for intermediate steps
+    three = Decimal(3)      # substitute "three=3.0" for regular floats
+    lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
+    while s != lasts:
+        lasts = s
+        n, na = n+na, na+8
+        d, da = d+da, da+32
+        t = (t * n) / d
+        s += t
+    getcontext().prec -= 2
+    return +s               # unary plus applies the new precision
+
+def exp(x):
+    """Return e raised to the power of x.  Result type matches input type.
+
+    >>> print(exp(Decimal(1)))
+    2.718281828459045235360287471
+    >>> print(exp(Decimal(2)))
+    7.389056098930650227230427461
+    >>> print(exp(2.0))
+    7.38905609893
+    >>> print(exp(2+0j))
+    (7.38905609893+0j)
+
+    """
+    getcontext().prec += 2
+    i, lasts, s, fact, num = 0, 0, 1, 1, 1
+    while s != lasts:
+        lasts = s
+        i += 1
+        fact *= i
+        num *= x
+        s += num / fact
+    getcontext().prec -= 2
+    return +s
+
+def cos(x):
+    """Return the cosine of x as measured in radians.
+
+    The Taylor series approximation works best for a small value of x.
+    For larger values, first compute x = x % (2 * pi).
+
+    >>> print(cos(Decimal('0.5')))
+    0.8775825618903727161162815826
+    >>> print(cos(0.5))
+    0.87758256189
+    >>> print(cos(0.5+0j))
+    (0.87758256189+0j)
+
+    """
+    getcontext().prec += 2
+    i, lasts, s, fact, num, sign = 0, 0, 1, 1, 1, 1
+    while s != lasts:
+        lasts = s
+        i += 2
+        fact *= i * (i-1)
+        num *= x * x
+        sign *= -1
+        s += num / fact * sign
+    getcontext().prec -= 2
+    return +s
+
+def sin(x):
+    """Return the sine of x as measured in radians.
+
+    The Taylor series approximation works best for a small value of x.
+    For larger values, first compute x = x % (2 * pi).
+
+    >>> print(sin(Decimal('0.5')))
+    0.4794255386042030002732879352
+    >>> print(sin(0.5))
+    0.479425538604
+    >>> print(sin(0.5+0j))
+    (0.479425538604+0j)
+
+    """
+    getcontext().prec += 2
+    i, lasts, s, fact, num, sign = 1, 0, x, 1, x, 1
+    while s != lasts:
+        lasts = s
+        i += 2
+        fact *= i * (i-1)
+        num *= x * x
+        sign *= -1
+        s += num / fact * sign
+    getcontext().prec -= 2
+    return +s
+Decimal FAQ
+Q. decimal.Decimal('1234.5') などと打ち込むのは煩わしいのですが、対話式インタプリタを使う際にタイプ量を少なくする方法はありませんか?
+
+A. コンストラクタを1文字に縮める人もいるようです:
+
+>>>
+D = decimal.Decimal
+D('1.23') + D('3.45')
+Decimal('4.68')
+Q. 小数点以下2桁の固定小数点数のアプリケーションの中で、いくつかの入力が余計な桁を保持しているのでこれを丸めなければなりません。その他のものに余計な桁はなくそのまま使えます。どのメソッドを使うのがいいでしょうか?
+
+A. quantize() メソッドで固定した桁に丸められます。 Inexact トラップを設定しておけば、確認にも有用です:
+
+>>>
+TWOPLACES = Decimal(10) ** -2       # same as Decimal('0.01')
+>>>
+# Round to two places
+Decimal('3.214').quantize(TWOPLACES)
+Decimal('3.21')
+>>>
+# Validate that a number does not exceed two places
+Decimal('3.21').quantize(TWOPLACES, context=Context(traps=[Inexact]))
+Decimal('3.21')
+>>>
+Decimal('3.214').quantize(TWOPLACES, context=Context(traps=[Inexact]))
+Traceback (most recent call last):
+   ...
+Inexact: None
+Q. 正当な2桁の入力が得られたとして、その正当性をアプリケーション実行中も変わらず保ち続けるにはどうすればいいでしょうか?
+
+A. 加減算あるいは整数との乗算のような演算は自動的に固定小数点を守ります。その他の除算や整数以外の乗算などは小数点以下の桁を変えてしまいますので実行後は quantize() ステップが必要です:
+
+>>>
+a = Decimal('102.72')           # Initial fixed-point values
+b = Decimal('3.17')
+a + b                           # Addition preserves fixed-point
+Decimal('105.89')
+a - b
+Decimal('99.55')
+a * 42                          # So does integer multiplication
+Decimal('4314.24')
+(a * b).quantize(TWOPLACES)     # Must quantize non-integer multiplication
+Decimal('325.62')
+(b / a).quantize(TWOPLACES)     # And quantize division
+Decimal('0.03')
+固定小数点のアプリケーションを開発する際は、 quantize() の段階を扱う関数を定義しておくと便利です:
+
+>>>
+def mul(x, y, fp=TWOPLACES):
+    return (x * y).quantize(fp)
+def div(x, y, fp=TWOPLACES):
+    return (x / y).quantize(fp)
+>>>
+mul(a, b)                       # Automatically preserve fixed-point
+Decimal('325.62')
+div(b, a)
+Decimal('0.03')
+Q. 一つの値に対して多くの表現方法があります。 200 と 200.000 と 2E2 と 02E+4 は全て同じ値で違った精度の数です。これらをただ一つの正規化された値に変換することはできますか?
+
+A. normalize() メソッドは全ての等しい値をただ一つの表現に直します:
+
+>>>
+values = map(Decimal, '200 200.000 2E2 .02E+4'.split())
+[v.normalize() for v in values]
+[Decimal('2E+2'), Decimal('2E+2'), Decimal('2E+2'), Decimal('2E+2')]
+Q. ある種の十進数値はいつも指数表記で表示されます。指数表記以外の表示にする方法はありますか?
+
+A. 値によっては、指数表記だけが有効桁数を表せる表記法なのです。たとえば、 5.0E+3 を 5000 と表してしまうと、値は変わりませんが元々の2桁という有効数字が反映されません。
+
+もしアプリケーションが有効数字の追跡を等閑視するならば、指数部や末尾のゼロを取り除き、有効数字を忘れ、しかし値を変えずにおくことは容易です:
+
+>>>
+def remove_exponent(d):
+    return d.quantize(Decimal(1)) if d == d.to_integral() else d.normalize()
+>>>
+remove_exponent(Decimal('5E+3'))
+Decimal('5000')
+Q. 普通の float を Decimal に変換できますか?
+
+A. はい。どんな 2 進浮動小数点数も Decimal として正確に表現できます。ただし、正確な変換は直感的に考えたよりも多い桁になることがあります:
+
+>>> Decimal(math.pi)
+Decimal('3.141592653589793115997963468544185161590576171875')
+Q. 複雑な計算の中で、精度不足や丸めの異常で間違った結果になっていないことをどうやって保証すれば良いでしょうか。
+
+A. decimal モジュールでは検算は容易です。一番良い方法は、大きめの精度や様々な丸めモードで再計算してみることです。大きく異なった結果が出てきたら、精度不足や丸めの問題や悪条件の入力、または数値計算的に不安定なアルゴリズムを示唆しています。
+
+Q. コンテキストの精度は計算結果には適用されていますが入力には適用されていないようです。様々に異なる精度の入力値を混ぜて計算する時に注意すべきことはありますか?
+
+A. はい。原則として入力値は正確であると見做しておりそれらの値を使った計算も同様です。結果だけが丸められます。入力の強みは "what you type is what you get" (打ち込んだ値が得られる値)という点にあります。入力が丸められないということを忘れていると結果が奇妙に見えるというのは弱点です:
+
+>>> getcontext().prec = 3
+>>> Decimal('3.104') + Decimal('2.104')
+Decimal('5.21')
+>>> Decimal('3.104') + Decimal('0.000') + Decimal('2.104')
+Decimal('5.20')
+解決策は、精度を増やすか、単項プラス演算子を使って入力の丸めを強制することです:
+
+>>> getcontext().prec = 3
+>>> +Decimal('1.23456789')      # unary plus triggers rounding
+Decimal('1.23')
+もしくは、入力を Context.create_decimal() を使って生成時に丸めてしまうこともできます:
+
+>>>
+Context(prec=5, rounding=ROUND_DOWN).create_decimal('1.2345678')
+Decimal('1.2345')
+Q. CPython 実装は大きな数に対しても速いでしょうか?
+
+A. Yes. In the CPython and PyPy3 implementations, the C/CFFI versions of the decimal module integrate the high speed libmpdec library for arbitrary precision correctly-rounded decimal floating point arithmetic 1. libmpdec uses Karatsuba multiplication for medium-sized numbers and the Number Theoretic Transform for very large numbers.
+
+The context must be adapted for exact arbitrary precision arithmetic. Emin and Emax should always be set to the maximum values, clamp should always be 0 (the default). Setting prec requires some care.
+
+The easiest approach for trying out bignum arithmetic is to use the maximum value for prec as well 2:
+
+>>>
+>>> setcontext(Context(prec=MAX_PREC, Emax=MAX_EMAX, Emin=MIN_EMIN))
+>>> x = Decimal(2) ** 256
+>>> x / 128
+Decimal('904625697166532776746648320380374280103671755200316906558262375061821325312')
+For inexact results, MAX_PREC is far too large on 64-bit platforms and the available memory will be insufficient:
+
+>>>
+>>> Decimal(1) / 3
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+MemoryError
+On systems with overallocation (e.g. Linux), a more sophisticated approach is to adjust prec to the amount of available RAM. Suppose that you have 8GB of RAM and expect 10 simultaneous operands using a maximum of 500MB each:
+
+>>>
+>>> import sys
+>>>
+>>> # Maximum number of digits for a single operand using 500MB in 8-byte words
+>>> # with 19 digits per word (4-byte and 9 digits for the 32-bit build):
+>>> maxdigits = 19 * ((500 * 1024**2) // 8)
+>>>
+>>> # Check that this works:
+>>> c = Context(prec=maxdigits, Emax=MAX_EMAX, Emin=MIN_EMIN)
+>>> c.traps[Inexact] = True
+>>> setcontext(c)
+>>>
+>>> # Fill the available precision with nines:
+>>> x = Decimal(0).logical_invert() * 9
+>>> sys.getsizeof(x)
+524288112
+>>> x + 2
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  decimal.Inexact: [<class 'decimal.Inexact'>]
+
+fractions --- 有理数
+ソースコード: Lib/fractions.py
+
+fractions モジュールは有理数計算のサポートを提供します。
+
+Fraction インスタンスは一対の整数、他の有理数、または文字列から生成されます。
+
+class fractions.Fraction(numerator=0, denominator=1)
+class fractions.Fraction(other_fraction)
+class fractions.Fraction(float)
+class fractions.Fraction(decimal)
+class fractions.Fraction(string)
+最初のバージョンは numerator と denominator が numbers.Rational のインスタンスであることを要求し、 numerator/denominator の値を持つ新しい Fraction インスタンスを返します。 denominator が 0 ならば、 ZeroDivisionError を送出します。二番目のバージョンは other_fraction が numbers.Rational のインスタンスであることを要求し、同じ値を持つ新しい Fraction インスタンスを返します。その次の二つのバージョンは、 float と decimal.Decimal インスタンスを受け付け、それとちょうど同じ値を持つ Fraction インスタンスを返します。なお、二進浮動小数点数にお決まりの問題 (浮動小数点演算、その問題と制限 参照) のため、 Fraction(1.1) の引数は 11/10 と正確に等しいとは言えないので、 Fraction(1.1) は予期した通りの Fraction(11, 10) を返し ません 。(ただし、以下の limit_denominator() メソッドのドキュメントを参照してください。) 最後のバージョンは、文字列またはユニコードのインスタンスを渡されることを想定します。このインスタンスは、通常、次のような形式です:
+
+[sign] numerator ['/' denominator]
+ここで、オプションの sign は '+' か '-' のどちらかであり、numerator および (存在する場合) denominator は十進数の数字の文字列です。さらに、 float コンストラクタで受け付けられる有限の値を表す文字列は、Fraction コンストラクタでも受け付けられます。どちらの形式でも、入力される文字列は前後に空白があって構いません。以下に、いくつかの例を示します:
+
+>>>
+>>> from fractions import Fraction
+>>> Fraction(16, -10)
+Fraction(-8, 5)
+>>> Fraction(123)
+Fraction(123, 1)
+>>> Fraction()
+Fraction(0, 1)
+>>> Fraction('3/7')
+Fraction(3, 7)
+>>> Fraction(' -3/7 ')
+Fraction(-3, 7)
+>>> Fraction('1.414213 \t\n')
+Fraction(1414213, 1000000)
+>>> Fraction('-.125')
+Fraction(-1, 8)
+>>> Fraction('7e-6')
+Fraction(7, 1000000)
+>>> Fraction(2.25)
+Fraction(9, 4)
+>>> Fraction(1.1)
+Fraction(2476979795053773, 2251799813685248)
+>>> from decimal import Decimal
+>>> Fraction(Decimal('1.1'))
+Fraction(11, 10)
+Fraction クラスは抽象基底クラス numbers.Rational を継承し、その全てのメソッドと演算を実装します。 Fraction インスタンスはハッシュ可能で、不変 (immutable) であるものとして扱われます。加えて、 Fraction には以下のプロパティとメソッドがあります:
+
+バージョン 3.2 で変更: Fraction のコンストラクタが float および decimal.Decimal インスタンスを受け付けるようになりました。
+
+バージョン 3.9 で変更: The math.gcd() function is now used to normalize the numerator and denominator. math.gcd() always return a int type. Previously, the GCD type depended on numerator and denominator.
+
+numerator
+有理数を既約分数で表したときの分子。
+
+denominator
+有理数を既約分数で表したときの分母。
+
+as_integer_ratio()
+2 つの整数からなるタプルで、比が Fraction インスタンスと等しく、分母が正になるものを返します。
+
+バージョン 3.8 で追加.
+
+from_float(flt)
+このクラスメソッドは float である flt の正確な値を表す Fraction を構築します。 Fraction.from_float(0.3) と Fraction(3, 10) の値は同じでないことに注意してください 。
+
+注釈 Python 3.2 以降では、 float から直接 Fraction インスタンスを構築できるようになりました。
+from_decimal(dec)
+このクラスメソッドは decimal.Decimal インスタンスである dec の正確な値を表す Fraction を構築します。
+
+注釈 Python 3.2 以降では、 decimal.Decimal インスタンスから直接 Fraction インスタンスを構築できるようになりました。
+limit_denominator(max_denominator=1000000)
+分母が高々 max_denominator である、 self に最も近い Fraction を見付けて返します。このメソッドは与えられた浮動小数点数の有理数近似を見つけるのに役立ちます:
+
+>>>
+from fractions import Fraction
+Fraction('3.1415926535897932').limit_denominator(1000)
+Fraction(355, 113)
+あるいは float で表された有理数を元に戻すのにも使えます:
+
+>>>
+from math import pi, cos
+Fraction(cos(pi/3))
+Fraction(4503599627370497, 9007199254740992)
+Fraction(cos(pi/3)).limit_denominator()
+Fraction(1, 2)
+Fraction(1.1).limit_denominator()
+Fraction(11, 10)
+__floor__()
+最大の int <= self を返します。このメソッドは math.floor() 関数からでもアクセスできます:
+
+>>>
+from math import floor
+floor(Fraction(355, 113))
+3
+__ceil__()
+最小の int >= self を返します。このメソッドは math.ceil() 関数からでもアクセスできます。
+
+__round__()
+__round__(ndigits)
+第一のバージョンは、 self に最も近い int を偶数丸めで返します。第二のバージョンは、このメソッドは self に最も近い Fraction(1, 10**ndigits) の倍数 (論理的に、 ndigits が負なら) を、これも偶数丸めで丸めます。 round() 関数からでもアクセスできます。
+
+random --- 擬似乱数を生成する
+ソースコード: Lib/random.py
+
+このモジュールでは様々な分布をもつ擬似乱数生成器を実装しています。
+
+整数用に、ある範囲からの一様な選択があります。シーケンス用には、シーケンスからのランダムな要素の一様な選択、リストのランダムな置換をインプレースに生成する関数、順列を置換せずにランダムサンプリングする関数があります。
+
+実数用としては、一様分布、正規分布 (ガウス分布)、対数正規分布、負の指数分布、ガンマおよびベータ分布を計算する関数があります。角度の分布を生成するにはフォン・ミーゼス分布が利用できます。
+
+ほとんど全てのモジュール関数は、基礎となる関数 random() に依存します。この関数はランダムな浮動小数点数を半開区間 [0.0, 1.0) 内に一様に生成します。Python は中心となる乱数生成器としてメルセンヌツイスタを使います。これは 53 ビット精度の浮動小数点を生成し、周期は 2**19937-1 です。本体は C で実装されていて、高速でスレッドセーフです。メルセンヌツイスタは、現存する中で最も広範囲にテストされた乱数生成器のひとつです。しかしながら、メルセンヌツイスタは完全に決定論的であるため、全ての目的に合致しているわけではなく、暗号化の目的には全く向いていません。
+
+このモジュールで提供されている関数は、実際には random.Random クラスの隠蔽されたインスタンスのメソッドに束縛されています。内部状態を共有しない生成器を取得するため、自分で Random のインスタンスを生成することができます。
+
+自分で考案した基本乱数生成器を使いたい場合、クラス Random をサブクラス化することもできます。この場合、メソッド random()、seed()、getstate()、setstate() をオーバライドしてください。オプションとして、新しいジェネレータは getrandbits() メソッドを提供することができます。これにより randrange() メソッドが任意に大きな範囲から選択を行えるようになります。
+
+random モジュールは SystemRandom クラスも提供していて、このクラスは OS が提供している乱数発生源を利用して乱数を生成するシステム関数 os.urandom() を使うものです。
+
+警告 このモジュールの擬似乱数生成器をセキュリティ目的に使用してはいけません。セキュリティや暗号学的な用途については secrets モジュールを参照してください。
+参考 M. Matsumoto and T. Nishimura, "Mersenne Twister: A 623-dimensionally equidistributed uniform pseudorandom number generator", ACM Transactions on Modeling and Computer Simulation Vol. 8, No. 1, January pp.3--30 1998.
+Complementary-Multiply-with-Carry recipe 長い周期と比較的シンプルな更新操作を備えた互換性のある別の乱数生成器。
+
+保守 (bookkeeping) 関数
+random.seed(a=None, version=2)
+乱数生成器を初期化します。
+
+a が省略されるか None の場合、現在のシステム時刻が使用されます。乱数のソースがオペレーティングシステムによって提供される場合、システム時刻の代わりにそれが使用されます (利用可能性についての詳細は os.urandom() 関数を参照)。
+
+a が int の場合、それが直接使われます。
+
+バージョン2 (デフォルト) では、 str, bytes, bytearray オブジェクトは int に変換され、そのビットがすべて使用されます。
+
+バージョン1 (Python の古いバージョンでのランダムなシーケンスを再現するために提供される) では、 str と bytes に対して適用されるアルゴリズムは、より狭い範囲のシードを生成します。
+
+バージョン 3.2 で変更: 文字列シードのすべてのビットを使うバージョン2スキームに移行。
+
+バージョン 3.9 で非推奨: In the future, the seed must be one of the following types: NoneType, int, float, str, bytes, or bytearray.
+
+random.getstate()
+乱数生成器の現在の内部状態を記憶したオブジェクトを返します。このオブジェクトを setstate() に渡して内部状態を復元することができます。
+
+random.setstate(state)
+state は予め getstate() を呼び出して得ておかなくてはなりません。 setstate() は getstate() が呼び出された時の乱数生成器の内部状態を復元します。
+
+Functions for bytes
+random.randbytes(n)
+Generate n random bytes.
+
+This method should not be used for generating security tokens. Use secrets.token_bytes() instead.
+
+バージョン 3.9 で追加.
+
+整数用の関数
+random.randrange(stop)
+random.randrange(start, stop[, step])
+range(start, stop, step) の要素からランダムに選ばれた要素を返します。この関数は choice(range(start, stop, step)) と等価ですが、実際には range オブジェクトを生成しません。
+
+位置引数のパターンは range() のそれと一致します。キーワード引数は、この関数に望まれない方法で使われるかもしれないので、使うべきではありません。
+
+バージョン 3.2 で変更: 一様に分布した値の生成に関して randrange() がより洗練されました。以前は int(random()*n) のようなやや一様でない分布を生成するスタイルを使用していました。
+
+random.randint(a, b)
+a <= N <= b であるようなランダムな整数 N を返します。randrange(a, b+1) のエイリアスです。
+
+random.getrandbits(k)
+Returns a non-negative Python integer with k random bits. This method is supplied with the MersenneTwister generator and some other generators may also provide it as an optional part of the API. When available, getrandbits() enables randrange() to handle arbitrarily large ranges.
+
+バージョン 3.9 で変更: This method now accepts zero for k.
+
+シーケンス用の関数
+random.choice(seq)
+空でないシーケンス seq からランダムに要素を返します。 seq が空のときは、 IndexError が送出されます。
+
+random.choices(population, weights=None, *, cum_weights=None, k=1)
+population から重複ありで選んだ要素からなる大きさ k のリストを返します。population が空の場合 IndexError を送出します。
+
+weights シーケンスが与えられた場合、相対的な重みに基づいて要素が選ばれます。あるいは、cum_weights シーケンスが与えられた場合、累積的な重み (itertools.accumulate() を用いて計算されるかもしれません) で要素が選ばれます。例えば、相対的な重み [10, 5, 30, 5] は累積的な重み [10, 15, 45, 50] と等価です。内部的には、相対的な重みは要素選択の前に累積的な重みに変換されるため、累積的な重みを渡すと手間を省けます。
+
+weights および cum_weights が与えられなかった場合、要素は同じ確率で選択されます。重みのシーケンスが与えられた場合、その長さは population シーケンスと同じでなければなりません。weights と cum_weights を同時に与えると TypeError が送出されます。
+
+The weights or cum_weights can use any numeric type that interoperates with the float values returned by random() (that includes integers, floats, and fractions but excludes decimals). Behavior is undefined if any weight is negative. A ValueError is raised if all weights are zero.
+
+与えられた種に対して、同じ重みを持つ choices() 関数は、一般に choice() を繰り返し呼び出す場合とは異なるシーケンスを生成します。 choices() で使用されるアルゴリズムは、内部の一貫性とスピードのために浮動小数点演算を使用します。 choice() で使われるアルゴリズムは、丸め誤差による小さな偏りを避けるために、デフォルトでは選択を繰り返す整数演算になっています。
+
+バージョン 3.6 で追加.
+
+バージョン 3.9 で変更: Raises a ValueError if all weights are zero.
+
+random.shuffle(x[, random])
+シーケンス x をインプレースにシャッフルします。
+
+オプション引数 random は [0.0, 1.0) の範囲のランダムな浮動小数を返す引数なしの関数です。デフォルトでは random() 関数です。
+
+イミュータブルなシーケンスをシャッフルしてシャッフルされたリストを新たに返すには、代わりに sample(x, k=len(x)) を使用してください。
+
+たとえ len(x) が小さくても、x の並べ替えの総数 (訳注: 要素数の階乗) は大半の乱数生成器の周期よりもすぐに大きくなることに注意してください。つまり、長いシーケンスの大半の並べ替えは決して生成されないだろう、ということです。例えば、長さ 2080 のシーケンスがメルセンヌツイスタ生成器の周期に収まる中で最大のものになります。
+
+Deprecated since version 3.9, will be removed in version 3.11: The optional parameter random.
+
+random.sample(population, k, *, counts=None)
+母集団のシーケンスまたは集合から選ばれた長さ k の一意な要素からなるリストを返します。重複無しのランダムサンプリングに用いられます。
+
+母集団自体を変更せずに、母集団内の要素を含む新たなリストを返します。返されたリストは選択された順に並んでいるので、このリストの部分スライスもランダムなサンプルになります。これにより、くじの当選者 (サンプル) を1等賞と2等賞（の部分スライス）に分けることも可能です。
+
+母集団の要素は ハッシュ可能 でなくても、ユニークでなくてもかまいません。母集団が繰り返しを含む場合、出現するそれぞれがサンプルに選択されえます。
+
+Repeated elements can be specified one at a time or with the optional keyword-only counts parameter. For example, sample(['red', 'blue'], counts=[4, 2], k=5) is equivalent to sample(['red', 'red', 'red', 'red', 'blue', 'blue'], k=5).
+
+ある範囲の整数からサンプルを取る場合、引数に range() オブジェクトを使用してください。大きな母集団の場合、これは特に速く、メモリ効率が良いです: sample(range(10000000), k=60)。
+
+サンプルの大きさが母集団の大きさより大きい場合 ValueError が送出されます。
+
+バージョン 3.9 で変更: Added the counts parameter.
+
+バージョン 3.9 で非推奨: In the future, the population must be a sequence. Instances of set are no longer supported. The set must first be converted to a list or tuple, preferably in a deterministic order so that the sample is reproducible.
+
+実数分布
+以下の関数は特定の実数値分布を生成します。関数の引数の名前は、一般的な数学の慣例で使われている分布の公式の対応する変数から取られています; これらの公式のほとんどはどんな統計学のテキストにも載っています。
+
+random.random()
+次のランダムな浮動小数点数（範囲は [0.0, 1.0) ）を返します。
+
+random.uniform(a, b)
+a <= b であれば a <= N <= b 、b < a であれば b <= N <= a であるようなランダムな浮動小数点数 N を返します。
+
+端点の値 b が範囲に含まれるかどうかは、等式 a + (b-a) * random() における浮動小数点の丸めに依存します。
+
+random.triangular(low, high, mode)
+low <= N <= high でありこれら境界値の間に指定された最頻値 mode を持つようなランダムな浮動小数点数 N を返します。境界 low と high のデフォルトは 0 と 1 です。最頻値 mode 引数のデフォルトは両境界値の中点になり、対称な分布を与えます。
+
+random.betavariate(alpha, beta)
+ベータ分布です。引数の満たすべき条件は alpha > 0 および beta > 0 です。 0 から 1 の範囲の値を返します。
+
+random.expovariate(lambd)
+指数分布です。lambd は平均にしたい値の逆数です。(この引数は "lambda" と呼ぶべきなのですが、Python の予約語なので使えません。) 返す値の範囲は lambd が正なら 0 から正の無限大、lambd が負なら負の無限大から 0 です。
+
+random.gammavariate(alpha, beta)
+ガンマ分布です (ガンマ関数 ではありません ！)。引数の満たすべき条件は alpha > 0 および beta > 0 です。
+
+確率分布関数は:
+
+          x ** (alpha - 1) * math.exp(-x / beta)
+pdf(x) =  --------------------------------------
+            math.gamma(alpha) * beta ** alpha
+random.gauss(mu, sigma)
+ガウス分布です。 mu は平均であり、 sigma は標準偏差です。この関数は後で定義する関数 normalvariate() より少しだけ高速です。
+
+Multithreading note: When two threads call this function simultaneously, it is possible that they will receive the same return value. This can be avoided in three ways. 1) Have each thread use a different instance of the random number generator. 2) Put locks around all calls. 3) Use the slower, but thread-safe normalvariate() function instead.
+
+random.lognormvariate(mu, sigma)
+対数正規分布です。この分布を自然対数を用いた分布にした場合、平均 mu で標準偏差 sigma の正規分布になります。 mu は任意の値を取ることができ、sigma はゼロより大きくなければなりません。
+
+random.normalvariate(mu, sigma)
+正規分布です。 mu は平均で、 sigma は標準偏差です。
+
+random.vonmisesvariate(mu, kappa)
+mu は平均の角度で、0 から 2*pi までのラジアンで表されます。 kappa は濃度パラメータで、ゼロ以上でなければなりません。kappa がゼロに等しい場合、この分布は範囲 0 から 2*pi の一様でランダムな角度の分布に退化します。
+
+random.paretovariate(alpha)
+パレート分布です。 alpha は形状パラメータです。
+
+random.weibullvariate(alpha, beta)
+ワイブル分布です。 alpha は尺度パラメタで、 beta は形状パラメータです。
+
+他の生成器
+class random.Random([seed])
+デフォルトの疑似乱数生成器を random を使って実装したクラスです。
+
+バージョン 3.9 で非推奨: In the future, the seed must be one of the following types: NoneType, int, float, str, bytes, or bytearray.
+
+class random.SystemRandom([seed])
+オペレーティングシステムの提供する発生源によって乱数を生成する os.urandom() 関数を使うクラスです。すべてのシステムで使えるメソッドではありません。ソフトウェアの状態に依存してはいけませんし、一連の操作は再現不能です。従って、 seed() メソッドは何の影響も及ぼさず、無視されます。 getstate() と setstate() メソッドが呼び出されると、例外 NotImplementedError が送出されます。
+
+再現性について
+Sometimes it is useful to be able to reproduce the sequences given by a pseudo-random number generator. By re-using a seed value, the same sequence should be reproducible from run to run as long as multiple threads are not running.
+
+random モジュールのアルゴリズムやシード処理関数のほとんどは、Python バージョン間で変更される対象となりますが、次の二点は変更されないことが保証されています:
+
+新しいシード処理メソッドが追加されたら、後方互換なシード処理器が提供されます。
+
+生成器の random() メソッドは、互換なシード処理器に同じシードが与えられた場合、引き続き同じシーケンスを生成します。
+
+使用例
+基礎的な例:
+
+>>>
+>>> random()                             # Random float:  0.0 <= x < 1.0
+0.37444887175646646
+
+>>> uniform(2.5, 10.0)                   # Random float:  2.5 <= x < 10.0
+3.1800146073117523
+
+>>> expovariate(1 / 5)                   # Interval between arrivals averaging 5 seconds
+5.148957571865031
+
+>>> randrange(10)                        # Integer from 0 to 9 inclusive
+7
+
+>>> randrange(0, 101, 2)                 # Even integer from 0 to 100 inclusive
+26
+
+>>> choice(['win', 'lose', 'draw'])      # Single random element from a sequence
+'draw'
+
+>>> deck = 'ace two three four'.split()
+>>> shuffle(deck)                        # Shuffle a list
+>>> deck
+['four', 'two', 'ace', 'three']
+
+>>> sample([10, 20, 30, 40, 50], k=4)    # Four samples without replacement
+[40, 10, 50, 30]
+シミュレーション:
+
+>>>
+>>> # Six roulette wheel spins (weighted sampling with replacement)
+>>> choices(['red', 'black', 'green'], [18, 18, 2], k=6)
+['red', 'green', 'black', 'black', 'red', 'black']
+
+>>> # Deal 20 cards without replacement from a deck
+>>> # of 52 playing cards, and determine the proportion of cards
+>>> # with a ten-value:  ten, jack, queen, or king.
+>>> dealt = sample(['tens', 'low cards'], counts=[16, 36], k=20)
+>>> dealt.count('tens') / 20
+0.15
+
+>>> # Estimate the probability of getting 5 or more heads from 7 spins
+>>> # of a biased coin that settles on heads 60% of the time.
+>>> def trial():
+...     return choices('HT', cum_weights=(0.60, 1.00), k=7).count('H') >= 5
+...
+>>> sum(trial() for i in range(10_000)) / 10_000
+0.4169
+
+>>> # Probability of the median of 5 samples being in middle two quartiles
+>>> def trial():
+...     return 2_500 <= sorted(choices(range(10_000), k=5))[2] < 7_500
+...
+>>> sum(trial() for i in range(10_000)) / 10_000
+0.7958
+Example of statistical bootstrapping using resampling with replacement to estimate a confidence interval for the mean of a sample:
+
+# http://statistics.about.com/od/Applications/a/Example-Of-Bootstrapping.htm
+from statistics import fmean as mean
+from random import choices
+
+data = [41, 50, 29, 37, 81, 30, 73, 63, 20, 35, 68, 22, 60, 31, 95]
+means = sorted(mean(choices(data, k=len(data))) for i in range(100))
+print(f'The sample mean of {mean(data):.1f} has a 90% confidence '
+      f'interval from {means[5]:.1f} to {means[94]:.1f}')
+薬と偽薬の間に観察された効果の違いについて、統計的有意性、すなわち p 値 を決定するために、リサンプリング順列試験 を行う例:
+
+# Example from "Statistics is Easy" by Dennis Shasha and Manda Wilson
+from statistics import fmean as mean
+from random import shuffle
+
+drug = [54, 73, 53, 70, 73, 68, 52, 65, 65]
+placebo = [54, 51, 58, 44, 55, 52, 42, 47, 58, 46]
+observed_diff = mean(drug) - mean(placebo)
+
+n = 10_000
+count = 0
+combined = drug + placebo
+for i in range(n):
+    shuffle(combined)
+    new_diff = mean(combined[:len(drug)]) - mean(combined[len(drug):])
+    count += (new_diff >= observed_diff)
+
+print(f'{n} label reshufflings produced only {count} instances with a difference')
+print(f'at least as extreme as the observed difference of {observed_diff:.1f}.')
+print(f'The one-sided p-value of {count / n:.4f} leads us to reject the null')
+print(f'hypothesis that there is no difference between the drug and the placebo.')
+Simulation of arrival times and service deliveries for a multiserver queue:
+
+from heapq import heappush, heappop
+from random import expovariate, gauss
+from statistics import mean, median, stdev
+
+average_arrival_interval = 5.6
+average_service_time = 15.0
+stdev_service_time = 3.5
+num_servers = 3
+
+waits = []
+arrival_time = 0.0
+servers = [0.0] * num_servers  # time when each server becomes available
+for i in range(100_000):
+    arrival_time += expovariate(1.0 / average_arrival_interval)
+    next_server_available = heappop(servers)
+    wait = max(0.0, next_server_available - arrival_time)
+    waits.append(wait)
+    service_duration = gauss(average_service_time, stdev_service_time)
+    service_completed = arrival_time + wait + service_duration
+    heappush(servers, service_completed)
+
+print(f'Mean wait: {mean(waits):.1f}.  Stdev wait: {stdev(waits):.1f}.')
+print(f'Median wait: {median(waits):.1f}.  Max wait: {max(waits):.1f}.')
+参考 Statistics for Hackers Jake Vanderplas による統計解析のビデオ。シミュレーション、サンプリング、シャッフル、交差検定といった基本的な概念のみを用いています。
+Economics Simulation Peter Norvig による市場価格のシミュレーション。このモジュールが提供する多くのツールや分布 (gauss, uniform, sample, betavariate, choice, triangular, randrange) の活用法を示しています。
+
+A Concrete Introduction to Probability (using Python) Peter Norvig によるチュートリアル。確率論の基礎、シミュレーションの書き方、Python を使用したデータ解析法をカバーしています。
+
+レシピ
+The default random() returns multiples of 2⁻⁵³ in the range 0.0 ≤ x < 1.0. All such numbers are evenly spaced and are exactly representable as Python floats. However, many other representable floats in that interval are not possible selections. For example, 0.05954861408025609 isn't an integer multiple of 2⁻⁵³.
+
+The following recipe takes a different approach. All floats in the interval are possible selections. The mantissa comes from a uniform distribution of integers in the range 2⁵² ≤ mantissa < 2⁵³. The exponent comes from a geometric distribution where exponents smaller than -53 occur half as often as the next larger exponent.
+
+from random import Random
+from math import ldexp
+
+class FullRandom(Random):
+
+    def random(self):
+        mantissa = 0x10_0000_0000_0000 | self.getrandbits(52)
+        exponent = -53
+        x = 0
+        while not x:
+            x = self.getrandbits(32)
+            exponent += x.bit_length() - 32
+        return ldexp(mantissa, exponent)
+All real valued distributions in the class will use the new method:
+
+>>>
+>>> fr = FullRandom()
+>>> fr.random()
+0.05954861408025609
+>>> fr.expovariate(0.25)
+8.87925541791544
+The recipe is conceptually equivalent to an algorithm that chooses from all the multiples of 2⁻¹⁰⁷⁴ in the range 0.0 ≤ x < 1.0. All such numbers are evenly spaced, but most have to be rounded down to the nearest representable Python float. (The value 2⁻¹⁰⁷⁴ is the smallest positive unnormalized float and is equal to math.ulp(0.0).)
+
+statistics --- 数理統計関数
+バージョン 3.4 で追加.
+
+ソースコード: Lib/statistics.py
+
+This module provides functions for calculating mathematical statistics of numeric (Real-valued) data.
+
+The module is not intended to be a competitor to third-party libraries such as NumPy, SciPy, or proprietary full-featured statistics packages aimed at professional statisticians such as Minitab, SAS and Matlab. It is aimed at the level of graphing and scientific calculators.
+
+Unless explicitly noted, these functions support int, float, Decimal and Fraction. Behaviour with other types (whether in the numeric tower or not) is currently unsupported. Collections with a mix of types are also undefined and implementation-dependent. If your input data consists of mixed types, you may be able to use map() to ensure a consistent result, for example: map(float, input_data).
+
+平均及び中心位置の測度
+これらの関数は母集団または標本の平均値や標準値を計算します。
+
+mean()
+
+データの算術平均。
+
+fmean()
+
+Fast, floating point arithmetic mean.
+
+geometric_mean()
+
+Geometric mean of data.
+
+harmonic_mean()
+
+データの調和平均。
+
+median()
+
+データの中央値。
+
+median_low()
+
+データの low median。
+
+median_high()
+
+データの high median。
+
+median_grouped()
+
+grouped data の中央値、すなわち50パーセンタイル。
+
+mode()
+
+Single mode (most common value) of discrete or nominal data.
+
+multimode()
+
+List of modes (most common values) of discrete or nomimal data.
+
+quantiles()
+
+Divide data into intervals with equal probability.
+
+分散の測度
+これらの関数は母集団または標本が標準値や平均値からどれくらい離れているかについて計算します。
+
+pstdev()
+
+データの母標準偏差。
+
+pvariance()
+
+データの母分散。
+
+stdev()
+
+データの標本標準偏差。
+
+variance()
+
+データの標本標準分散。
+
+関数の詳細
+註釈: 関数の引数となるデータをソートしておく必要はありません。例の多くがソートされているのは見やすさのためです。
+
+statistics.mean(data)
+Return the sample arithmetic mean of data which can be a sequence or iterable.
+
+算術平均はデータの総和をデータ数で除したものです。単に「平均」と呼ばれることも多いですが、数学における平均の一種に過ぎません。データの中心位置の測度の一つです。
+
+data が空の場合 StatisticsError を送出します。
+
+使用例:
+
+>>> mean([1, 2, 3, 4, 4])
+2.8
+>>> mean([-1.0, 2.5, 3.25, 5.75])
+2.625
+
+>>> from fractions import Fraction as F
+>>> mean([F(3, 7), F(1, 21), F(5, 3), F(1, 3)])
+Fraction(13, 21)
+
+>>> from decimal import Decimal as D
+>>> mean([D("0.5"), D("0.75"), D("0.625"), D("0.375")])
+Decimal('0.5625')
+注釈 The mean is strongly affected by outliers and is not a robust estimator for central location: the mean is not necessarily a typical example of the data points. For more robust measures of central location, see median() and mode().
+The sample mean gives an unbiased estimate of the true population mean, so that when taken on average over all the possible samples, mean(sample) converges on the true mean of the entire population. If data represents the entire population rather than a sample, then mean(data) is equivalent to calculating the true population mean μ.
+
+statistics.fmean(data)
+Convert data to floats and compute the arithmetic mean.
+
+This runs faster than the mean() function and it always returns a float. The data may be a sequence or iterable. If the input dataset is empty, raises a StatisticsError.
+
+>>> fmean([3.5, 4.0, 5.25])
+4.25
+バージョン 3.8 で追加.
+
+statistics.geometric_mean(data)
+Convert data to floats and compute the geometric mean.
+
+The geometric mean indicates the central tendency or typical value of the data using the product of the values (as opposed to the arithmetic mean which uses their sum).
+
+Raises a StatisticsError if the input dataset is empty, if it contains a zero, or if it contains a negative value. The data may be a sequence or iterable.
+
+No special efforts are made to achieve exact results. (However, this may change in the future.)
+
+>>> round(geometric_mean([54, 24, 36]), 1)
+36.0
+バージョン 3.8 で追加.
+
+statistics.harmonic_mean(data)
+Return the harmonic mean of data, a sequence or iterable of real-valued numbers.
+
+The harmonic mean, sometimes called the subcontrary mean, is the reciprocal of the arithmetic mean() of the reciprocals of the data. For example, the harmonic mean of three values a, b and c will be equivalent to 3/(1/a + 1/b + 1/c). If one of the values is zero, the result will be zero.
+
+The harmonic mean is a type of average, a measure of the central location of the data. It is often appropriate when averaging rates or ratios, for example speeds.
+
+Suppose a car travels 10 km at 40 km/hr, then another 10 km at 60 km/hr. What is the average speed?
+
+>>> harmonic_mean([40, 60])
+48.0
+投資家がP / E（価格/収益）の比率が2.5,3,10という3つの会社のそれぞれに等しい価値の株式を購入したとします。投資家のポートフォリオの平均P / Eの比率はいくつでしょうか？
+
+>>> harmonic_mean([2.5, 3, 10])  # For an equal investment portfolio.
+3.6
+もし data が空の場合、またはいずれの要素が0より小さい場合、例外 StatisticsError が送出されます。
+
+The current algorithm has an early-out when it encounters a zero in the input. This means that the subsequent inputs are not tested for validity. (This behavior may change in the future.)
+
+バージョン 3.6 で追加.
+
+statistics.median(data)
+Return the median (middle value) of numeric data, using the common "mean of middle two" method. If data is empty, StatisticsError is raised. data can be a sequence or iterable.
+
+The median is a robust measure of central location and is less affected by the presence of outliers. When the number of data points is odd, the middle data point is returned:
+
+>>> median([1, 3, 5])
+3
+データ数が偶数の場合は、中央値は中央に最も近い2値の算術平均で補間されます:
+
+>>> median([1, 3, 5, 7])
+4.0
+データが離散的で、中央値がデータ点にない値でも構わない場合に適しています。
+
+If the data is ordinal (supports order operations) but not numeric (doesn't support addition), consider using median_low() or median_high() instead.
+
+statistics.median_low(data)
+Return the low median of numeric data. If data is empty, StatisticsError is raised. data can be a sequence or iterable.
+
+low median は必ずデータに含まれています。データ数が奇数の場合は中央の値を返し、偶数の場合は中央の2値の小さい方を返します。
+
+>>> median_low([1, 3, 5])
+3
+>>> median_low([1, 3, 5, 7])
+3
+データが離散的で、中央値が補間値よりもデータ点にある値の方が良い場合に用いてください。
+
+statistics.median_high(data)
+Return the high median of data. If data is empty, StatisticsError is raised. data can be a sequence or iterable.
+
+high median は必ずデータに含まれています。データ数が奇数の場合は中央の値を返し、偶数の場合は中央の2値の大きい方を返します。
+
+>>> median_high([1, 3, 5])
+3
+>>> median_high([1, 3, 5, 7])
+5
+データが離散的で、中央値が補間値よりもデータ点にある値の方が良い場合に用いてください。
+
+statistics.median_grouped(data, interval=1)
+Return the median of grouped continuous data, calculated as the 50th percentile, using interpolation. If data is empty, StatisticsError is raised. data can be a sequence or iterable.
+
+>>> median_grouped([52, 52, 53, 54])
+52.5
+次の例ではデータは丸められているため、各値はデータの中間です。例えば 1 は 0.5 と 1.5 の中間、2 は 1.5 と 2.5 の中間、3 は 2.5 と 3.5 の中間です。例では中央の値は 3.5 から 4.5 で、補間により推定されます:
+
+>>> median_grouped([1, 2, 2, 3, 4, 4, 4, 4, 4, 5])
+3.7
+interval は間隔を表します。デフォルトは1です。間隔を変えると当然補間値は変わります:
+
+>>> median_grouped([1, 3, 3, 5, 7], interval=1)
+3.25
+>>> median_grouped([1, 3, 3, 5, 7], interval=2)
+3.5
+この関数はデータ点が少なくとも interval だけ差があるかどうかチェックしません。
+
+CPython implementation detail: 環境によっては median_grouped() はデータ点を強制的に浮動小数点に変換します。この挙動はいずれ変更されるでしょう。
+
+参考
+"Statistics for the Behavioral Sciences", Frederick J Gravetter and Larry B Wallnau (8th Edition).
+
+The SSMEDIAN function in the Gnome Gnumeric spreadsheet, including this discussion.
+
+statistics.mode(data)
+Return the single most common data point from discrete or nominal data. The mode (when it exists) is the most typical value and serves as a measure of central location.
+
+If there are multiple modes with the same frequency, returns the first one encountered in the data. If the smallest or largest of those is desired instead, use min(multimode(data)) or max(multimode(data)). If the input data is empty, StatisticsError is raised.
+
+mode assumes discrete data and returns a single value. This is the standard treatment of the mode as commonly taught in schools:
+
+>>> mode([1, 1, 2, 3, 3, 3, 3, 4])
+3
+The mode is unique in that it is the only statistic in this package that also applies to nominal (non-numeric) data:
+
+>>> mode(["red", "blue", "blue", "red", "green", "red", "red"])
+'red'
+バージョン 3.8 で変更: Now handles multimodal datasets by returning the first mode encountered. Formerly, it raised StatisticsError when more than one mode was found.
+
+statistics.multimode(data)
+Return a list of the most frequently occurring values in the order they were first encountered in the data. Will return more than one result if there are multiple modes or an empty list if the data is empty:
+
+>>> multimode('aabbbbccddddeeffffgg')
+['b', 'd', 'f']
+>>> multimode('')
+[]
+バージョン 3.8 で追加.
+
+statistics.pstdev(data, mu=None)
+母標準偏差 (母分散の平方根) を返します。引数や詳細は pvariance() を参照してください。
+
+>>> pstdev([1.5, 2.5, 2.5, 2.75, 3.25, 4.75])
+0.986893273527251
+statistics.pvariance(data, mu=None)
+Return the population variance of data, a non-empty sequence or iterable of real-valued numbers. Variance, or second moment about the mean, is a measure of the variability (spread or dispersion) of data. A large variance indicates that the data is spread out; a small variance indicates it is clustered closely around the mean.
+
+If the optional second argument mu is given, it is typically the mean of the data. It can also be used to compute the second moment around a point that is not the mean. If it is missing or None (the default), the arithmetic mean is automatically calculated.
+
+母集団全体から分散を計算する場合に用いてください。標本から分散を推定する場合は variance() を使いましょう。
+
+data が空の場合 StatisticsError を送出します。
+
+例:
+
+>>> data = [0.0, 0.25, 0.25, 1.25, 1.5, 1.75, 2.75, 3.25]
+>>> pvariance(data)
+1.25
+既にデータの平均値を計算している場合、それを第2引数 mu に渡して再計算を避けることが出来ます:
+
+>>> mu = mean(data)
+>>> pvariance(data, mu)
+1.25
+Decimal と Fraction がサポートされています:
+
+>>> from decimal import Decimal as D
+>>> pvariance([D("27.5"), D("30.25"), D("30.25"), D("34.5"), D("41.75")])
+Decimal('24.815')
+
+>>> from fractions import Fraction as F
+>>> pvariance([F(1, 4), F(5, 4), F(1, 2)])
+Fraction(13, 72)
+注釈 母集団全体で呼んだ場合は母分散 σ² を返します。代わりに標本で呼んだ場合は biased variance s²、すなわち自由度 N の分散を返します。
+If you somehow know the true population mean μ, you may use this function to calculate the variance of a sample, giving the known population mean as the second argument. Provided the data points are a random sample of the population, the result will be an unbiased estimate of the population variance.
+
+statistics.stdev(data, xbar=None)
+標本標準偏差 (標本分散の平方根) を返します。引数や詳細は variance() を参照してください。
+
+>>> stdev([1.5, 2.5, 2.5, 2.75, 3.25, 4.75])
+1.0810874155219827
+statistics.variance(data, xbar=None)
+data の標本分散を返します。data は少なくとも2つの実数の iterable です。分散、すなわち2次の中心化モーメントはデータの散らばり具合の測度です。分散が大きいデータはばらつきが大きく、分散が小さいデータは平均値のまわりに固まっています。
+
+第2引数 xbar に値を渡す場合は data の平均値でなくてはなりません。xbar が与えられない場合や None の場合 (デフォルト)、平均値は自動的に計算されます。
+
+データが母集団の標本であるときに用いてください。母集団全体から分散を計算するには pvariance() を参照してください。
+
+data の値が2より少ない場合 StatisticsError を送出します。
+
+例:
+
+>>> data = [2.75, 1.75, 1.25, 0.25, 0.5, 1.25, 3.5]
+>>> variance(data)
+1.3720238095238095
+既にデータの平均値を計算している場合、それを第2引数 xbar に渡して再計算を避けることが出来ます:
+
+>>> m = mean(data)
+>>> variance(data, m)
+1.3720238095238095
+この関数は引数として渡した xbar が実際の平均値かどうかチェックしません。任意の値を xbar に渡すと無効な結果やありえない結果が返ることがあります。
+
+Decimal と Fraction がサポートされています:
+
+>>> from decimal import Decimal as D
+>>> variance([D("27.5"), D("30.25"), D("30.25"), D("34.5"), D("41.75")])
+Decimal('31.01875')
+
+>>> from fractions import Fraction as F
+>>> variance([F(1, 6), F(1, 2), F(5, 3)])
+Fraction(67, 108)
+注釈 Bessel 補正済みの標本分散 s²、すなわち自由度 N-1 の分散です。与えられたデータ点が代表的 (たとえば独立で均等に分布) な場合、戻り値は母分散の不偏推定量になります。
+何らかの方法で真の母平均 μ を知っている場合、それを pvariance() の引数 mu に渡して標本の分散を計算することが出来ます。
+
+statistics.quantiles(data, *, n=4, method='exclusive')
+Divide data into n continuous intervals with equal probability. Returns a list of n - 1 cut points separating the intervals.
+
+Set n to 4 for quartiles (the default). Set n to 10 for deciles. Set n to 100 for percentiles which gives the 99 cuts points that separate data into 100 equal sized groups. Raises StatisticsError if n is not least 1.
+
+The data can be any iterable containing sample data. For meaningful results, the number of data points in data should be larger than n. Raises StatisticsError if there are not at least two data points.
+
+The cut points are linearly interpolated from the two nearest data points. For example, if a cut point falls one-third of the distance between two sample values, 100 and 112, the cut-point will evaluate to 104.
+
+The method for computing quantiles can be varied depending on whether the data includes or excludes the lowest and highest possible values from the population.
+
+The default method is "exclusive" and is used for data sampled from a population that can have more extreme values than found in the samples. The portion of the population falling below the i-th of m sorted data points is computed as i / (m + 1). Given nine sample values, the method sorts them and assigns the following percentiles: 10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90%.
+
+Setting the method to "inclusive" is used for describing population data or for samples that are known to include the most extreme values from the population. The minimum value in data is treated as the 0th percentile and the maximum value is treated as the 100th percentile. The portion of the population falling below the i-th of m sorted data points is computed as (i - 1) / (m - 1). Given 11 sample values, the method sorts them and assigns the following percentiles: 0%, 10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90%, 100%.
+
+# Decile cut points for empirically sampled data
+>>> data = [105, 129, 87, 86, 111, 111, 89, 81, 108, 92, 110,
+...         100, 75, 105, 103, 109, 76, 119, 99, 91, 103, 129,
+...         106, 101, 84, 111, 74, 87, 86, 103, 103, 106, 86,
+...         111, 75, 87, 102, 121, 111, 88, 89, 101, 106, 95,
+...         103, 107, 101, 81, 109, 104]
+>>> [round(q, 1) for q in quantiles(data, n=10)]
+[81.0, 86.2, 89.0, 99.4, 102.5, 103.6, 106.0, 109.8, 111.0]
+バージョン 3.8 で追加.
+
+例外
+例外が1つ定義されています:
+
+exception statistics.StatisticsError
+統計関係の例外。ValueError の派生クラス。
+
+NormalDist objects
+NormalDist is a tool for creating and manipulating normal distributions of a random variable. It is a class that treats the mean and standard deviation of data measurements as a single entity.
+
+Normal distributions arise from the Central Limit Theorem and have a wide range of applications in statistics.
+
+class statistics.NormalDist(mu=0.0, sigma=1.0)
+Returns a new NormalDist object where mu represents the arithmetic mean and sigma represents the standard deviation.
+
+If sigma is negative, raises StatisticsError.
+
+mean
+A read-only property for the arithmetic mean of a normal distribution.
+
+median
+A read-only property for the median of a normal distribution.
+
+mode
+A read-only property for the mode of a normal distribution.
+
+stdev
+A read-only property for the standard deviation of a normal distribution.
+
+variance
+A read-only property for the variance of a normal distribution. Equal to the square of the standard deviation.
+
+classmethod from_samples(data)
+Makes a normal distribution instance with mu and sigma parameters estimated from the data using fmean() and stdev().
+
+The data can be any iterable and should consist of values that can be converted to type float. If data does not contain at least two elements, raises StatisticsError because it takes at least one point to estimate a central value and at least two points to estimate dispersion.
+
+samples(n, *, seed=None)
+Generates n random samples for a given mean and standard deviation. Returns a list of float values.
+
+If seed is given, creates a new instance of the underlying random number generator. This is useful for creating reproducible results, even in a multi-threading context.
+
+pdf(x)
+Using a probability density function (pdf), compute the relative likelihood that a random variable X will be near the given value x. Mathematically, it is the limit of the ratio P(x <= X < x+dx) / dx as dx approaches zero.
+
+The relative likelihood is computed as the probability of a sample occurring in a narrow range divided by the width of the range (hence the word "density"). Since the likelihood is relative to other points, its value can be greater than 1.0.
+
+cdf(x)
+Using a cumulative distribution function (cdf), compute the probability that a random variable X will be less than or equal to x. Mathematically, it is written P(X <= x).
+
+inv_cdf(p)
+Compute the inverse cumulative distribution function, also known as the quantile function or the percent-point function. Mathematically, it is written x : P(X <= x) = p.
+
+Finds the value x of the random variable X such that the probability of the variable being less than or equal to that value equals the given probability p.
+
+overlap(other)
+Measures the agreement between two normal probability distributions. Returns a value between 0.0 and 1.0 giving the overlapping area for the two probability density functions.
+
+quantiles(n=4)
+Divide the normal distribution into n continuous intervals with equal probability. Returns a list of (n - 1) cut points separating the intervals.
+
+Set n to 4 for quartiles (the default). Set n to 10 for deciles. Set n to 100 for percentiles which gives the 99 cuts points that separate the normal distribution into 100 equal sized groups.
+
+zscore(x)
+Compute the Standard Score describing x in terms of the number of standard deviations above or below the mean of the normal distribution: (x - mean) / stdev.
+
+バージョン 3.9 で追加.
+
+Instances of NormalDist support addition, subtraction, multiplication and division by a constant. These operations are used for translation and scaling. For example:
+
+>>> temperature_february = NormalDist(5, 2.5)             # Celsius
+>>> temperature_february * (9/5) + 32                     # Fahrenheit
+NormalDist(mu=41.0, sigma=4.5)
+Dividing a constant by an instance of NormalDist is not supported because the result wouldn't be normally distributed.
+
+Since normal distributions arise from additive effects of independent variables, it is possible to add and subtract two independent normally distributed random variables represented as instances of NormalDist. For example:
+
+>>> birth_weights = NormalDist.from_samples([2.5, 3.1, 2.1, 2.4, 2.7, 3.5])
+>>> drug_effects = NormalDist(0.4, 0.15)
+>>> combined = birth_weights + drug_effects
+>>> round(combined.mean, 1)
+3.1
+>>> round(combined.stdev, 1)
+0.5
+バージョン 3.8 で追加.
+
+NormalDist Examples and Recipes
+NormalDist readily solves classic probability problems.
+
+For example, given historical data for SAT exams showing that scores are normally distributed with a mean of 1060 and a standard deviation of 195, determine the percentage of students with test scores between 1100 and 1200, after rounding to the nearest whole number:
+
+>>> sat = NormalDist(1060, 195)
+>>> fraction = sat.cdf(1200 + 0.5) - sat.cdf(1100 - 0.5)
+>>> round(fraction * 100.0, 1)
+18.4
+Find the quartiles and deciles for the SAT scores:
+
+>>> list(map(round, sat.quantiles()))
+[928, 1060, 1192]
+>>> list(map(round, sat.quantiles(n=10)))
+[810, 896, 958, 1011, 1060, 1109, 1162, 1224, 1310]
+To estimate the distribution for a model than isn't easy to solve analytically, NormalDist can generate input samples for a Monte Carlo simulation:
+
+>>> def model(x, y, z):
+...     return (3*x + 7*x*y - 5*y) / (11 * z)
+...
+>>> n = 100_000
+>>> X = NormalDist(10, 2.5).samples(n, seed=3652260728)
+>>> Y = NormalDist(15, 1.75).samples(n, seed=4582495471)
+>>> Z = NormalDist(50, 1.25).samples(n, seed=6582483453)
+>>> quantiles(map(model, X, Y, Z))       
+[1.4591308524824727, 1.8035946855390597, 2.175091447274739]
+Normal distributions can be used to approximate Binomial distributions when the sample size is large and when the probability of a successful trial is near 50%.
+
+For example, an open source conference has 750 attendees and two rooms with a 500 person capacity. There is a talk about Python and another about Ruby. In previous conferences, 65% of the attendees preferred to listen to Python talks. Assuming the population preferences haven't changed, what is the probability that the Python room will stay within its capacity limits?
+
+>>> n = 750             # Sample size
+>>> p = 0.65            # Preference for Python
+>>> q = 1.0 - p         # Preference for Ruby
+>>> k = 500             # Room capacity
+
+>>> # Approximation using the cumulative normal distribution
+>>> from math import sqrt
+>>> round(NormalDist(mu=n*p, sigma=sqrt(n*p*q)).cdf(k + 0.5), 4)
+0.8402
+
+>>> # Solution using the cumulative binomial distribution
+>>> from math import comb, fsum
+>>> round(fsum(comb(n, r) * p**r * q**(n-r) for r in range(k+1)), 4)
+0.8402
+
+>>> # Approximation using a simulation
+>>> from random import seed, choices
+>>> seed(8675309)
+>>> def trial():
+...     return choices(('Python', 'Ruby'), (p, q), k=n).count('Python')
+>>> mean(trial() <= k for i in range(10_000))
+0.8398
+Normal distributions commonly arise in machine learning problems.
+
+Wikipedia has a nice example of a Naive Bayesian Classifier. The challenge is to predict a person's gender from measurements of normally distributed features including height, weight, and foot size.
+
+We're given a training dataset with measurements for eight people. The measurements are assumed to be normally distributed, so we summarize the data with NormalDist:
+
+>>> height_male = NormalDist.from_samples([6, 5.92, 5.58, 5.92])
+>>> height_female = NormalDist.from_samples([5, 5.5, 5.42, 5.75])
+>>> weight_male = NormalDist.from_samples([180, 190, 170, 165])
+>>> weight_female = NormalDist.from_samples([100, 150, 130, 150])
+>>> foot_size_male = NormalDist.from_samples([12, 11, 12, 10])
+>>> foot_size_female = NormalDist.from_samples([6, 8, 7, 9])
+Next, we encounter a new person whose feature measurements are known but whose gender is unknown:
+
+>>> ht = 6.0        # height
+>>> wt = 130        # weight
+>>> fs = 8          # foot size
+Starting with a 50% prior probability of being male or female, we compute the posterior as the prior times the product of likelihoods for the feature measurements given the gender:
+
+>>> prior_male = 0.5
+>>> prior_female = 0.5
+>>> posterior_male = (prior_male * height_male.pdf(ht) *
+...                   weight_male.pdf(wt) * foot_size_male.pdf(fs))
+
+>>> posterior_female = (prior_female * height_female.pdf(ht) *
+...                     weight_female.pdf(wt) * foot_size_female.pdf(fs))
+The final prediction goes to the largest posterior. This is known as the maximum a posteriori or MAP:
+
+>>> 'male' if posterior_male > posterior_female else 'female'
+'female'
+
+

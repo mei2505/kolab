@@ -1,0 +1,394 @@
+8. 複合文 (compound statement)¶
+複合文には、他の文 (のグループ) が入ります; 複合文は、中に入っている他の文の実行の制御に何らかのやり方で影響を及ぼします。一般的には、複合文は複数行にまたがって書かれますが、全部の文を一行に連ねた単純な書き方もあります。
+
+if 、 while 、および for 文は、伝統的な制御フロー構成を実現します。 try は例外処理および/または一連の文に対するクリーンアップコードを指定します。それに対して、 with 文はコードのかたまりの前後でコードの初期化と終了処理を実行できるようにします。関数とクラス定義もまた、構文的には複合文です。
+
+複合文は、一つ以上の '節 (clause)' からなります。節は、ヘッダと 'スイート (suite)' からなります。一つの複合文を成す各節のヘッダは、全て同じインデントレベルに置かれます。各節のヘッダは一意に識別するキーワードで始まり、コロンで終わります。スイートは、節によって制御される文の集まりです。スイートは、ヘッダがある行のコロンの後にセミコロンで区切って置かれた一つ以上の単純文、または、ヘッダに続く行で一つ多くインデントされた文の集まりです。後者の形式のスイートに限り、さらに複合文をネストできます; 以下の文は、 else 節がどちらの if 節に属するかがはっきりしないなどの理由から不正になります:
+
+if test1: if test2: print(x)
+また、このコンテキスト中では、セミコロンによる結合はコロンより強いです。従って、以下の例では、 print() の呼び出しはは全て実行されるか、全く実行されないかのどちらかです:
+
+if x < y < z: print(x); print(y); print(z)
+まとめると、以下のようになります:
+
+compound_stmt ::=  if_stmt
+                   | while_stmt
+                   | for_stmt
+                   | try_stmt
+                   | with_stmt
+                   | funcdef
+                   | classdef
+                   | async_with_stmt
+                   | async_for_stmt
+                   | async_funcdef
+suite         ::=  stmt_list NEWLINE | NEWLINE INDENT statement+ DEDENT
+statement     ::=  stmt_list NEWLINE | compound_stmt
+stmt_list     ::=  simple_stmt (";" simple_stmt)* [";"]
+なお、文は常に NEWLINE か、その後に DEDENT が続いたもので終了します。また、オプションの継続節は必ず、文を開始できない予約語で始まるので、曖昧さは存在しません。 (Python では、 'ぶら下がり (dangling) else' 問題は、ネストされた if 文をインデントさせることで解決されます)。
+
+以下の節における文法規則の記述方式は、明確さのために、各節を別々の行に書くようにしています。
+
+8.1. if 文
+if 文は、条件分岐を実行するために使われます:
+
+if_stmt ::=  "if" assignment_expression ":" suite
+             ("elif" assignment_expression ":" suite)*
+             ["else" ":" suite]
+if 文は、式を一つ一つ評価してゆき、真になるまで続けて、真になった節のスイートだけを選択します (真: true と偽: false の定義については、 ブール演算 (boolean operation) 節を参照してください); 次に、選択したスイートを実行します (そして、 if 文の他の部分は、実行や評価をされません)。全ての式が偽になった場合、 else 節があれば、そのスイートが実行されます。
+
+8.2. while 文
+while 文は、式の値が真である間、実行を繰り返すために使われます:
+
+while_stmt ::=  "while" assignment_expression ":" suite
+                ["else" ":" suite]
+while 文は式を繰り返し真偽評価し、真であれば最初のスイートを実行します。式が偽であれば (最初から偽になっていることもありえます)、 else 節がある場合にはそれを実行し、ループを終了します。
+
+最初のスイート内で break 文が実行されると、 else 節のスイートを実行することなくループを終了します。 continue 文が最初のスイート内で実行されると、スイート内にある残りの文の実行をスキップして、式の真偽評価に戻ります。
+
+8.3. for 文
+for 文は、シーケンス (文字列、タプルまたはリスト) や、その他の反復可能なオブジェクト (iterable object) 内の要素に渡って反復処理を行うために使われます:
+
+for_stmt ::=  "for" target_list "in" expression_list ":" suite
+              ["else" ":" suite]
+式リストは一度だけ評価されます。その結果はイテラブルオブジェクトにならなければなりません。 expression_list の結果に対するイテレータが生成されます。 その後、イテレータが与えるそれぞれの要素に対して、イテレータから返された順に一度づつ、スイートが実行されます。 それぞれの要素は標準の代入規則 (代入文 (assignment statement) を参照してください) で target_list に代入され、その後、スイートが実行されます。 全ての要素を使い切ったとき (シーケンスが空であったり、イテレータが StopIteration 例外を送出したときは、即座に)、 else 節があればそれが実行され、ループは終了します。
+
+最初のスイートの中で break 文が実行されると、 else 節のスイートを実行することなくループを終了します。 continue 文が最初のスイート内で実行されると、スイート内にある残りの文の実行をスキップして、次の要素の処理に移るか、これ以上次の要素が無い場合は else 節の処理に移ります。
+
+for ループはターゲットリスト内の変数への代入を行います。 これにより、for ループ内も含めて、それ以前の全ての代入は上書きされます:
+
+for i in range(10):
+    print(i)
+    i = 5             # this will not affect the for-loop
+                      # because i will be overwritten with the next
+                      # index in the range
+ループが終了してもターゲットリスト内の名前は削除されませんが、イテラブルが空の場合には、ループでの代入は全く行われません。ヒント: 組み込み関数 range() は、 Pascal の for i := a to b do の効果をエミュレートするのに適した、整数のイテレータを返します; すなわち、 list(range(3)) はリスト [0, 1, 2] を返します。
+
+注釈 ループ中でのシーケンスの変更には微妙な問題があります (これはミュータブルなシーケンスのみ、例えばリストで起こり得ます)。 どの要素が次に使われるかを追跡するために、内部的なカウンタが使われており、このカウンタは反復のたびに加算されます。 このカウンタがシーケンスの長さに達すると、ループは終了します。 このことから、スイートの中でシーケンスから現在の (または以前の) 要素を除去すると、(次の要素の位置が、既に処理済みの現在の要素のインデックスになるために) 次の要素が飛ばされることになります。 同様に、スイートの中でシーケンス中の現在の要素以前に要素を挿入すると、現在の要素がループの次の週で再度扱われることになります。 こうした仕様は、厄介なバグにつながります。 これは、シーケンス全体のスライスを使って一時的なコピーを作ることで避けられます。 例えば次のようにします:
+for x in a[:]:
+    if x < 0: a.remove(x)
+8.4. try 文
+try 文は、ひとまとめの文に対して、例外処理および/またはクリーンアップコードを指定します:
+
+try_stmt  ::=  try1_stmt | try2_stmt
+try1_stmt ::=  "try" ":" suite
+               ("except" [expression ["as" identifier]] ":" suite)+
+               ["else" ":" suite]
+               ["finally" ":" suite]
+try2_stmt ::=  "try" ":" suite
+               "finally" ":" suite
+The except clause(s) specify one or more exception handlers. When no exception occurs in the try clause, no exception handler is executed. When an exception occurs in the try suite, a search for an exception handler is started. This search inspects the except clauses in turn until one is found that matches the exception. An expression-less except clause, if present, must be last; it matches any exception. For an except clause with an expression, that expression is evaluated, and the clause matches the exception if the resulting object is "compatible" with the exception. An object is compatible with an exception if it is the class or a base class of the exception object, or a tuple containing an item that is the class or a base class of the exception object.
+
+例外がどの except 節にも合致しなかった場合、現在のコードを囲うさらに外側、そして呼び出しスタックへと検索を続けます。 1
+
+except 節のヘッダにある式を値評価するときに例外が発生すると、元々のハンドラ検索はキャンセルされ、新たな例外に対する例外ハンドラの検索を現在の except 節の外側のコードや呼び出しスタックに対して行います (try 文全体が例外を発行したかのように扱われます)。
+
+対応する except 節が見つかると、except 節のスイートが実行されます。その際、 as キーワードが存在すれば、その後で指定されているターゲットに例外が代入されます。全ての except 節は実行可能なブロックを持っていなければなりません。このブロックの末尾に到達すると、通常は try 文全体の直後から実行を継続します。(このことは、ネストされた二つの例外ハンドラが同じ例外に対して存在し、内側のハンドラ内の try 節で例外が発生した場合、外側のハンドラはその例外を処理しないことを意味します。)
+
+例外が as target を使って代入されたとき、それは except 節の終わりに消去されます。これはちょうど、以下のコード:
+
+except E as N:
+    foo
+が、以下のコードに翻訳されたかのようなものです:
+
+except E as N:
+    try:
+        foo
+    finally:
+        del N
+よって、例外を except 節以降で参照できるようにするためには、別の名前に代入されなければなりません。例外が削除されるのは、トレースバックが付与されると、そのスタックフレームと循環参照を形作り、次のガベージ収集までそのフレーム内のすべての局所変数を生存させてしまうからです。
+
+except 節のスイートが実行される前に、例外に関する詳細が sys モジュールに保存され、 sys.exc_info() からアクセスできます。 sys.exc_info() は、例外クラス、例外インスタンス、そして例外が発生したプログラム上の位置を識別するトレースバックオブジェクト (標準型の階層 を参照してください) の 3 要素からなるタプルを返します。 sys.exc_info() の値は、例外を処理した関数から戻るときに、以前 (関数呼び出し前) の値に戻されます。
+
+オプションの else 節は、コントロールフローが try スイートを抜け、例外が送出されず、 return 文、 continue 文、 break 文のいずれもが実行されなかった場合に実行されます。 else 節で起きた例外は、手前にある except 節では処理されません。
+
+finally 節がある場合は、 '後始末' の対処を指定します。まず except 節や else 節を含め、 try 節が実行されます。それらの節の中で例外が起き、その例外が処理されていない場合には、例外は一時的に保存されます。次に finally 節が実行されます。保存された例外があった場合は、 finally 節の末尾で再送出されます。 finally 節で別の例外が送出される場合は、保存されていた例外は新しい例外のコンテキストとして設定されます。 finally 節で return 文あるいは break 文を実行した場合は、保存された例外は破棄されます:
+
+>>>
+>>> def f():
+...     try:
+...         1/0
+...     finally:
+...         return 42
+...
+>>> f()
+42
+finally 節を実行している間は、プログラムからは例外情報は利用できません。
+
+try...finally 文の try スイート内で return 、 break 、または continue 文が実行された場合、 finally 節も、この文を '抜け出る途中に' 実行されます。
+
+関数の返り値は最後に実行された return 文によって決まります。 finally 節は必ず実行されるため、finally 節で実行された return 文は常に最後に実行されることになります:
+
+>>>
+>>> def foo():
+...     try:
+...         return 'try'
+...     finally:
+...         return 'finally'
+...
+>>> foo()
+'finally'
+例外に関するその他の情報は 例外 節にあります。また、 raise 文の使用による例外の生成に関する情報は、 raise 文 節にあります。
+
+バージョン 3.8 で変更: Python3.8 以前では、実装上の問題により finally 節での continue 文は不正でした。
+
+8.5. with 文
+with 文は、ブロックの実行を、コンテキストマネージャによって定義されたメソッドでラップするために使われます (with文とコンテキストマネージャ セクションを参照してください)。これにより、よくある try...except...finally 利用パターンをカプセル化して便利に再利用することができます。
+
+with_stmt ::=  "with" with_item ("," with_item)* ":" suite
+with_item ::=  expression ["as" target]
+一つの "要素" を持つ with 文の実行は以下のように進行します:
+
+コンテキスト式 (with_item で与えられた式) を評価することで、コンテキストマネージャを取得します。
+
+コンテキストマネージャの __enter__() メソッドが、後で使うためにロードされます。
+
+コンテキストマネージャの __exit__() メソッドが、後で使うためにロードされます。
+
+コンテキストマネージャの __enter__() メソッドが呼ばれます。
+
+with 文にターゲットが含まれていたら、それに __enter__() からの戻り値が代入されます。
+
+注釈 with 文は、 __enter__() メソッドがエラーなく終了した場合には __exit__() が常に呼ばれることを保証します。ですので、もしターゲットリストへの代入中にエラーが発生した場合には、これはそのスイートの中で発生したエラーと同じように扱われます。以下のステップ 6 を参照してください。
+スイートが実行されます。
+
+コンテキストマネージャの __exit__() メソッドが呼ばれます。スイートが例外によって終了されたのなら、その例外の型、値、トレースバックが __exit__() に引数として渡されます。そうでなければ、 3 つの None 引数が与えられます。
+
+スイートが例外により終了され、 __exit__() メソッドからの戻り値が偽（false）ならば、例外が再送出されます。この戻り値が真（true）ならば例外は抑制され、実行は with 文の次の文から続きます。
+
+もしそのスイートが例外でない何らかの理由で終了した場合、その __exit__() からの戻り値は無視されて、実行は発生した終了の種類に応じた通常の位置から継続します。
+
+以下のコード:
+
+with EXPRESSION as TARGET:
+    SUITE
+これは次と等価です:
+
+manager = (EXPRESSION)
+enter = type(manager).__enter__
+exit = type(manager).__exit__
+value = enter(manager)
+hit_except = False
+
+try:
+    TARGET = value
+    SUITE
+except:
+    hit_except = True
+    if not exit(manager, *sys.exc_info()):
+        raise
+finally:
+    if not hit_except:
+        exit(manager, None, None, None)
+複数の要素があるとき、コンテキストマネージャは複数の with 文がネストされたかのように進行します:
+
+with A() as a, B() as b:
+    SUITE
+これは次と等価です:
+
+with A() as a:
+    with B() as b:
+        SUITE
+バージョン 3.1 で変更: 複数のコンテキスト式をサポートしました。
+
+参考
+PEP 343 - "with" ステートメント
+Python の with 文の仕様、背景、および例が記載されています。
+
+8.6. 関数定義
+関数定義は、ユーザ定義関数オブジェクトを定義します (標準型の階層 節参照):
+
+funcdef                   ::=  [decorators] "def" funcname "(" [parameter_list] ")"
+                               ["->" expression] ":" suite
+decorators                ::=  decorator+
+decorator                 ::=  "@" assignment_expression NEWLINE
+dotted_name               ::=  identifier ("." identifier)*
+parameter_list            ::=  defparameter ("," defparameter)* "," "/" ["," [parameter_list_no_posonly]]
+                                 | parameter_list_no_posonly
+parameter_list_no_posonly ::=  defparameter ("," defparameter)* ["," [parameter_list_starargs]]
+                               | parameter_list_starargs
+parameter_list_starargs   ::=  "*" [parameter] ("," defparameter)* ["," ["**" parameter [","]]]
+                               | "**" parameter [","]
+parameter                 ::=  identifier [":" expression]
+defparameter              ::=  parameter ["=" expression]
+funcname                  ::=  identifier
+関数定義は実行可能な文です。関数定義を実行すると、現在のローカルな名前空間内で関数名を関数オブジェクト (関数の実行可能コードをくるむラッパ) に束縛します。この関数オブジェクトには、関数が呼び出された際に使われるグローバルな名前空間として、現在のグローバルな名前空間への参照が入っています。
+
+関数定義は関数本体を実行しません; 関数本体は関数が呼び出された時にのみ実行されます。 2
+
+関数定義は一つ以上の デコレータ 式でラップできます。デコレータ式は関数を定義するとき、関数定義の入っているスコープで評価されます。その結果は、関数オブジェクトを唯一の引数にとる呼び出し可能オブジェクトでなければなりません。関数オブジェクトの代わりに、返された値が関数名に束縛されます。複数のデコレータはネストして適用されます。例えば、以下のようなコード:
+
+@f1(arg)
+@f2
+def func(): pass
+は、だいたい次と等価です
+
+def func(): pass
+func = f1(arg)(f2(func))
+ただし、前者のコードでは元々の関数を func という名前へ一時的に束縛することはない、というところを除きます。
+
+バージョン 3.9 で変更: Functions may be decorated with any valid assignment_expression. Previously, the grammar was much more restrictive; see PEP 614 for details.
+
+1 つ以上の 仮引数 が parameter = expression の形を取っているとき、関数は "デフォルト引数値" を持つと言います。デフォルト値を持つ仮引数では、呼び出し時にそれに対応する 実引数 は省略でき、その場合は仮引数のデフォルト値が使われます。ある引数がデフォルト値を持っている場合、それ以降 "*" が出てくるまでの引数は全てデフォルト値を持っていなければなりません -- これは文法定義では表現されていない構文的制限です。
+
+デフォルト引数値は関数定義が実行されるときに左から右へ評価されます。 これは、デフォルト引数の式は関数が定義されるときにただ一度だけ評価され、同じ "計算済みの" 値が呼び出しのたびに使用されることを意味します。この仕様を理解しておくことは特に、デフォルト引数値がリストや辞書のようなミュータブルなオブジェクトであるときに重要です: 関数がこのオブジェクトを変更 (例えばリストに要素を追加) すると、このデフォルト値が変更の影響を受けてしまします。一般には、これは意図しない動作です。このような動作を避けるには、デフォルト値として None を使い、この値を関数本体の中で明示的にテストします。例えば以下のようにします:
+
+def whats_on_the_telly(penguin=None):
+    if penguin is None:
+        penguin = []
+    penguin.append("property of the zoo")
+    return penguin
+関数呼び出しの意味付けに関する詳細は、 呼び出し (call) 節で述べられています。 関数呼び出しを行うと、パラメタリストに記述された全てのパラメタに、固定引数、キーワード引数、デフォルト値のいずれかから値が代入されます。 "*identifier" 形式が存在すれば、余ったすべての固定引数を受け取ったタプルに初期化されます。 このデフォルト値は空のタプルです。 "**identifier" 形式が存在すれば、余ったすべてのキーワード引数を受け取った順序付きのマッピングオブジェクトに初期化されます。 このデフォルト値は同じ型の空のマッピングオブジェクトです。 "*" や "*identifier" の後のパラメタはキーワード専用パラメータで、キーワード引数を使ってのみ渡されます。
+
+引数には、引数名に続けて ": expression" 形式の アノテーション を付けられます。 *identifier や **identifier の形式でも、すべての引数にはアノテーションをつけられます。 関数には、引数リストの後に "-> expression" 形式の "return" アノテーションをつけられます。これらのアノテーションは、任意の有効な Python の式が使えます。 アノテーションがあっても、関数の意味論は変わりません。 アノテーションの値は、関数オブジェクトの __annotations__ 属性の、引数名をキーとする値として得られます。 __future__ の annotations インポートを使った場合は、アノテーションは実行時には文字列として保持され、これにより評価の遅延が可能になっています。 そうでない場合は、アノテーションは関数定義が実行されたときに評価されます。 このケースでは、アノテーションはソースコードに現れたのとは違う順序で評価されることがあります。
+
+式を即時に使用するために、無名関数 (名前に束縛されていない関数) を作成することもできます。 これは ラムダ (lambda) の節で解説されているラムダ式を使います。 ラムダ式は簡略化された関数定義の簡略表現に過ぎないことに注意してください; "def" 文で定義された関数もラムダ式で作成された関数のように、引数として渡せたり、他の名前に割り当てることができます。 複数の式とアノテーションが実行できるので、 "def" 形式の方がより強力です。
+
+プログラマへのメモ: 関数は第一級オブジェクトです。関数定義内で実行された "def" 文は、返り値や引数として渡せるローカル関数を定義します。ネストした関数内で使われる自由変数は、 def を含んでいる関数のローカル変数にアクセスできます。詳細は 名前づけと束縛 (naming and binding) 節を参照してください。
+
+参考
+PEP 3107 - Function Annotations
+関数アノテーションの元の仕様書。
+
+PEP 484 - 型ヒント
+アノテーションの標準的な意味付けである型ヒントの定義。
+
+PEP 526 - Syntax for Variable Annotations
+クラス変数とインスタンス変数を含む変数に型ヒントが宣言できる機能
+
+PEP 563 - アノテーションの遅延評価
+実行時にアノテーションを貪欲評価するのではなく文字列形式で保持することによる、アノテーションにおける前方参照のサポート
+
+8.7. クラス定義
+クラス定義は、クラスオブジェクトを定義します (標準型の階層 節参照):
+
+classdef    ::=  [decorators] "class" classname [inheritance] ":" suite
+inheritance ::=  "(" [argument_list] ")"
+classname   ::=  identifier
+クラス定義は実行可能な文です。継承リストは通常、基底クラスリストを与えます (より高度な使い方は、 メタクラス を参照してください)。ですから、リストのそれぞれの要素の評価はサブクラス化しても良いクラスであるべきです。継承リストのないクラスは、デフォルトで、基底クラス object を継承するので:
+
+class Foo:
+    pass
+は、以下と同等です
+
+class Foo(object):
+    pass
+次にクラスのスイートが、新たな実行フレーム (名前づけと束縛 (naming and binding) を参照してください) 内で、新たに作られたローカル名前空間と元々のグローバル名前空間を使って実行されます (通常、このスイートには主に関数定義が含まれます)。クラスのスイートが実行し終えると、実行フレームは破棄されますが、ローカルな名前空間は保存されます。3 次に、継承リストを基底クラスに、保存されたローカル名前空間を属性値辞書に、それぞれ使ってクラスオブジェクトが生成されます。最後に、もとのローカル名前空間において、クラス名がこのクラスオブジェクトに束縛されます。
+
+クラス本体で属性が定義された順序は新しいクラスの __dict__ に保持されます。 この性質が期待できるのは、クラスが作られた直後かつ定義構文を使って定義されたクラスであるときのみです。
+
+クラス作成は、 メタクラス を利用して大幅にカスタマイズできます。
+
+関数をデコレートするのと同じように、クラスもデコレートすることが出来ます、
+
+@f1(arg)
+@f2
+class Foo: pass
+は、だいたい次と等価です
+
+class Foo: pass
+Foo = f1(arg)(f2(Foo))
+デコレータ式の評価規則は関数デコレータと同じです。結果はクラス名に束縛されます。
+
+バージョン 3.9 で変更: Classes may be decorated with any valid assignment_expression. Previously, the grammar was much more restrictive; see PEP 614 for details.
+
+プログラマのための注釈: クラス定義内で定義された変数はクラス属性であり、全てのインスタンス間で共有されます。インスタンス属性は、メソッドの中で self.name = value とすることで設定できます。クラス属性もインスタンス属性も "self.name" 表記でアクセスでき、この表記でアクセスしたとき、インスタンス属性は同名のクラス属性を隠蔽します。クラス属性は、インスタンス属性のデフォルト値として使えますが、そこにミュータブルな値を使うと予期せぬ結果につながります。 記述子 を使うと、詳細な実装が異なるインスタンス変数を作成できます。
+
+参考
+PEP 3115 - Metaclasses in Python 3000
+メタクラスの宣言を現在の文法と、メタクラス付きのクラスがどのように構築されるかの意味論を変更した提案
+
+PEP 3129 - クラスデコレータ
+クラスデコレータを追加した提案。 関数デコレータとメソッドデコレータは PEP 318 で導入されました。
+
+8.8. コルーチン
+バージョン 3.5 で追加.
+
+8.8.1. コルーチン関数定義
+async_funcdef ::=  [decorators] "async" "def" funcname "(" [parameter_list] ")"
+                   ["->" expression] ":" suite
+Python で実行しているコルーチンは多くの時点で一時停止と再開ができます (コルーチン を参照してください)。 コルーチン関数の本体では、 await 識別子と async 識別子は予約語になります; await 式である async for と async with はコルーチン関数の本体でしか使えません。
+
+Functions defined with async def syntax are always coroutine functions, even if they do not contain await or async keywords.
+
+コルーチン関数の本体の中で yield from 式を使用すると SyntaxError になります。
+
+コルーチン関数の例:
+
+async def func(param1, param2):
+    do_stuff()
+    await some_coroutine()
+8.8.2. async for 文
+async_for_stmt ::=  "async" for_stmt
+An asynchronous iterable provides an __aiter__ method that directly returns an asynchronous iterator, which can call asynchronous code in its __anext__ method.
+
+The async for statement allows convenient iteration over asynchronous iterables.
+
+以下のコード:
+
+async for TARGET in ITER:
+    SUITE
+else:
+    SUITE2
+は意味論的に以下と等価です:
+
+iter = (ITER)
+iter = type(iter).__aiter__(iter)
+running = True
+
+while running:
+    try:
+        TARGET = await type(iter).__anext__(iter)
+    except StopAsyncIteration:
+        running = False
+    else:
+        SUITE
+else:
+    SUITE2
+詳細は __aiter__() や __anext__() を参照してください。
+
+コルーチン関数の本体の外で async for 文を使用すると SyntaxError になります。
+
+8.8.3. async with 文
+async_with_stmt ::=  "async" with_stmt
+asynchronous context manager は、 enter メソッドと exit メソッド内部で実行を一時停止できる context manager です。
+
+以下のコード:
+
+async with EXPRESSION as TARGET:
+    SUITE
+これは次と等価です:
+
+manager = (EXPRESSION)
+aenter = type(manager).__aenter__
+aexit = type(manager).__aexit__
+value = await aenter(manager)
+hit_except = False
+
+try:
+    TARGET = value
+    SUITE
+except:
+    hit_except = True
+    if not await aexit(manager, *sys.exc_info()):
+        raise
+finally:
+    if not hit_except:
+        await aexit(manager, None, None, None)
+詳細は __aenter__() や __aexit__() を参照してください。
+
+コルーチン関数の本体の外で async with 文を使用すると SyntaxError になります。
+
+参考
+PEP 492 - async 構文および await 構文付きのコルーチン
+コルーチンを Python のまともな独り立ちした概念にし、サポートする構文を追加した提案。
+
+脚注
+
+1
+例外は、別の例外を送出するような finally 節が無い場合にのみ呼び出しスタックへ伝わります。新しい例外によって、古い例外は失われます。
+
+2
+関数の本体の最初の文として現われる文字列リテラルは、その関数の __doc__ 属性に変換され、その関数の ドキュメンテーション文字列 になります。
+
+3
+クラスの本体の最初の文として現われる文字列リテラルは、その名前空間の __doc__ 要素となり、そのクラスの ドキュメンテーション文字列 になります。

@@ -1,0 +1,2062 @@
+email --- 電子メールと MIME 処理のためのパッケージ
+ソースコード: Lib/email/__init__.py
+
+email パッケージは、電子メールメッセージを管理するライブラリです。 特に、SMTP（:rfc:`2821）、NNTP、またはその他のサーバーに電子メールメッセージを送信するようには設計されていません。これらは、:mod:`smtplib` や、 nntplib などのモジュールの関数群です。 email パッケージは、可能な限りRFCに準拠するよう試みています。 :rfc:`5233`や :rfc:`6532` のほか、RFC 2045、RFC 2046、RFC 2047、RFC 2183、RFC 2231 などのMIME関連のRFCに対応しています。
+
+email パッケージ文書の内容
+
+email.message: 電子メールメッセージの表現
+email.parser: 電子メールメッセージのパース
+FeedParser API
+Parser API
+追記事項
+email.generator: MIME 文書の生成
+email.policy: ポリシーオブジェクト
+email.errors: 例外及び欠陥クラス
+email.headerregistry: カスタムヘッダーオブジェクト
+email.contentmanager: MIME 内容の管理
+Content Manager Instances
+email: 使用例
+レガシーAPI:
+
+email.message.Message: Representing an email message using the compat32 API
+email.mime: メールと MIME オブジェクトを一から作成
+email.header: 国際化されたヘッダ
+email.charset: 文字集合の表現
+email.encoders: エンコーダ
+email.utils: 多方面のユーティリティ
+email.iterators: イテレータ
+
+json --- JSON エンコーダおよびデコーダ
+ソースコード: Lib/json/__init__.py
+
+JSON (JavaScript Object Notation) は、 RFC 7159 (RFC 4627 を obsolete) と ECMA-404 によって定義された軽量のデータ交換用のフォーマットです。 JavaScript のオブジェクトリテラル記法に由来しています (JavaScript の厳密なサブセットではありませんが 1)。
+
+json の API は標準ライブラリの marshal や pickle のユーザに馴染み深いものです。
+
+基本的な Python オブジェクト階層のエンコーディング:
+
+>>>
+>>> import json
+>>> json.dumps(['foo', {'bar': ('baz', None, 1.0, 2)}])
+'["foo", {"bar": ["baz", null, 1.0, 2]}]'
+>>> print(json.dumps("\"foo\bar"))
+"\"foo\bar"
+>>> print(json.dumps('\u1234'))
+"\u1234"
+>>> print(json.dumps('\\'))
+"\\"
+>>> print(json.dumps({"c": 0, "b": 0, "a": 0}, sort_keys=True))
+{"a": 0, "b": 0, "c": 0}
+>>> from io import StringIO
+>>> io = StringIO()
+>>> json.dump(['streaming API'], io)
+>>> io.getvalue()
+'["streaming API"]'
+コンパクトなエンコーディング:
+
+>>>
+>>> import json
+>>> json.dumps([1, 2, 3, {'4': 5, '6': 7}], separators=(',', ':'))
+'[1,2,3,{"4":5,"6":7}]'
+見やすい表示:
+
+>>>
+>>> import json
+>>> print(json.dumps({'4': 5, '6': 7}, sort_keys=True, indent=4))
+{
+    "4": 5,
+    "6": 7
+}
+JSON のデコーディング:
+
+>>>
+>>> import json
+>>> json.loads('["foo", {"bar":["baz", null, 1.0, 2]}]')
+['foo', {'bar': ['baz', None, 1.0, 2]}]
+>>> json.loads('"\\"foo\\bar"')
+'"foo\x08ar'
+>>> from io import StringIO
+>>> io = StringIO('["streaming API"]')
+>>> json.load(io)
+['streaming API']
+JSON オブジェクトのデコーディング方法を誂える:
+
+>>>
+>>> import json
+>>> def as_complex(dct):
+...     if '__complex__' in dct:
+...         return complex(dct['real'], dct['imag'])
+...     return dct
+...
+>>> json.loads('{"__complex__": true, "real": 1, "imag": 2}',
+...     object_hook=as_complex)
+(1+2j)
+>>> import decimal
+>>> json.loads('1.1', parse_float=decimal.Decimal)
+Decimal('1.1')
+JSONEncoder の拡張:
+
+>>>
+>>> import json
+>>> class ComplexEncoder(json.JSONEncoder):
+...     def default(self, obj):
+...         if isinstance(obj, complex):
+...             return [obj.real, obj.imag]
+...         # Let the base class default method raise the TypeError
+...         return json.JSONEncoder.default(self, obj)
+...
+>>> json.dumps(2 + 1j, cls=ComplexEncoder)
+'[2.0, 1.0]'
+>>> ComplexEncoder().encode(2 + 1j)
+'[2.0, 1.0]'
+>>> list(ComplexEncoder().iterencode(2 + 1j))
+['[2.0', ', 1.0', ']']
+シェルから json.tool を使って妥当性チェックをして見やすく表示:
+
+$ echo '{"json":"obj"}' | python -m json.tool
+{
+    "json": "obj"
+}
+$ echo '{1.2:3.4}' | python -m json.tool
+Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+詳細については コマンドラインインターフェイス を参照してください。
+
+注釈 JSON は YAML 1.2 のサブセットです。このモジュールのデフォルト設定 (特に、デフォルトの セパレータ 値) で生成される JSON は YAML 1.0 および 1.1 のサブセットでもあります。このモジュールは YAML シリアライザとしても使えます。
+注釈 このモジュールのエンコーダとデコーダは、デフォルトで入力順と出力順を保つようになっています。根底のコンテナに順序がない場合のみ、順序が失われます。
+Python3.7 以前では、dict は順序が保証されておらず、collections.OrderedDict が指定された場合以外は、出力順や入力順が保たれていませんでした。Python3.7 からは、標準の dict の挿入順序が保証されるため、JSON の生成と解析にあたって collections.OrderedDict を指定する必要がなくなりました。
+
+基本的な使い方
+json.dump(obj, fp, *, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, cls=None, indent=None, separators=None, default=None, sort_keys=False, **kw)
+この 変換表 を使って、 obj を JSON 形式の fp (.write() がサポートされている file-like object) へのストリームとして直列化します。
+
+skipkeys が true (デフォルトは False) ならば、基本型 (str, int, float, bool, None) 以外の辞書のキーは TypeError を送出せずに読み飛ばされます。
+
+この json モジュールは常に、 bytes オブジェクトではなく、 str オブジェクトを生成します。従って、 fp.write() は str の入力をサポートしていなければなりません。
+
+ensure_ascii が (デフォルト値の) true の場合、出力では入力された全ての非 ASCII 文字はエスケープされていることが保証されています。ensure_ascii が false の場合、これらの文字はそのまま出力されます。
+
+check_circular が false (デフォルトは True) ならば、コンテナ型の循環参照チェックが省かれ、循環参照があれば OverflowError (またはもっと悪い結果) に終わります。
+
+allow_nan が偽 (デフォルトは True) の場合、許容範囲外の float 値 (nan, inf, -inf) を JSON 仕様を厳格に守って 直列化すると、ValueError になります。 allow_nan が真の場合は、 JavaScript での等価なもの (NaN, Infinity, -Infinity) が使われます。
+
+indent が非負の整数または文字列であれば、JSON の配列要素とオブジェクトメンバはそのインデントレベルで見やすく表示されます。インデントレベルが 0 か負数または "" であれば 改行だけが挿入されます。None (デフォルト) では最もコンパクトな表現が選択されます。正の数のindentはレベル毎に、指定した数のスペースでインデントします。もし indent が文字列 ("\t" のような) であれば、その文字列が個々のレベルのインデントに使用されます。
+
+バージョン 3.2 で変更: 整数に加えて、文字列が indent に使用できるようになりました。
+
+separators はもし指定するなら (item_separator, key_separator) というタプルでなければなりません。デフォルトは indent が None のとき (', ', ': ') で、そうでなければ (',', ': ') です。最もコンパクトな JSON の表現を得たければ空白を削った (',', ':') を指定すればいいでしょう。
+
+バージョン 3.4 で変更: indent が None でなければ (',', ': ') がデフォルトで使われます。
+
+default を指定する場合は関数を指定して、この関数はそれ以外では直列化できないオブジェクトに対して呼び出されます。 その関数は、オブジェクトを JSON でエンコードできるバージョンにして返すか、さもなければ TypeError を送出しなければなりません。 指定しない場合は、 TypeError が送出されます。
+
+sort_keys が true (デフォルトでは False です)であれば、辞書の出力がキーでソートされます。
+
+カスタマイズされた JSONEncoder のサブクラス (たとえば追加の型を直列化するように default() メソッドをオーバーライドしたもの) を使うには、 cls キーワード引数に指定します; 指定しなければ JSONEncoder が使われます。
+
+バージョン 3.6 で変更: すべてのオプション引数は、 キーワード専用 になりました。
+
+注釈 pickle や marshal とは異なり JSON はフレーム付きのプロトコルではないので、同じ fp に対し繰り返し dump() を呼び、複数のオブジェクトを直列化しようとすると、不正な JSON ファイルが作られてしまいます。
+json.dumps(obj, *, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, cls=None, indent=None, separators=None, default=None, sort_keys=False, **kw)
+この 変換表 を使って、obj を JSON 形式の str オブジェクトに直列化します。引数は dump() と同じ意味です。
+
+注釈 JSON のキー値ペアのキーは、常に str 型です。辞書が JSON に変換されるとき、辞書の全てのキーは文字列へ強制的に変換が行われます。この結果として、辞書が JSON に変換され、それから辞書に戻された場合、辞書は元のものと同じではありません。つまり文字列ではないキーを持っている場合、 loads(dumps(x)) != x となるということです。
+json.load(fp, *, cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None, **kw)
+この 変換表 を使い、 fp (.read() をサポートし JSON ドキュメントを含んでいる text file もしくは binary file) を Python オブジェクトへ脱直列化します。
+
+object_hook はオプションの関数で、任意のオブジェクトリテラルがデコードされた結果 (dict) に対し呼び出されます。 object_hook の返り値は dict の代わりに使われます。この機能は独自のデコーダ (例えば JSON-RPC クラスヒンティング) を実装するのに使えます。
+
+object_pairs_hook はオプションで渡す関数で、ペアの順序付きリストのデコード結果に対して呼ばれます。 object_pairs_hook の返り値は dict の代わりに使われます。この機能は独自のデコーダを実装するのに使えます。 object_hook も定義されている場合は、 object_pairs_hook が優先して使用されます。
+
+バージョン 3.1 で変更: object_pairs_hook のサポートが追加されました。
+
+parse_float は、もし指定されれば、全てのデコードされる JSON の浮動小数点数文字列に対して呼ばれます。デフォルトでは、 float(num_str) と等価です。これは JSON 浮動小数点数に対して他のデータ型やパーサ (たとえば decimal.Decimal) を使うのに使えます。
+
+parse_int は、もし指定されれば、全てのデコードされる JSON の整数文字列に対して呼ばれます。デフォルトでは、 int(num_str) と等価です。これは JSON 整数に対して他のデータ型やパーサ (たとえば float) を使うのに使えます。
+
+parse_constant は、もし指定されれば、次の文字列に対して呼ばれます: '-Infinity', 'Infinity', 'NaN', 'null', 'true', 'false'。これは不正な JSON 数値に遭遇したときに例外を送出するのに使えます。
+
+バージョン 3.1 で変更: 'null', 'true', 'false' に対して parse_constant は呼びされません。
+
+カスタマイズされた JSONDecoder のサブクラスを使うには、 cls キーワード引数に指定します; 指定しなかった場合は JSONDecoder が使われます。追加のキーワード引数はこのクラスのコンストラクタに引き渡されます。
+
+脱直列化しようとしているデータが不正な JSON ドキュメントだった場合、 JSONDecodeError が送出されます。
+
+バージョン 3.6 で変更: すべてのオプション引数は、 キーワード専用 になりました。
+
+バージョン 3.6 で変更: fp には term:binary file 型も使えるようになりました。入力のエンコーディングは UTF-8, UTF-16, UTF-32 のいずれかでなければなりません。
+
+json.loads(s, *, cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None, **kw)
+この 変換表 を使い、 s (JSON ドキュメントを含んでいる str, bytes, bytearray のいずれかのインスタンス) を Python オブジェクトへ脱直列化します。
+
+その他の引数は load() のものと同じ意味です。
+
+脱直列化しようとしているデータが不正な JSON ドキュメントだった場合、 JSONDecodeError が送出されます。
+
+バージョン 3.6 で変更: s には bytes 型と bytearray 型も使えるようになりました。 入力エンコーディングは UTF-8, UTF-16, UTF-32 のいずれかでなければなりません。
+
+バージョン 3.9 で変更: The keyword argument encoding has been removed.
+
+エンコーダとデコーダ
+class json.JSONDecoder(*, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, strict=True, object_pairs_hook=None)
+単純な JSON デコーダ。
+
+デフォルトではデコーディングの際、以下の変換を行います:
+
+JSON
+
+Python
+
+object
+
+dict
+
+array
+
+list
+
+string
+
+str
+
+number (int)
+
+int
+
+number (real)
+
+浮動小数点数
+
+true
+
+True
+
+false
+
+False
+
+null
+
+None
+
+また、このデコーダは NaN, Infinity, -Infinity を対応する float の値として、JSON の仕様からは外れますが、理解します。
+
+object_hook, if specified, will be called with the result of every JSON object decoded and its return value will be used in place of the given dict. This can be used to provide custom deserializations (e.g. to support JSON-RPC class hinting).
+
+object_pairs_hook が指定された場合、ペアの順序付きリストのデコード結果に対して毎回呼ばれます。 object_pairs_hook の返り値は dict の代わりに使われます。この機能は独自のデコーダを実装するのに使えます。 object_hook も定義されている場合は、 object_pairs_hook が優先して使用されます。
+
+バージョン 3.1 で変更: object_pairs_hook のサポートが追加されました。
+
+parse_float は、もし指定されれば、全てのデコードされる JSON の浮動小数点数文字列に対して呼ばれます。デフォルトでは、 float(num_str) と等価です。これは JSON 浮動小数点数に対して他のデータ型やパーサ (たとえば decimal.Decimal) を使うのに使えます。
+
+parse_int は、もし指定されれば、全てのデコードされる JSON の整数文字列に対して呼ばれます。デフォルトでは、 int(num_str) と等価です。これは JSON 整数に対して他のデータ型やパーサ (たとえば float) を使うのに使えます。
+
+parse_constant は、もし指定されれば、次の文字列に対して呼ばれます: '-Infinity', 'Infinity', 'NaN', 'null', 'true', 'false'。これは不正な JSON 数値に遭遇したときに例外を送出するのに使えます。
+
+strict が false (デフォルトは True) の場合、制御文字を文字列に含めることができます。ここで言う制御文字とは、'\t' (タブ)、'\n'、'\r'、'\0' を含む 0-31 の範囲のコードを持つ文字のことです。
+
+脱直列化しようとしているデータが不正な JSON ドキュメントだった場合、 JSONDecodeError が送出されます。
+
+バージョン 3.6 で変更: すべての引数は、 キーワード専用 になりました。
+
+decode(s)
+s (str インスタンスで JSON 文書を含むもの) の Python 表現を返します。
+
+不正な JSON ドキュメントが与えられた場合、 JSONDecodeError が送出されます。
+
+raw_decode(s)
+s (str インスタンスで JSON 文書で始まるもの) から JSON 文書をデコードし、Python 表現と s の文書の終わるところのインデックスからなる 2 要素のタプルを返します。
+
+このメソッドは後ろに余分なデータを従えた文字列から JSON 文書をデコードするのに使えます。
+
+class json.JSONEncoder(*, skipkeys=False, ensure_ascii=True, check_circular=True, allow_nan=True, sort_keys=False, indent=None, separators=None, default=None)
+Python データ構造に対する拡張可能な JSON エンコーダ。
+
+デフォルトでは以下のオブジェクトと型をサポートします:
+
+Python
+
+JSON
+
+dict
+
+object
+
+list, tuple
+
+array
+
+str
+
+string
+
+int、float と int や float の派生列挙型
+
+number
+
+True
+
+true
+
+False
+
+false
+
+None
+
+null
+
+バージョン 3.4 で変更: int と float の派生列挙型クラスの対応が追加されました。
+
+このクラスを拡張して他のオブジェクトも認識するようにするには、サブクラスを作って default() メソッドを次のように実装します。もう一つ別のメソッドでオブジェクト o に対する直列化可能なオブジェクトを返すものを呼び出すようにします。変換できない時はスーパークラスの実装を (TypeError を送出させるために) 呼ばなければなりません。
+
+If skipkeys is false (the default), a TypeError will be raised when trying to encode keys that are not str, int, float or None. If skipkeys is true, such items are simply skipped.
+
+ensure_ascii が (デフォルト値の) true の場合、出力では入力された全ての非 ASCII 文字はエスケープされていることが保証されています。ensure_ascii が false の場合、これらの文字はそのまま出力されます。
+
+check_circular が true (デフォルト) ならば、リスト、辞書および自作でエンコードしたオブジェクトは循環参照がないかエンコード中にチェックされ、無限再帰 (これは OverflowError を引き起こします) を防止します。 True でない場合は、そういったチェックは施されません。
+
+allow_nan が true (デフォルト) ならば、 NaN, Infinity, -Infinity はそのままエンコードされます。この振る舞いは JSON 仕様に従っていませんが、大半の JavaScript ベースのエンコーダ、デコーダと矛盾しません。 True でない場合は、そのような浮動小数点数をエンコードすると ValueError が送出されます。
+
+sort_keys が true (デフォルトは False) ならば、辞書の出力がキーでソートされます。これは JSON の直列化がいつでも比較できるようになるので回帰試験の際に便利です。
+
+indent が非負の整数または文字列であれば、JSON の配列要素とオブジェクトメンバはそのインデントレベルで見やすく表示されます。インデントレベルが 0 か負数または "" であれば 改行だけが挿入されます。None (デフォルト) では最もコンパクトな表現が選択されます。正の数のindentはレベル毎に、指定した数のスペースでインデントします。もし indent が文字列 ("\t" のような) であれば、その文字列が個々のレベルのインデントに使用されます。
+
+バージョン 3.2 で変更: 整数に加えて、文字列が indent に使用できるようになりました。
+
+separators はもし指定するなら (item_separator, key_separator) というタプルでなければなりません。デフォルトは indent が None のとき (', ', ': ') で、そうでなければ (',', ': ') です。最もコンパクトな JSON の表現を得たければ空白を削った (',', ':') を指定すればいいでしょう。
+
+バージョン 3.4 で変更: indent が None でなければ (',', ': ') がデフォルトで使われます。
+
+default を指定する場合は関数を指定して、この関数はそれ以外では直列化できないオブジェクトに対して呼び出されます。 その関数は、オブジェクトを JSON でエンコードできるバージョンにして返すか、さもなければ TypeError を送出しなければなりません。 指定しない場合は、 TypeError が送出されます。
+
+バージョン 3.6 で変更: すべての引数は、 キーワード専用 になりました。
+
+default(o)
+このメソッドをサブクラスで実装する際には o に対して直列化可能なオブジェクトを返すか、基底クラスの実装を (TypeError を送出するために) 呼び出すかします。
+
+For example, to support arbitrary iterators, you could implement default() like this:
+
+def default(self, o):
+   try:
+       iterable = iter(o)
+   except TypeError:
+       pass
+   else:
+       return list(iterable)
+   # Let the base class default method raise the TypeError
+   return json.JSONEncoder.default(self, o)
+encode(o)
+Python データ構造 o の JSON 文字列表現を返します。たとえば:
+
+>>>
+>>> json.JSONEncoder().encode({"foo": ["bar", "baz"]})
+'{"foo": ["bar", "baz"]}'
+iterencode(o)
+与えられたオブジェクト o をエンコードし、得られた文字列表現ごとに yield します。たとえば:
+
+for chunk in json.JSONEncoder().iterencode(bigobject):
+    mysocket.write(chunk)
+例外
+exception json.JSONDecodeError(msg, doc, pos)
+ValueError のサブクラスで、以下の追加の属性を持ちます:
+
+msg
+フォーマットされていないエラーメッセージです。
+
+doc
+パース対象 JSON ドキュメントです。
+
+pos
+doc の、解析に失敗した開始インデクスです。
+
+lineno
+pos に対応する行です。
+
+colno
+pos に対応する列です。
+
+バージョン 3.5 で追加.
+
+標準への準拠と互換性
+JSON 形式の仕様は RFC 7159 と ECMA-404 で規定されています。 この節では、このモジュールの RFC への準拠水準について詳しく述べます。 簡単のために、 JSONEncoder および JSONDecoder の子クラスと、明示的に触れられていないパラメータについては考慮しないことにします。
+
+このモジュールは、JavaScript では正しいが JSON では不正ないくつかの拡張が実装されているため、厳密な意味では RFC に準拠していません。特に:
+
+無限および NaN の数値を受け付け、また出力します;
+
+あるオブジェクト内での同じ名前の繰り返しを受け付け、最後の名前と値のペアの値のみを使用します。
+
+この RFC は、RFC 準拠のパーサが RFC 準拠でない入力テキストを受け付けることを許容しているので、このモジュールの脱直列化は技術的に言えば、デフォルトの設定では RFC に準拠しています。
+
+文字エンコーディング
+RFC は、UTF-8、UTF-16、UTF-32のいずれかでJSONを表現するように要求しており、UTF-8 が最大の互換性を確保するために推奨されるデフォルトです。
+
+RFC で要求ではなく許可されている通り、このモジュールのシリアライザはデフォルトで ensure_ascii=True という設定を用い、従って、結果の文字列が ASCII 文字しか含まないように出力をエスケープします。
+
+ensure_ascii パラメータ以外は、このモジュールは Python オブジェクトと Unicode 文字列 の間の変換において厳密に定義されていて、それ以外のパラメータで文字エンコーディングに直接的に関わるものはありません。
+
+RFC は JSON テキストの最初にバイトオーダマーク(BOM)を追加することを禁止していますので、このモジュールはその出力に BOM を追加しません。RFC は JSON デシリアライザが入力の一番最初の BOM を無視することを、許容はしますが求めてはいません。このモジュールのデシリアライザは一番最初の BOM を見つけると ValueError を送出します。
+
+RFC は JSON 文字列に正当な Unicode 文字に対応付かないバイト列(例えばペアにならない UTF-16 サロゲートのかたわれ)が含まれることを明示的に禁止してはおらず、もちろんこれは相互運用性の問題を引き起こします。デフォルトでは、このモジュールは(オリジナルの str にある場合)そのようなシーケンスのコードポイントを受け取り、出力します。
+
+無限および NaN の数値
+RFC は、無限もしくは NaN の数値の表現は許可していません。それにも関わらずデフォルトでは、このモジュールは Infinity、-Infinity、NaN を正しい JSON の数値リテラルの値であるかのように受け付け、出力します:
+
+>>>
+>>> # Neither of these calls raises an exception, but the results are not valid JSON
+>>> json.dumps(float('-inf'))
+'-Infinity'
+>>> json.dumps(float('nan'))
+'NaN'
+>>> # Same when deserializing
+>>> json.loads('-Infinity')
+-inf
+>>> json.loads('NaN')
+nan
+シリアライザでは、この振る舞いを変更するのに allow_nan パラメータが使えます。デシリアライザでは、この振る舞いを変更するのに parse_constant パラメータが使えます。
+
+オブジェクト中に重複した名前の扱い
+RFC は JSON オブジェクト中の名前はユニークでなければならないと規定していますが、JSONオブジェクトで名前が繰り返された場合の扱いについて指定していません。デフォルトでは、このモジュールは例外を送出せず、かわりに重複した名前のうち、最後に出現した名前と値のペア以外を無視します。
+
+>>>
+>>> weird_json = '{"x": 1, "x": 2, "x": 3}'
+>>> json.loads(weird_json)
+{'x': 3}
+object_pairs_hook パラメータでこの動作を変更できます。
+
+トップレベルの非オブジェクト、非配列の値の扱い
+廃止された RFC 4627 によって規定された古いバージョンの JSON では、JSON テキストのトップレベルの値は JSON オブジェクトか配列(Python での dict か list)であることを要求していて、JSON の null, boolean, number, string であることは許されていませんでしたが、この制限は RFC 7159 により取り払われました。このモジュールはこの制限を持っていませんし、シリアライザでもデシリアライズでも、一度としてこの制限で実装されたことはありません。
+
+それにも関わらず、相互運用可能性を最大化したいならば、あなた自身の手で自発的にその制約に忠実に従いたいと思うでしょう。
+
+実装の制限
+いくつかの JSON デシリアライザの実装は、以下の制限を設定することがあります。
+
+受け入れられる JSON テキストのサイズ
+
+JSON オブジェクトと配列のネストの最大の深さ
+
+JSON 数値の範囲と精度
+
+JSON 文字列の内容と最大の長さ
+
+このモジュールは関連する Python データ型や Python インタプリタ自身の制約の世界を超えたそのような制約を強要はしません。
+
+JSON にシリアライズする際には、あなたの JSON を消費する側のアプリケーションが持つ当該制約に思いを馳せてください。とりわけJSON 数値を IEEE 754 倍精度浮動小数にデシリアライズする際の問題はありがちで、すなわちその有効桁数と精度の制限の影響を受けます。これは、極端に大きな値を持った Python int をシリアライズするとき、あるいは decimal.Decimal のような "風変わりな" 数値型をシリアライズするとき、に特に関係があります。
+
+コマンドラインインターフェイス
+ソースコード: Lib/json/tool.py
+
+json.tool モジュールは JSON オブジェクトの検証と整形出力のための、単純なコマンドラインインターフェイスを提供します。
+
+オプショナルな infile 引数、 outfile 引数が指定されない場合、それぞれ sys.stdin と sys.stdout が使われます:
+
+$ echo '{"json": "obj"}' | python -m json.tool
+{
+    "json": "obj"
+}
+$ echo '{1.2:3.4}' | python -m json.tool
+Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+バージョン 3.5 で変更: 出力が、入力と同じ順序になりました。辞書をキーでアルファベット順に並べ替えた出力が欲しければ、 --sort-keys オプションを使ってください。
+
+コマンドラインオプション
+infile
+検証を行う、あるいは整形出力を行う JSON ファイルを指定します:
+
+$ python -m json.tool mp_films.json
+[
+    {
+        "title": "And Now for Something Completely Different",
+        "year": 1971
+    },
+    {
+        "title": "Monty Python and the Holy Grail",
+        "year": 1975
+    }
+]
+infile を指定しない場合、 sys.stdin から読み込みます。
+
+outfile
+infile に対する出力を、この outfile ファイルに出力します。指定しない場合 sys.stdout に出力します。
+
+--sort-keys
+辞書の出力を、キーのアルファベット順にソートします。
+
+バージョン 3.5 で追加.
+
+--no-ensure-ascii
+Disable escaping of non-ascii characters, see json.dumps() for more information.
+
+バージョン 3.9 で追加.
+
+--json-lines
+すべての入力行を個別のJSON オブジェクトとしてパースします。
+
+バージョン 3.8 で追加.
+
+--indent, --tab, --no-indent, --compact
+Mutually exclusive options for whitespace control.
+
+バージョン 3.9 で追加.
+
+-h, --help
+ヘルプメッセージを出力します
+
+脚注
+
+1
+RFC 7159 正誤表 で述べられている通り、JSON は (ECMAScript Edition 5.1 の) JavaScript とは逆に、 U+2028 (LINE SEPARATOR) と U+2029 (PARAGRAPH SEPARATOR) が文字列内に含まれることを許容しています。
+
+mailcap --- mailcap ファイルの操作¶
+ソースコード: Lib/mailcap.py
+
+mailcap ファイルは、メールリーダや Web ブラウザのような MIME 対応のアプリケーションが、異なる MIME タイプのファイルにどのように反応するかを設定するために使われます ("mailcap" の名前は "mail capability" から取られました)。例えば、ある mailcap ファイルに video/mpeg; xmpeg %s のような行が入っていたとします。ユーザが email メッセージや Web ドキュメント上でその MIME タイプ video/mpeg に遭遇すると、 %s はファイル名 (通常テンポラリファイルに属するものになります) に置き換えられ、ファイルを閲覧するためにxmpeg プログラムが自動的に起動されます。
+
+mailcap の形式は RFC 1524, "A User Agent Configuration Mechanism For Multimedia Mail Format Information" で文書化されていますが、この文書はインターネット標準ではありません。しかしながら、 mailcap ファイルはほとんどの Unix システムでサポートされています。
+
+mailcap.findmatch(caps, MIMEtype, key='view', filename='/dev/null', plist=[])
+2 要素のタプルを返します; 最初の要素は文字列で、実行すべきコマンド (os.system() に渡されます) が入っています。二つめの要素は与えられた MIME タイプに対する mailcap エントリです。一致する MIME タイプが見つからなかった場合、 (None, None) が返されます。
+
+key は desired フィールドの値で、実行すべき動作のタイプを表現します; ほとんどの場合、単に MIME 形式のデータ本体を見たいと思うので、標準の値は 'view' になっています。与えられた MIME 型をもつ新たなデータ本体を作成した場合や、既存のデータ本体を置き換えたい場合には、'view' の他に 'compose' および 'edit' を取ることもできます。これらフィールドの完全なリストについては RFC 1524 を参照してください。
+
+filename はコマンドライン中で %s に代入されるファイル名です; 標準の値は '/dev/null' で、たいていこの値を使いたいわけではないはずです。従って、ファイル名を指定してこのフィールドを上書きする必要があるでしょう。
+
+plist は名前付けされたパラメタのリストです; 標準の値は単なる空のリストです。リスト中の各エントリはパラメタ名を含む文字列、等号 ('=')、およびパラメタの値でなければなりません。mailcap エントリには %{foo} といったような名前つきのパラメタを含めることができ、'foo' と名づけられたパラメタの値に置き換えられます。例えば、コマンドライン showpartial %{id} %{number} %{total} が mailcap ファイルにあり、plist が ['id=1', 'number=2', 'total=3'] に設定されていれば、コマンドラインは 'showpartial 1 2 3' になります。
+
+mailcap ファイル中では、オプションの "test" フィールドを使って、(計算機アーキテクチャや、利用しているウィンドウシステムといった) 何らかの外部条件をテストするよう指定することができます。 findmatch() はこれらの条件を自動的にチェックし、チェックが失敗したエントリを読み飛ばします。
+
+mailcap.getcaps()
+MIME タイプを mailcap ファイルのエントリに対応付ける辞書を返します。この辞書は findmatch() 関数に渡されるべきものです。エントリは辞書のリストとして記憶されますが、この表現形式の詳細について知っておく必要はないでしょう。
+
+mailcap 情報はシステム上で見つかった全ての mailcap ファイルから導出されます。ユーザ設定の mailcap ファイル $HOME/.mailcap はシステムの mailcap ファイル /etc/mailcap 、 /usr/etc/mailcap 、および /usr/local/etc/mailcap の内容を上書きします。
+
+以下に使用例を示します:
+
+>>>
+>>> import mailcap
+>>> d = mailcap.getcaps()
+>>> mailcap.findmatch(d, 'video/mpeg', filename='tmp1223')
+('xmpeg tmp1223', {'view': 'xmpeg %s'})
+
+mailbox --- 様々な形式のメールボックス操作
+ソースコード: Lib/mailbox.py
+
+このモジュールでは二つのクラス Mailbox および Message をディスク上のメールボックスとそこに収められたメッセージへのアクセスと操作のために定義しています。 Mailbox は辞書のようなキーからメッセージへの対応付けを提供しています。 Message は email.message モジュールの Message を拡張して形式ごとの状態と振る舞いを追加しています。サポートされるメールボックスの形式は Maildir, mbox, MH, Babyl, MMDF です。
+
+参考
+email モジュール
+メッセージの表現と操作。
+
+Mailbox オブジェクト
+class mailbox.Mailbox
+メールボックス。内容を確認したり変更したりできます。
+
+Mailbox 自体はインタフェースを定義し形式ごとのサブクラスに継承されるように意図されたもので、インスタンス化されることは想定されていません。インスタンス化したいならばサブクラスを代わりに使うべきです。
+
+Mailbox のインタフェースは辞書風で、小さなキーがメッセージに対応します。キーは対象となる Mailbox インスタンスが発行するもので、そのインスタンスに対してのみ意味を持ちます。一つのキーは一つのメッセージにひも付けられ、その対応はメッセージが他のメッセージで置き換えられるような更新をされたあとも続きます。
+
+メッセージを Mailbox インスタンスに追加するには集合風のメソッド add() を使います。また削除は del 文または集合風の remove() や discard() を使って行ないます。
+
+Mailbox インタフェースのセマンティクスと辞書のそれとは注意すべき違いがあります。メッセージは、要求されるたびに新しい表現(典型的には Message インスタンス)が現在のメールボックスの状態に基づいて生成されます。同様に、メッセージが Mailbox インスタンスに追加される時も、渡されたメッセージ表現の内容がコピーされます。どちらの場合も Mailbox インスタンスにメッセージ表現への参照は保たれません。
+
+デフォルトの Mailbox イテレータはメッセージ表現ごとに繰り返すもので、辞書のイテレータのようにキーごとの繰り返しではありません。さらに、繰り返し中のメールボックスを変更することは安全であり整合的に定義されています。イテレータが作られた後にメールボックスに追加されたメッセージはそのイテレータからは見えません。そのイテレータが yield するまえにメールボックスから削除されたメッセージは黙ってスキップされますが、イテレータからのキーを使ったときにはそのキーに対応するメッセージが削除されているならば KeyError を受け取ることになります。
+
+警告 十分な注意を、何か他のプロセスによっても同時に変更される可能性のあるメールボックスを更新する時は、払わなければなりません。そのようなタスクをこなすのに最も安全なメールボックス形式は Maildir で、 mbox のような単一ファイルの形式を並行した書き込みに利用するのは避けるように努力しましょう。メールボックスを更新する場面では、 必ず lock() と unlock() メソッドを、ファイル内のメッセージを読んだり書き込んだり削除したりといった操作をする 前 に、呼び出してロックします。メールボックスをロックし損なうと、メッセージを失ったりメールボックス全体をぐちゃぐちゃにしたりする羽目に陥ります。
+Mailbox インスタンスには次のメソッドがあります:
+
+add(message)
+メールボックスに message を追加し、それに割り当てられたキーを返します。
+
+引数 message は Message インスタンス、 email.message.Message インスタンス、文字列、バイト文字列、ファイル風オブジェクト (バイナリモードで開かれていなければなりません) を使えます。 message が適切な形式に特化した Message サブクラスのインスタンス (例えばメールボックスが mbox インスタンスのときの mboxMessage インスタンス) であれば、形式ごとの情報が利用されます。そうでなければ、形式ごとに必要な情報は適当なデフォルトが使われます。
+
+バージョン 3.2 で変更: バイナリ入力のサポートが追加されました。
+
+remove(key)
+__delitem__(key)
+discard(key)
+メールボックスから key に対応するメッセージを削除します。
+
+対応するメッセージが無い場合、メソッドが remove() または __delitem__() として呼び出されている時は KeyError 例外が送出されます。しかし、 discard() として呼び出されている場合は例外は発生しません。基づいているメールボックス形式が別のプロセスからの平行した変更をサポートしているならば、この discard() の振る舞いの方が好まれるかもしれません。
+
+__setitem__(key, message)
+key に対応するメッセージを message で置き換えます。 key に対応しているメッセージが既に無くなっている場合 KeyError 例外が送出されます。
+
+add() と同様に、引数の message には Message インスタンス、 email.message.Message インスタンス、文字列、バイト文字列、ファイル風オブジェクト (バイナリモードで開かれていなければなりません) を使えます。 message が適切な形式に特化した Message サブクラスのインスタンス (例えばメールボックスが mbox インスタンスのときの mboxMessage インスタンス) であれば、形式ごとの情報が利用されます。そうでなければ、現在 key に対応するメッセージの形式ごとの情報が変更されずに残ります。
+
+iterkeys()
+keys()
+iterkeys() として呼び出されると全てのキーについてのイテレータを返しますが、 keys() として呼び出されるとキーのリストを返します。
+
+itervalues()
+__iter__()
+values()
+itervalues() または __iter__() として呼び出されると全てのメッセージの表現についてのイテレータを返しますが、 values() として呼び出されるとその表現のリストを返します。メッセージは適切な形式ごとの Message サブクラスのインスタンスとして表現されるのが普通ですが、 Mailbox インスタンスが初期化されるときに指定すればお好みのメッセージファクトリを使うこともできます。
+
+注釈 __iter__() は辞書のそれのようにキーについてのイテレータではありません。
+iteritems()
+items()
+(key, message) ペア、ただし key はキーで message はメッセージ表現、のイテレータ(iteritems() として呼び出された場合)、またはリスト(items() として呼び出された場合)を返します。メッセージは適切な形式ごとの Message サブクラスのインスタンスとして表現されるのが普通ですが、 Mailbox インスタンスが初期化されるときに指定すればお好みのメッセージファクトリを使うこともできます。
+
+get(key, default=None)
+__getitem__(key)
+key に対応するメッセージの表現を返します。対応するメッセージが存在しない場合、 get() として呼び出されたなら default を返しますが、 __getitem__() として呼び出されたなら KeyError 例外が送出されます。メッセージは適切な形式ごとの Message サブクラスのインスタンスとして表現されるのが普通ですが、 Mailbox スタンスが初期化されるときに指定すればお好みのメッセージファクトリを使うこともできます。
+
+get_message(key)
+key に対応するメッセージの表現を形式ごとの Message サブクラスのインスタンスとして返します。もし対応するメッセージが存在しなければ KeyError 例外が送出されます。
+
+get_bytes(key)
+key に対応するメッセージのバイト列を返すか、そのようなメッセージが存在しない場合は KeyError 例外を送出します。
+
+バージョン 3.2 で追加.
+
+get_string(key)
+key に対応するメッセージの文字列表現を返すか、そのようなメッセージが存在しない場合は KeyError 例外を送出します。このメッセージは email.message.Message を通して処理されて7ビットクリーンな表現へ変換されます。
+
+get_file(key)
+key に対応するメッセージの表現をファイル風表現として返します。もし対応するメッセージが存在しなければ KeyError 例外が送出されます。ファイル風オブジェクトはバイナリモードで開かれているように振る舞います。このファイルは必要がなくなったら閉じなければなりません。
+
+バージョン 3.2 で変更: ファイルオブジェクトは実際はバイナリファイルです; 以前は誤ってテキストモードで返されていました。 また、現在ファイル風オブジェクトはコンテキストマネージャプロトコルをサポートしています: with 文を用いることで自動的にファイルを閉じることができます。
+
+注釈 他の表現方法とは違い、ファイル風オブジェクトはそれを作り出した Mailbox インスタンスやそれが基づいているメールボックスと独立である必要がありません。より詳細な説明は各サブクラスごとにあります。
+__contains__(key)
+key がメッセージに対応していれば True を、そうでなければ False を返します。
+
+__len__()
+メールボックス中のメッセージ数を返します。
+
+clear()
+メールボックスから全てのメッセージを削除します。
+
+pop(key, default=None)
+key に対応するメッセージの表現を返します。メッセージは適切な形式ごとの Message サブクラスのインスタンスとして表現されるのが普通ですが、 Mailbox インスタンスが初期化されるときに指定すればお好みのメッセージファクトリを使うこともできます。
+
+popitem()
+任意に選んだ (key, message) ペアを返します。ただしここで key はキーで message はメッセージ表現です。もしメールボックスが空ならば、 KeyError 例外を送出します。メッセージは適切な形式ごとの Message サブクラスのインスタンスとして表現されるのが普通ですが、 Mailbox インスタンスが初期化されるときに指定すればお好みのメッセージファクトリを使うこともできます。
+
+update(arg)
+引数 arg は key から message へのマッピングまたは (key, message) ペアのイテレート可能オブジェクトでなければなりません。メールボックスは、各 key と message のペアについて __setitem__() を使ったかのように key に対応するメッセージが message になるように更新されます。 __setitem__() と同様に、 key は既存のメールボックス中のメッセージに対応しているものでなければならず、そうでなければ KeyError が送出されます。ですから、一般的には arg に Mailbox インスタンスを渡すのは間違いです。
+
+注釈 辞書と違い、キーワード引数はサポートされていません。
+flush()
+保留されている変更をファイルシステムに書き込みます。 Mailbox のサブクラスによっては変更はいつも直ちにファイルに書き込まれ flush() は何もしないということもありますが、それでもこのメソッドを呼ぶように習慣付けておきましょう。
+
+lock()
+メールボックスの排他的アドバイザリロックを取得し、他のプロセスが変更しないようにします。ロックが取得できない場合 ExternalClashError が送出されます。ロック機構はメールボックス形式によって変わります。メールボックスの内容に変更を加えるときは いつも ロックを掛けるべきです。
+
+unlock()
+メールボックスのロックが存在する場合は解放します。
+
+close()
+メールボックスをフラッシュし、必要ならばアンロックし、開いているファイルを閉じます。 Mailbox サブクラスによっては何もしないこともあります。
+
+Maildir
+class mailbox.Maildir(dirname, factory=None, create=True)
+Maildir 形式のメールボックスのための Mailbox のサブクラス。パラメータ factory は呼び出し可能オブジェクトで (バイナリモードで開かれているかのように振る舞う)ファイル風メッセージ表現を受け付けて好みの表現を返すものです。 factory が None ならば、 MaildirMessage がデフォルトのメッセージ表現として使われます。 create が True ならばメールボックスが存在しないときには作成します。
+
+create が True で、パス dirname が存在する場合、ディレクトリレイアウトを検証せずに既存の maildir として扱います。
+
+path ではなく dirname と命名される歴史的な理由のためです。
+
+Maildir はディレクトリ型のメールボックス形式でメール転送エージェント qmail 用に発明され、現在では多くの他のプログラムでもサポートされているものです。Maildir メールボックス中のメッセージは共通のディレクトリ構造の下で個別のファイルに保存されます。このデザインにより、Maildir メールボックスは複数の無関係のプログラムからデータを失うことなくアクセスしたり変更したりできます。そのためロックは不要です。
+
+Maildir メールボックスには三つのサブディレクトリ tmp, new, cur があります。メッセージはまず tmp サブディレクトリに瞬間的に作られた後、 new サブディレクトリに移動されて配送を完了します。メールユーザエージェントが引き続いて cur サブディレクトリにメッセージを移動しメッセージの状態についての情報をファイル名に追加される特別な "info" セクションに保存することができます。
+
+Courier メール転送エージェントによって導入されたスタイルのフォルダもサポートされます。主たるメールボックスのサブディレクトリは '.' がファイル名の先頭であればフォルダと見なされます。フォルダ名は Maildir によって先頭の '.' を除いて表現されます。各フォルダはまた Maildir メールボックスですがさらにフォルダを含むことはできません。その代わり、論理的包含関係は例えば "Archived.2005.07" のような '.' を使ったレベル分けで表わされます。
+
+注釈 本来の Maildir 仕様ではある種のメッセージのファイル名にコロン (':') を使う必要があります。しかしながら、オペレーティングシステムによってはこの文字をファイル名に含めることができないことがあります。そういった環境で Maildir のような形式を使いたい場合、代わりに使われる文字を指定する必要があります。感嘆符 ('!') を使うのが一般的な選択です。以下の例を見てください:
+import mailbox
+mailbox.Maildir.colon = '!'
+colon 属性はインスタンスごとにセットしても構いません。
+
+Maildir インスタンスには Mailbox の全てのメソッドに加え以下のメソッドもあります:
+
+list_folders()
+全てのフォルダ名のリストを返します。
+
+get_folder(folder)
+名前が folder であるフォルダを表わす Maildir インスタンスを返します。そのようなフォルダが存在しなければ NoSuchMailboxError 例外が送出されます。
+
+add_folder(folder)
+名前が folder であるフォルダを作り、それを表わす Maildir インスタンスを返します。
+
+remove_folder(folder)
+名前が folder であるフォルダを削除します。もしフォルダに一つでもメッセージが含まれていれば NotEmptyError 例外が送出されフォルダは削除されません。
+
+clean()
+過去36時間以内にアクセスされなかったメールボックス内の一時ファイルを削除します。Maildir 仕様はメールを読むプログラムはときどきこの作業をすべきだとしています。
+
+Maildir で実装された Mailbox のいくつかのメソッドには特別な注意が必要です:
+
+add(message)
+__setitem__(key, message)
+update(arg)
+警告 これらのメソッドは一意的なファイル名をプロセスIDに基づいて生成します。複数のスレッドを使う場合は、同じメールボックスを同時に操作しないようにスレッド間で調整しておかないと検知されない名前の衝突が起こりメールボックスを壊すかもしれません。
+flush()
+Maildir メールボックスへの変更は即時に適用されるので、このメソッドは何もしません。
+
+lock()
+unlock()
+Maildir メールボックスはロックをサポート(または要求)しないので、このメソッドは何もしません。
+
+close()
+Maildir インスタンスは開いたファイルを保持しませんしメールボックスはロックをサポートしませんので、このメソッドは何もしません。
+
+get_file(key)
+ホストのプラットフォームによっては、返されたファイルが開いている間、元になったメッセージを変更したり削除したりできない場合があります。
+
+参考
+Courier の maildir マニュアルページ
+A specification of the format. Describes a common extension for supporting folders.
+
+Using maildir format
+Maildir 形式の発明者による注意書き。更新された名前生成規則と "info" の解釈についても含まれます。
+
+mbox
+class mailbox.mbox(path, factory=None, create=True)
+mbox 形式のメールボックスのための Mailbox のサブクラス。パラメータ factory は呼び出し可能オブジェクトで (バイナリモードで開かれているかのように振る舞う)ファイル風メッセージ表現を受け付けて好みの表現を返すものです。 factory が None ならば、 mboxMessage がデフォルトのメッセージ表現として使われます。 create が True ならばメールボックスが存在しないときには作成します。
+
+mbox 形式は Unixシステム上でメールを保存する古くからある形式です。mbox メールボックスでは全てのメッセージが一つのファイルに保存されておりそれぞれのメッセージは "From " という5文字で始まる行を先頭に付けられています。
+
+mbox 形式には幾つかのバリエーションがあり、それぞれオリジナルの形式にあった欠点を克服すると主張しています。互換性のために、 mbox はオリジナルの(時に mboxo と呼ばれる) 形式を実装しています。すなわち、 Content-Length ヘッダはもしあっても無視され、メッセージのボディにある行頭の "From " はメッセージを保存する際に ">From " に変換されますが、この ">From " は読み出し時にも "From " に変換されません。
+
+mbox で実装された Mailbox のいくつかのメソッドには特別な注意が必要です:
+
+get_file(key)
+mbox インスタンスに対し flush() や close() を呼び出した後でファイルを使用すると予期しない結果を引き起こしたり例外が送出されたりすることがあります。
+
+lock()
+unlock()
+3種類のロック機構が使われます --- ドットロッキングと、もし使用可能ならば flock() と lockf() システムコールです。
+
+参考
+tin の mbox マニュアルページ
+A specification of the format, with details on locking.
+
+Configuring Netscape Mail on Unix: Why The Content-Length Format is Bad
+バリエーションの一つではなくオリジナルの mbox を使う理由。
+
+"mbox" は相互に互換性を持たないいくつかのメールボックスフォーマットの集まりです
+mbox バリエーションの歴史。
+
+MH
+class mailbox.MH(path, factory=None, create=True)
+MH 形式のメールボックスのための Mailbox のサブクラス。パラメータ factory は呼び出し可能オブジェクトで (バイナリモードで開かれているかのように振る舞う)ファイル風メッセージ表現を受け付けて好みの表現を返すものです。 factory が None ならば、 MHMessage がデフォルトのメッセージ表現として使われます。 create が True ならばメールボックスが存在しないときには作成します。
+
+MH はディレクトリに基づいたメールボックス形式で MH Message Handling System というメールユーザエージェントのために発明されました。 MH メールボックス中のそれぞれのメッセージは一つのファイルとして収められています。 MH メールボックスにはメッセージの他に別の MH メールボックス (フォルダ と呼ばれます)を含んでもかまいません。フォルダは無限にネストできます。 MH メールボックスにはもう一つ シーケンス という名前付きのリストでメッセージをサブフォルダに移動することなく論理的に分類するものがサポートされています。シーケンスは各フォルダの .mh_sequences というファイルで定義されます。
+
+MH クラスは MH メールボックスを操作しますが、 mh の動作の全てを模倣しようとはしていません。特に、 mh が状態と設定を保存する context や .mh_profile といったファイルは書き換えませんし影響も受けません。
+
+MH インスタンスには Mailbox の全てのメソッドの他に次のメソッドがあります:
+
+list_folders()
+全てのフォルダ名のリストを返します。
+
+get_folder(folder)
+folder という名前のフォルダを表わす MH インスタンスを返します。もしフォルダが存在しなければ NoSuchMailboxError 例外が送出されます。
+
+add_folder(folder)
+folder という名前のフォルダを作成し、それを表わす MH インスタンスを返します。
+
+remove_folder(folder)
+名前が folder であるフォルダを削除します。もしフォルダに一つでもメッセージが含まれていれば NotEmptyError 例外が送出されフォルダは削除されません。
+
+get_sequences()
+folder という名前のフォルダを削除します。フォルダにメッセージが一つでも残っていれば、NotEmptyError 例外が送出されフォルダは削除されません。
+
+set_sequences(sequences)
+シーケンス名をキーのリストに対応付ける辞書を返します。シーケンスが一つもなければ空の辞書を返します。
+
+pack()
+メールボックス中のシーケンスを get_sequences() で返されるような名前とキーのリストを対応付ける辞書 sequences に基づいて再定義します。
+
+注釈 番号付けの間隔を詰める必要に応じてメールボックス中のメッセージの名前を付け替えます。シーケンスのリストのエントリもそれに応じて更新されます。
+既に発行されたキーはこの操作によって無効になるのでそれ以降使ってはなりません:
+
+remove(key)
+__delitem__(key)
+discard(key)
+これらのメソッドはメッセージを直ちに削除します。名前の前にコンマを付加してメッセージに削除の印を付けるという MH の規約は使いません。
+
+lock()
+unlock()
+3種類のロック機構が使われます --- ドットロッキングと、もし使用可能ならば flock() と lockf() システムコールです。 MH メールボックスに対するロックとは .mh_sequences のロックと、それが影響を与える操作中だけの個々のメッセージファイルに対するロックを意味します。
+
+get_file(key)
+ホストプラットフォームにより、ファイルが開かれたままの場合はメッセージを削除することができない場合があります。
+
+flush()
+MH メールボックスへの変更は即時に適用されますのでこのメソッドは何もしません。
+
+close()
+MH インスタンスは開いたファイルを保持しませんのでこのメソッドは unlock() と同じです。
+
+参考
+nmh - Message Handling System
+mh の改良版である nmh のホームページ。
+
+MH & nmh: Email for Users & Programmers
+GPLライセンスの mh および nmh の本で、このメールボックス形式についての情報があります。
+
+Babyl
+class mailbox.Babyl(path, factory=None, create=True)
+Babyl 形式のメールボックスのための Mailbox のサブクラス。パラメータ factory は呼び出し可能オブジェクトで (バイナリモードで開かれているかのように振る舞う)ファイル風メッセージ表現を受け付けて好みの表現を返すものです。 factory が None ならば、 BabylMessage がデフォルトのメッセージ表現として使われます。 create が True ならばメールボックスが存在しないときには作成します。
+
+Babyl は単一ファイルのメールボックス形式で Emacs に付属している Rmail メールユーザエージェントで使われているものです。メッセージの開始は Control-Underscore ('\037') および Control-L ('\014') の二文字を含む行で示されます。メッセージの終了は次のメッセージの開始または最後のメッセージの場合には Control-Underscore を含む行で示されます。
+
+Babyl メールボックス中のメッセージには二つのヘッダのセット、オリジナルヘッダといわゆる可視ヘッダ、があります。可視ヘッダは典型的にはオリジナルヘッダの一部を分り易いように再整形したり短くしたりしたものです。 Babyl メールボックス中のそれぞれのメッセージには ラベル というそのメッセージについての追加情報を記録する短い文字列のリストを伴い、メールボックス中に見出されるユーザが定義した全てのラベルのリストは Babyl オプションセクションに保持されます。
+
+Babyl インスタンスには Mailbox の全てのメソッドの他に次のメソッドがあります:
+
+get_labels()
+メールボックスで使われているユーザが定義した全てのラベルのリストを返します。
+
+注釈 メールボックスにどのようなラベルが存在するかを決めるのに、Babyl オプションセクションのリストを参考にせず、実際のメッセージを捜索しますが、Babyl セクションもメールボックスが変更されたときにはいつでも更新されます。
+Babyl で実装された Mailbox のいくつかのメソッドには特別な注意が必要です:
+
+get_file(key)
+Babyl メールボックスにおいて、メッセージのヘッダはボディと繋がって格納されていません。ファイル風の表現を生成するために、ヘッダとボディがファイルと同じ API を持つ io.BytesIO インスタンスに一緒にコピーされます。その結果、ファイル風オブジェクトは元にしているメールボックスとは真に独立していますが、文字列表現と比べてメモリーを節約することにはなりません。
+
+lock()
+unlock()
+3種類のロック機構が使われます --- ドットロッキングと、もし使用可能ならば flock() と lockf() システムコールです。
+
+参考
+Format of Version 5 Babyl Files
+Babyl 形式の仕様。
+
+Reading Mail with Rmail
+Rmail のマニュアルで Babyl のセマンティクスについての情報も少しある。
+
+MMDF
+class mailbox.MMDF(path, factory=None, create=True)
+MMDF 形式のメールボックスのための Mailbox のサブクラス。パラメータ factory は呼び出し可能オブジェクトで (バイナリモードで開かれているかのように振る舞う)ファイル風メッセージ表現を受け付けて好みの表現を返すものです。 factory が None ならば、 MMDFMessage がデフォルトのメッセージ表現として使われます。 create が True ならばメールボックスが存在しないときには作成します。
+
+MMDF は単一ファイルのメールボックス形式で Multichannel Memorandum Distribution Facility というメール転送エージェント用に発明されたものです。各メッセージは mbox と同様の形式で収められますが、前後を4つの Control-A ('\001') を含む行で挟んであります。mbox 形式と同じようにそれぞれのメッセージの開始は "From " の5文字を含む行で示されますが、それ以外の場所での "From " は格納の際 ">From " には変えられません。それは追加されたメッセージ区切りによって新たなメッセージの開始と見間違うことが避けられるからです。
+
+MMDF で実装された Mailbox のいくつかのメソッドには特別な注意が必要です:
+
+get_file(key)
+MMDF インスタンスに対し flush() や close() を呼び出した後でファイルを使用すると予期しない結果を引き起こしたり例外が送出されたりすることがあります。
+
+lock()
+unlock()
+3種類のロック機構が使われます --- ドットロッキングと、もし使用可能ならば flock() と lockf() システムコールです。
+
+参考
+mmdf man page from tin
+ニュースリーダ tin のドキュメント中の MMDF 形式仕様。
+
+MMDF
+Multichannel Memorandum Distribution Facility についてのウィキペディアの記事。
+
+Message objects
+class mailbox.Message(message=None)
+email.message モジュールの Message のサブクラス。 mailbox.Message のサブクラスはメールボックス形式ごとの状態と動作を追加します。
+
+message が省略された場合、新しいインスタンスはデフォルトの空の状態で生成されます。 message が email.message.Message インスタンスならばその内容がコピーされます。さらに、 message が Message インスタンスならば、形式固有の情報も可能な限り変換されます。 message が文字列かバイト列またはファイルならば、読まれ解析されるべき RFC 2822 準拠のメッセージを含んでいなければなりません。ファイルはバイナリモードで開かれているべきですが、後方互換性のためテキストモードファイルも受け付けます。
+
+サブクラスにより提供される形式ごとの状態と動作は様々ですが、一般に或るメールボックスに固有のものでないプロパティだけがサポートされます(おそらくプロパティのセットはメールボックス形式ごとに固有でしょうが)。例えば、単一ファイルメールボックス形式におけるファイルオフセットやディレクトリ式メールボックス形式におけるファイル名は保持されません、というのもそれらは元々のメールボックスにしか適用できないからです。しかし、メッセージがユーザに読まれたかどうかあるいは重要だとマークされたかどうかという状態は保持されます、というのはそれらはメッセージ自体に適用されるからです。
+
+Mailbox インスタンスを使って取得したメッセージを表現するのに Message インスタンスが使われなければいけないとは要求していません。ある種の状況では Message による表現を生成するのに必要な時間やメモリーが受け入れられないこともあります。そういった状況では Mailbox インスタンスは文字列やファイル風オブジェクトの表現も提供できますし、 Mailbox インスタンスを初期化する際にメッセージファクトリーを指定することもできます。
+
+MaildirMessage
+class mailbox.MaildirMessage(message=None)
+Maildir 固有の動作をするメッセージ。引数 message は Message のコンストラクタと同じ意味を持ちます。
+
+通常、メールユーザエージェントは new サブディレクトリにある全てのメッセージをユーザが最初にメールボックスを開くか閉じるかした後で cur サブディレクトリに移動し、メッセージが実際に読まれたかどうかを記録します。 cur にある各メッセージには状態情報を保存するファイル名に付け加えられた "info" セクションがあります。(メールリーダの中には "info" セクションを new にあるメッセージに付けることもあります。) "info" セクションには二つの形式があります。一つは "2," の後に標準化されたフラグのリストを付けたもの (たとえば "2,FR")、もう一つは "1," の後にいわゆる実験的情報を付け加えるものです。 Maildir の標準的なフラグは以下の通りです:
+
+Flag
+
+意味
+
+説明
+
+D
+
+ドラフト(Draft)
+
+作成中
+
+F
+
+フラグ付き(Flagged)
+
+重要とされたもの
+
+P
+
+通過(Passed)
+
+転送、再送またはバウンス
+
+R
+
+返答済み(Replied)
+
+返答されたもの
+
+S
+
+既読(Seen)
+
+読んだもの
+
+T
+
+ごみ(Trashed)
+
+削除予定とされたもの
+
+MaildirMessage インスタンスは以下のメソッドを提供します:
+
+get_subdir()
+"new" (メッセージが new サブディレクトリに保存されるべき場合) または "cur" (メッセージが cur サブディレクトリに保存されるべき場合)のどちらかを返します。
+
+注釈 メッセージは通常メールボックスがアクセスされた後、メッセージが読まれたかどうかに関わらず new から cur に移動されます。メッセージ msg は "S" in msg.get_flags() が True ならば読まれています。
+set_subdir(subdir)
+メッセージが保存されるべきサブディレクトリをセットします。パラメータ subdir は "new" または "cur" のいずれかでなければなりません。
+
+get_flags()
+現在セットされているフラグを特定する文字列を返します。メッセージが標準 Maildir 形式に準拠しているならば、結果はアルファベット順に並べられたゼロまたは1回の 'D'、'F'、'P'、'R'、'S'、'T' をつなげたものです。空文字列が返されるのはフラグが一つもない場合、または "info" が実験的セマンティクスを使っている場合です。
+
+set_flags(flags)
+flags で指定されたフラグをセットし、他のフラグは下ろします。
+
+add_flag(flag)
+flag で指定されたフラグをセットしますが他のフラグは変えません。一度に二つ以上のフラグをセットすることは、flag に2文字以上の文字列を指定すればできます。現在の "info" はフラグの代わりに実験的情報を使っていても上書きされます。
+
+remove_flag(flag)
+flag で指定されたフラグを下ろしますが他のフラグは変えません。一度に二つ以上のフラグを取り除くことは、flag に2文字以上の文字列を指定すればできます。"info" がフラグの代わりに実験的情報を使っている場合は現在の "info" は書き換えられません。
+
+get_date()
+メッセージの配送日時をエポックからの秒数を表わす浮動小数点数で返します。
+
+set_date(date)
+メッセージの配送日時を date にセットします。date はエポックからの秒数を表わす浮動小数点数です。
+
+get_info()
+メッセージの "info" を含む文字列を返します。このメソッドは実験的 (即ちフラグのリストでない) "info" にアクセスし、また変更するのに役立ちます。
+
+set_info(info)
+"info" に文字列 info をセットします。
+
+MaildirMessage インスタンスが mboxMessage や MMDFMessage のインスタンスに基づいて生成されるとき、 Status および X-Status ヘッダは省かれ以下の変換が行われます:
+
+結果の状態
+
+mboxMessage または MMDFMessage の状態
+
+"cur" サブディレクトリ
+
+O フラグ
+
+F フラグ
+
+F フラグ
+
+R フラグ
+
+A フラグ
+
+S フラグ
+
+R フラグ
+
+T フラグ
+
+D フラグ
+
+MaildirMessage インスタンスが MHMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+MHMessage の状態
+
+"cur" サブディレクトリ
+
+"unseen" シーケンス
+
+"cur" サブディレクトリおよび S フラグ
+
+"unseen" シーケンス無し
+
+F フラグ
+
+"flagged" シーケンス
+
+R フラグ
+
+"replied" シーケンス
+
+MaildirMessage インスタンスが BabylMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+BabylMessage の状態
+
+"cur" サブディレクトリ
+
+"unseen" ラベル
+
+"cur" サブディレクトリおよび S フラグ
+
+"unseen" ラベル無し
+
+P フラグ
+
+"forwarded" または "resent" ラベル
+
+R フラグ
+
+"answered" ラベル
+
+T フラグ
+
+"deleted" ラベル
+
+mboxMessage
+class mailbox.mboxMessage(message=None)
+mbox 固有の動作をするメッセージ。引数 message は Message のコンストラクタと同じ意味を持ちます。
+
+mbox メールボックス中のメッセージは単一ファイルにまとめて格納されています。送り主のエンベロープアドレスおよび配送日時は通常メッセージの開始を示す "From " から始まる行に記録されますが、正確なフォーマットに関しては mbox の実装ごとに大きな違いがあります。メッセージの状態を示すフラグ、たとえば読んだかどうかあるいは重要だとマークを付けられているかどうかといったようなもの、は典型的には Status および X-Status に収められます。
+
+規定されている mbox メッセージのフラグは以下の通りです:
+
+Flag
+
+意味
+
+説明
+
+R
+
+読んだもの
+
+読んだもの
+
+O
+
+古い(Old)
+
+以前に MUA に発見された
+
+D
+
+削除(Deleted)
+
+削除予定とされたもの
+
+F
+
+フラグ付き(Flagged)
+
+重要とされたもの
+
+A
+
+返答済み(Answered)
+
+返答されたもの
+
+"R" および "O" フラグは Status ヘッダに記録され、 "D"、"F"、"A" フラグは X-Status ヘッダに記録されます。フラグとヘッダは通常記述された順番に出現します。
+
+mboxMessage インスタンスは以下のメソッドを提供します:
+
+get_from()
+mbox メールボックスのメッセージの開始を示す "From " 行を表わす文字列を返します。先頭の "From " および末尾の改行は含まれません。
+
+set_from(from_, time_=None)
+"From " 行を from_ にセットします。 from_ は先頭の "From " や末尾の改行を含まない形で指定しなければなりません。利便性のために、 time_ を指定して適切に整形して from_ に追加させることができます。 time_ を指定する場合、それは time.struct_time インスタンス、 time.strftime() に渡すのに適したタプル、または True (この場合 time.gmtime() を使います) のいずれかでなければなりません。
+
+get_flags()
+現在セットされているフラグを特定する文字列を返します。メッセージが規定された形式に準拠しているならば、結果は次の順に並べられた 0回か1回の 'R'、'O'、'D'、'F'、'A' です。
+
+set_flags(flags)
+flags で指定されたフラグをセットして、他のフラグは下ろします。flags は並べられたゼロまたは1回の 'R'、'O'、'D'、'F'、'A' です。
+
+add_flag(flag)
+flag で指定されたフラグをセットしますが他のフラグは変えません。一度に二つ以上のフラグをセットすることは、flag に2文字以上の文字列を指定すればできます。
+
+remove_flag(flag)
+flag で指定されたフラグを下ろしますが他のフラグは変えません。一二つ以上のフラグを取り除くことは、flag に2文字以上の文字列を指定すればできます。
+
+mboxMessage インスタンスが MaildirMessage インスタンスに基づいて生成されるとき、 MaildirMessage インスタンスの配送日時に基づいて "From " 行が作り出され、次の変換が行われます:
+
+結果の状態
+
+MaildirMessage の状態
+
+R フラグ
+
+S フラグ
+
+O フラグ
+
+"cur" サブディレクトリ
+
+D フラグ
+
+T フラグ
+
+F フラグ
+
+F フラグ
+
+A フラグ
+
+R フラグ
+
+mboxMessage インスタンスが MHMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+MHMessage の状態
+
+R フラグおよび O フラグ
+
+"unseen" シーケンス無し
+
+O フラグ
+
+"unseen" シーケンス
+
+F フラグ
+
+"flagged" シーケンス
+
+A フラグ
+
+"replied" シーケンス
+
+mboxMessage インスタンスが BabylMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+BabylMessage の状態
+
+R フラグおよび O フラグ
+
+"unseen" ラベル無し
+
+O フラグ
+
+"unseen" ラベル
+
+D フラグ
+
+"deleted" ラベル
+
+A フラグ
+
+"answered" ラベル
+
+mboxMessage インスタンスが MMDFMessage インスタンスに基づいて生成されるとき、"From " 行はコピーされ全てのフラグは直接対応します:
+
+結果の状態
+
+MMDFMessage の状態
+
+R フラグ
+
+R フラグ
+
+O フラグ
+
+O フラグ
+
+D フラグ
+
+D フラグ
+
+F フラグ
+
+F フラグ
+
+A フラグ
+
+A フラグ
+
+MHMessage
+class mailbox.MHMessage(message=None)
+MH 固有の動作をするメッセージ。引数 message は Message のコンストラクタと同じ意味を持ちます。
+
+MH メッセージは伝統的な意味あいにおいてマークやフラグをサポートしません。しかし、MH メッセージにはシーケンスがあり任意のメッセージを論理的にグループ分けできます。いくつかのメールソフト(標準の mh や nmh はそうではありませんが) は他の形式におけるフラグとほぼ同じようにシーケンスを使います:
+
+シーケンス
+
+説明
+
+unseen
+
+読んではいないが既にMUAに見つけられている
+
+replied
+
+返答されたもの
+
+flagged
+
+重要とされたもの
+
+MHMessage インスタンスは以下のメソッドを提供します:
+
+get_sequences()
+このメッセージを含むシーケンスの名前のリストを返す。
+
+set_sequences(sequences)
+このメッセージを含むシーケンスのリストをセットする。
+
+add_sequence(sequence)
+sequence をこのメッセージを含むシーケンスのリストに追加する。
+
+remove_sequence(sequence)
+sequence をこのメッセージを含むシーケンスのリストから除く。
+
+MHMessage インスタンスが MaildirMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+MaildirMessage の状態
+
+"unseen" シーケンス
+
+S フラグ無し
+
+"replied" シーケンス
+
+R フラグ
+
+"flagged" シーケンス
+
+F フラグ
+
+MHMessage インスタンスが mboxMessage や MMDFMessage のインスタンスに基づいて生成されるとき、 Status および X-Status ヘッダは省かれ以下の変換が行われます:
+
+結果の状態
+
+mboxMessage または MMDFMessage の状態
+
+"unseen" シーケンス
+
+R フラグ無し
+
+"replied" シーケンス
+
+A フラグ
+
+"flagged" シーケンス
+
+F フラグ
+
+MHMessage インスタンスが BabylMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+BabylMessage の状態
+
+"unseen" シーケンス
+
+"unseen" ラベル
+
+"replied" シーケンス
+
+"answered" ラベル
+
+BabylMessage
+class mailbox.BabylMessage(message=None)
+Babyl 固有の動作をするメッセージ。引数 message は Message のコンストラクタと同じ意味を持ちます。
+
+ある種のメッセージラベルは アトリビュート と呼ばれ、規約により特別な意味が与えられています。アトリビュートは以下の通りです:
+
+ラベル
+
+説明
+
+unseen
+
+読んではいないが既にMUAに見つけられている
+
+deleted
+
+削除予定とされたもの
+
+filed
+
+他のファイルまたはメールボックスにコピーされた
+
+answered
+
+返答されたもの
+
+forwarded
+
+転送された
+
+edited
+
+ユーザによって変更された
+
+resent
+
+再送された
+
+デフォルトでは Rmail は可視ヘッダのみ表示します。 BabylMessage クラスはしかし、オリジナルヘッダをより完全だという理由で使います。可視ヘッダは望むならそのように指示してアクセスすることができます。
+
+BabylMessage インスタンスは以下のメソッドを提供します:
+
+get_labels()
+メッセージに付いているラベルのリストを返します。
+
+set_labels(labels)
+メッセージに付いているラベルのリストを labels にセットします。
+
+add_label(label)
+メッセージに付いているラベルのリストに label を追加します。
+
+remove_label(label)
+メッセージに付いているラベルのリストから label を削除します。
+
+get_visible()
+ヘッダがメッセージの可視ヘッダでありボディが空であるような Message インスタンスを返します。
+
+set_visible(visible)
+メッセージの可視ヘッダを visible のヘッダと同じにセットします。引数 visible は Message インスタンスまたは email.message.Message インスタンス、文字列、ファイル風オブジェクト(テキストモードで開かれてなければなりません)のいずれかです。
+
+update_visible()
+BabylMessage インスタンスのオリジナルヘッダが変更されたとき、可視ヘッダは自動的に対応して変更されるわけではありません。このメソッドは可視ヘッダを以下のように更新します。対応するオリジナルヘッダのある可視ヘッダはオリジナルヘッダの値がセットされます。対応するオリジナルヘッダの無い可視ヘッダは除去されます。そして、オリジナルヘッダにあって可視ヘッダに無い Date 、 From 、 Reply-To 、 To 、 CC 、 Subject は可視ヘッダに追加されます。
+
+BabylMessage インスタンスが MaildirMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+MaildirMessage の状態
+
+"unseen" ラベル
+
+S フラグ無し
+
+"deleted" ラベル
+
+T フラグ
+
+"answered" ラベル
+
+R フラグ
+
+"forwarded" ラベル
+
+P フラグ
+
+BabylMessage インスタンスが mboxMessage や MMDFMessage のインスタンスに基づいて生成されるとき、 Status および X-Status ヘッダは省かれ以下の変換が行われます:
+
+結果の状態
+
+mboxMessage または MMDFMessage の状態
+
+"unseen" ラベル
+
+R フラグ無し
+
+"deleted" ラベル
+
+D フラグ
+
+"answered" ラベル
+
+A フラグ
+
+BabylMessage インスタンスが MHMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+MHMessage の状態
+
+"unseen" ラベル
+
+"unseen" シーケンス
+
+"answered" ラベル
+
+"replied" シーケンス
+
+MMDFMessage
+class mailbox.MMDFMessage(message=None)
+MMDF 固有の動作をするメッセージ。引数 message は Message のコンストラクタと同じ意味を持ちます。
+
+mbox メールボックスのメッセージと同様に、MMDF メッセージは送り主のアドレスと配送日時が最初の "From " で始まる行に記録されています。同様に、メッセージの状態を示すフラグは通常 Status および X-Status ヘッダに収められています。
+
+よく使われる MMDF メッセージのフラグは mbox メッセージのものと同一で以下の通りです:
+
+Flag
+
+意味
+
+説明
+
+R
+
+読んだもの
+
+読んだもの
+
+O
+
+古い(Old)
+
+以前に MUA に発見された
+
+D
+
+削除(Deleted)
+
+削除予定とされたもの
+
+F
+
+フラグ付き(Flagged)
+
+重要とされたもの
+
+A
+
+返答済み(Answered)
+
+返答されたもの
+
+"R" および "O" フラグは Status ヘッダに記録され、 "D"、"F"、"A" フラグは X-Status ヘッダに記録されます。フラグとヘッダは通常記述された順番に出現します。
+
+MMDFMessage インスタンスは mboxMessage インスタンスと同一の以下のメソッドを提供します:
+
+get_from()
+mbox メールボックスのメッセージの開始を示す "From " 行を表わす文字列を返します。先頭の "From " および末尾の改行は含まれません。
+
+set_from(from_, time_=None)
+"From " 行を from_ にセットします。 from_ は先頭の "From " や末尾の改行を含まない形で指定しなければなりません。利便性のために、 time_ を指定して適切に整形して from_ に追加させることができます。 time_ を指定する場合、それは time.struct_time インスタンス、 time.strftime() に渡すのに適したタプル、または True (この場合 time.gmtime() を使います) のいずれかでなければなりません。
+
+get_flags()
+現在セットされているフラグを特定する文字列を返します。メッセージが規定された形式に準拠しているならば、結果は次の順に並べられた 0回か1回の 'R'、'O'、'D'、'F'、'A' です。
+
+set_flags(flags)
+flags で指定されたフラグをセットして、他のフラグは下ろします。flags は並べられたゼロまたは1回の 'R'、'O'、'D'、'F'、'A' です。
+
+add_flag(flag)
+flag で指定されたフラグをセットしますが他のフラグは変えません。一度に二つ以上のフラグをセットすることは、flag に2文字以上の文字列を指定すればできます。
+
+remove_flag(flag)
+flag で指定されたフラグを下ろしますが他のフラグは変えません。一二つ以上のフラグを取り除くことは、flag に2文字以上の文字列を指定すればできます。
+
+MMDFMessage インスタンスが MaildirMessage インスタンスに基づいて生成されるとき、"From"行が MaildirMessage インスタンスの配信日をもとに生成され、以下の変換が行われます:
+
+結果の状態
+
+MaildirMessage の状態
+
+R フラグ
+
+S フラグ
+
+O フラグ
+
+"cur" サブディレクトリ
+
+D フラグ
+
+T フラグ
+
+F フラグ
+
+F フラグ
+
+A フラグ
+
+R フラグ
+
+MMDFMessage インスタンスが MHMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+MHMessage の状態
+
+R フラグおよび O フラグ
+
+"unseen" シーケンス無し
+
+O フラグ
+
+"unseen" シーケンス
+
+F フラグ
+
+"flagged" シーケンス
+
+A フラグ
+
+"replied" シーケンス
+
+MMDFMessage インスタンスが BabylMessage インスタンスに基づいて生成されるとき、以下の変換が行われます:
+
+結果の状態
+
+BabylMessage の状態
+
+R フラグおよび O フラグ
+
+"unseen" ラベル無し
+
+O フラグ
+
+"unseen" ラベル
+
+D フラグ
+
+"deleted" ラベル
+
+A フラグ
+
+"answered" ラベル
+
+MMDFMessage インスタンスが mboxMessage インスタンスに基づいて生成されるとき、"From"行がコピーされ、全てのフラグが直接対応します:
+
+結果の状態
+
+mboxMessage の状態
+
+R フラグ
+
+R フラグ
+
+O フラグ
+
+O フラグ
+
+D フラグ
+
+D フラグ
+
+F フラグ
+
+F フラグ
+
+A フラグ
+
+A フラグ
+
+例外
+mailbox モジュールでは以下の例外クラスが定義されています:
+
+exception mailbox.Error
+他の全てのモジュール固有の例外の基底クラス。
+
+exception mailbox.NoSuchMailboxError
+メールボックスがあると思っていたが見つからなかった場合に送出されます。これはたとえば Mailbox のサブクラスを存在しないパスでインスタンス化しようとしたとき(かつ create パラメータは False であった場合)、あるいは存在しないフォルダを開こうとした時などに発生します。
+
+exception mailbox.NotEmptyError
+メールボックスが空であることを期待されているときに空でない場合、たとえばメッセージの残っているフォルダを削除しようとした時などに送出されます。
+
+exception mailbox.ExternalClashError
+メールボックスに関係したある条件がプログラムの制御を外れてそれ以上作業を続けられなくなった場合、たとえば他のプログラムが既に保持しているロックを取得しようとして失敗したとき、あるいは一意的に生成されたファイル名が既に存在していた場合などに送出されます。
+
+exception mailbox.FormatError
+ファイル中のデータが解析できない場合、たとえば MH インスタンスが壊れた .mh_sequences ファイルを読もうと試みた場合などに送出されます。
+
+使用例
+メールボックス中の面白そうなメッセージのサブジェクトを全て印字する簡単な例:
+
+import mailbox
+for message in mailbox.mbox('~/mbox'):
+    subject = message['subject']       # Could possibly be None.
+    if subject and 'python' in subject.lower():
+        print(subject)
+Babyl メールボックスから MH メールボックスへ全てのメールをコピーし、変換可能な全ての形式固有の情報を変換する:
+
+import mailbox
+destination = mailbox.MH('~/Mail')
+destination.lock()
+for message in mailbox.Babyl('~/RMAIL'):
+    destination.add(mailbox.MHMessage(message))
+destination.flush()
+destination.unlock()
+この例は幾つかのメーリングリストのメールをソートするものです。他のプログラムと平行して変更を加えることでメールが破損したり、プログラムを中断することでメールを失ったり、はたまた半端なメッセージがメールボックス中にあることで途中で終了してしまう、といったことを避けるように注意深く扱っています:
+
+import mailbox
+import email.errors
+
+list_names = ('python-list', 'python-dev', 'python-bugs')
+
+boxes = {name: mailbox.mbox('~/email/%s' % name) for name in list_names}
+inbox = mailbox.Maildir('~/Maildir', factory=None)
+
+for key in inbox.iterkeys():
+    try:
+        message = inbox[key]
+    except email.errors.MessageParseError:
+        continue                # The message is malformed. Just leave it.
+
+    for name in list_names:
+        list_id = message['list-id']
+        if list_id and name in list_id:
+            # Get mailbox to use
+            box = boxes[name]
+
+            # Write copy to disk before removing original.
+            # If there's a crash, you might duplicate a message, but
+            # that's better than losing a message completely.
+            box.lock()
+            box.add(message)
+            box.flush()
+            box.unlock()
+
+            # Remove original message
+            inbox.lock()
+            inbox.discard(key)
+            inbox.flush()
+            inbox.unlock()
+            break               # Found destination, so stop looking.
+
+for box in boxes.itervalues():
+    box.close()
+
+mimetypes --- ファイル名を MIME 型へマップする¶
+ソースコード: Lib/mimetypes.py
+
+mimetypes モジュールは、ファイル名あるいは URL と、ファイル名拡張子に関連付けられた MIME 型とを変換します。ファイル名から MIME 型へと、 MIME 型からファイル名拡張子への変換が提供されます; 後者の変換では符号化方式はサポートされていません。
+
+このモジュールは、一つのクラスと多くの便利な関数を提供します。これらの関数がこのモジュールへの標準のインターフェースですが、アプリケーションによっては、そのクラスにも関係するかもしれません。
+
+以下で説明されている関数は、このモジュールへの主要なインターフェースを提供します。たとえモジュールが初期化されていなくても、もしこれらの関数が、 init() がセットアップする情報に依存していれば、これらの関数は、 init() を呼びます。
+
+mimetypes.guess_type(url, strict=True)
+Guess the type of a file based on its filename, path or URL, given by url. URL can be a string or a path-like object.
+
+The return value is a tuple (type, encoding) where type is None if the type can't be guessed (missing or unknown suffix) or a string of the form 'type/subtype', usable for a MIME content-type header.
+
+encoding は、符合化方式がない場合は None を、あるいは、符号化に使われるプログラムの名前 (たとえば、 compress あるいは gzip)です。符号化方式は Content-Encoding ヘッダとして使うのに適しており、 Content-Transfer-Encoding ヘッダには適して いません 。マッピングはテーブル駆動です。符号化方式のサフィックスは大/小文字を区別します; データ型サフィックスは、最初大/小文字を区別して試し、それから大/小文字を区別せずに試します。
+
+省略可能な strict 引数は、既知の MIME 型のリストとして認識されるものが、IANAに登録された 正式な型のみに限定されるかどうかを指定するフラグです。strict が True (デフォルト)の時は、IANA 型のみがサポートされます; strict が False のときは、いくつかの追加の、非標準ではあるが、一般的に使用される MIME 型も認識されます。
+
+バージョン 3.8 で変更: Added support for url being a path-like object.
+
+mimetypes.guess_all_extensions(type, strict=True)
+type で与えられる MIME 型に基づいてファイルの拡張子を推定します。戻り値は、先頭のドット ('.')を含む、可能なファイル拡張子すべてを与える文字列のリストです。拡張子と特別なデータストリームとの関連付けは保証されませんが、 guess_type() によって MIME 型 type とマップされます。
+
+省略可能な strict 引数は guess_type() 関数のものと同じ意味を持ちます。
+
+mimetypes.guess_extension(type, strict=True)
+type で与えられる MIME 型に基づいてファイルの拡張子を推定します。戻り値は、先頭のドット ('.')を含む、ファイル拡張子を与える文字列のリストです。拡張子と特別なデータストリームとの関連付けは保証されませんが、 guess_type() によって MIME 型 type とマップされます。もし type に対して拡張子が推定できない場合は、 None が返されます。
+
+省略可能な strict 引数は guess_type() 関数のものと同じ意味を持ちます。
+
+モジュールの動作を制御するために、いくつかの追加の関数とデータ項目が利用できます。
+
+mimetypes.init(files=None)
+内部のデータ構造を初期化します。もし files が与えられていれば、これはデフォルトの type map を増やすために使われる、一連のファイル名でなければなりません。もし省略されていれば、使われるファイル名は knownfiles から取られます。 Windows であれば、現在のレジストリの設定が読み込まれます。 files あるいは knownfiles 内の各ファイル名は、それ以前に現れる名前より優先されます。繰り返し init() を呼び出すことは許されています。
+
+files に空リストを与えることで、システムのデフォルトが適用されるのを避けることが出来ます; 組み込みのリストから well-known な値だけが取り込まれます。
+
+files が None の場合、内部のデータ構造は初期のデフォルト値に完全に再構築されます。 これは安定な操作であり、複数回呼び出されたときは同じ結果になります。
+
+バージョン 3.2 で変更: 前のバージョンでは、 Windows のレジストリの設定は無視されていました。
+
+mimetypes.read_mime_types(filename)
+ファイル filename で与えられた型のマップが、もしあればロードします。型のマップは、先頭の dot ('.') を含むファイル名拡張子を、'type/subtype' の形の文字列にマッピングする辞書として返されます。もしファイル filename が存在しないか、読み込めなければ、None が返されます。
+
+mimetypes.add_type(type, ext, strict=True)
+MIME 型 type からのマッピングを拡張子 ext に追加します。拡張子がすでに既知であれば、新しい型が古いものに置き替わります。その型がすでに既知であれば、その拡張子が、既知の拡張子のリストに追加されます。
+
+strict が True の時(デフォルト)は、そのマッピングは正式な MIME 型に、そうでなければ、非標準の MIME 型に追加されます。
+
+mimetypes.inited
+グローバルなデータ構造が初期化されているかどうかを示すフラグ。これは init() により True に設定されます。
+
+mimetypes.knownfiles
+共通にインストールされた型マップファイル名のリスト。これらのファイルは、普通 mime.types という名前であり、パッケージごとに異なる場所にインストールされます。
+
+mimetypes.suffix_map
+サフィックスをサフィックスにマップする辞書。これは、符号化方式と型が同一拡張子で示される符号化ファイルが認識できるように使用されます。例えば、 .tgz 拡張子は、符号化と型が別個に認識できるように .tar.gz にマップされます。
+
+mimetypes.encodings_map
+ファイル名拡張子を符号化方式型にマッピングする辞書。
+
+mimetypes.types_map
+ファイル名拡張子を MIME 型にマップする辞書。
+
+mimetypes.common_types
+ファイル名拡張子を非標準ではあるが、一般に使われている MIME 型にマップする辞書。
+
+モジュールの使用例:
+
+>>>
+>>> import mimetypes
+>>> mimetypes.init()
+>>> mimetypes.knownfiles
+['/etc/mime.types', '/etc/httpd/mime.types', ... ]
+>>> mimetypes.suffix_map['.tgz']
+'.tar.gz'
+>>> mimetypes.encodings_map['.gz']
+'gzip'
+>>> mimetypes.types_map['.tgz']
+'application/x-tar-gz'
+Mime 型オブジェクト
+MimeTypes クラスは一つ以上の MIME 型データベースが欲しいアプリケーションにとって有用でしょう。これは mimetypes モジュールのそれと似たインターフェースを提供します。
+
+class mimetypes.MimeTypes(filenames=(), strict=True)
+このクラスは、MIME 型データベースを表現します。デフォルトでは、このモジュールの他のものと同じデータベースへのアクセスを提供します。初期データベースは、このモジュールによって提供されるもののコピーで、追加の mime.types 形式のファイルを、 read() あるいは readfp() メソッドを使って、データベースにロードすることで拡張されます。マッピング辞書も、もしデフォルトのデータが望むものでなければ、追加のデータをロードする前にクリアされます。
+
+省略可能な filenames パラメータは、追加のファイルを、デフォルトデータベースの"トップに"ロードさせるのに使うことができます。
+
+suffix_map
+サフィックスをサフィックスにマップする辞書。これは、符号化方式と型が同一拡張子で示されるような符号化ファイルが認識できるように使用されます。例えば、 .tgz 拡張子は、符号化方式と型が別個に認識できるように .tar.gz に対応づけられます。これは、最初はモジュールで定義されたグローバルな suffix_map のコピーです。
+
+encodings_map
+ファイル名拡張子を符号化型にマッピングする辞書。これは、最初はモジュールで定義されたグローバルな encodings_map のコピーです。
+
+types_map
+ファイル名拡張子を MIME 型にマッピングする 2 種類の辞書のタプル; 最初の辞書は非標準型、二つ目は標準型の辞書です。初期状態ではそれぞれ common_types と types_map です。
+
+types_map_inv
+MIME 型をファイル名拡張子のリストにマッピングする 2 種類の辞書のタプル; 最初の辞書は非標準型、二つ目は標準型の辞書です。初期状態ではそれぞれ common_types と types_map です。
+
+guess_extension(type, strict=True)
+guess_extension() 関数と同様ですが、オブジェクトに保存されたテーブルを使用します。
+
+guess_type(url, strict=True)
+guess_type() 関数と同様ですが、オブジェクトに保存されたテーブルを使用します。
+
+guess_all_extensions(type, strict=True)
+guess_all_extensions() と同様ですが、オブジェクトに保存されたテーブルを参照します。
+
+read(filename, strict=True)
+MIME 情報を、 filename という名のファイルからロードします。これはファイルを解析するのに readfp() を使用します。
+
+strict が True の時 (デフォルト) は、そのマッピングは標準 MIME 型のリストに、そうでなければ、非標準 MIME 型のリストに追加されます。
+
+readfp(fp, strict=True)
+MIME 型情報を、オープンしたファイル fp からロードします。ファイルは、標準の mime.types ファイルの形式でなければなりません。
+
+strict が True の時 (デフォルト) は、そのマッピングは標準 MIME 型のリストに、そうでなければ、非標準 MIME 型のリストに追加されます。
+
+read_windows_registry(strict=True)
+MIME type 情報を Windows のレジストリから読み込みます。
+
+利用可能な環境: Windows 。
+
+strict が True の時 (デフォルト) は、そのマッピングは標準 MIME 型のリストに、そうでなければ、非標準 MIME 型のリストに追加されます。
+
+バージョン 3.2 で追加.
+
+base64 --- Base16, Base32, Base64, Base85 データの符号化
+ソースコード: Lib/base64.py
+
+このモジュールはバイナリデータを印字可能な ASCII にエンコード関数、およびそのようなエンコードデータをバイナリにデコードする関数を提供します。それらは、RFC 3548 が定義する Base16, Base32, Base64 のエンコーディング、デファクトスタンダードになっている Ascii85, Base85 のエンコーディングについてのエンコード、デコード関数です。
+
+RFC 3548 エンコーディングは、email で安全に送信したり、 URL の一部として使ったり、あるいは HTTP POST リクエストの一部に含めるために用いるのに適しています。このエンコーディングで使われているアルゴリズムは uuencode プログラムで用いられているものとは同じではありません。
+
+このモジュールは、2つのインターフェースを提供します。このモダンなインターフェースは、bytes-like object を ASCII bytes にエンコードし、bytes-like object か ASCII 文字列を、bytes にデコードすることができます。RFC 3548 に定義されている base-64 アルファベット (一般の、URL あるいはファイルシステムセーフなもの) の両方が使用できます。
+
+従来のインターフェースは文字列からのデコードができませんが、file object との間のエンコードとデコードが可能な関数を提供します。これは標準の base64 アルファベットのみをサポートし、RFC 2045 の規定にあるように、76文字ごとに改行されます。RFC 2045 のサポートのためには、代わりに email パッケージを参照する必要があるかもしれません。
+
+バージョン 3.3 で変更: モダンなインターフェイスのデコード関数が ASCII のみの Unicode 文字列を受け付けるようになりました。
+
+バージョン 3.4 で変更: このモジュールのすべてのエンコード・デコード関数が任意の bytes-like オブジェクト を受け取るようになりました。Ascii85/Base85 のサポートが追加されました。
+
+モダンなインターフェイスは以下のものを提供します:
+
+base64.b64encode(s, altchars=None)
+Base64 を使って bytes-like object の s をエンコードし、エンコードされた bytes を返します。
+
+オプション引数 altchars は最低でも 2 の長さをもつ bytes-like object で (これ以降の文字は無視されます)、これは + と / の代わりに使われる代替アルファベットを指定します。これにより、アプリケーションはたとえば URL やファイルシステムの影響をうけない Base64 文字列を生成することができます。デフォルトの値は None で、これは標準の Base64 アルファベット集合が使われることを意味します。
+
+base64.b64decode(s, altchars=None, validate=False)
+Base64 エンコードされた bytes-like object または ASCII 文字列 s をデコードし、デコードされた bytes を返します。
+
+オプション引数の altchars は最低でも 2 の長さをもつ bytes-like object または ASCII 文字列で (これ以降の文字は無視されます)、これは + と / の代わりに使われる代替アルファベットを指定します。
+
+s が正しくパディングされていない場合は binascii.Error 例外を発生させます。
+
+validate が False (デフォルト) の場合、標準の base64 アルファベットでも代替文字でもない文字はパディングチェックの前に無視されます。 validate が True の場合、入力に base64 アルファベット以外の文字があると binascii.Error を発生させます。
+
+base64.standard_b64encode(s)
+標準の base64 アルファベットを使用して bytes-like object の s をエンコードし、エンコードされた bytes を返します。
+
+base64.standard_b64decode(s)
+標準の base64 アルファベットを使用した bytes-like object または ASCII 文字列 s をデコードし、デコードされた bytes を返します。
+
+base64.urlsafe_b64encode(s)
+bytes-like object s を URLとファイルシステムセーフなアルファベットを利用してエンコードし、エンコードされた bytes を返します。標準 base64 アルファベットに比べて、+ の替わりに - を、/ の替わりに _ を利用します。結果は = を含みます。
+
+base64.urlsafe_b64decode(s)
+bytes-like object または ASCII 文字列 s を URLとファイルシステムセーフなアルファベットを利用してデコードし、デコードされた bytes を返します。標準 base64 アルファベットに比べて、+ の替わりに - を、/ の替わりに _ を置換します。
+
+base64.b32encode(s)
+Base32 を使って bytes-like object の s をエンコードし、エンコードされた bytes を返します。
+
+base64.b32decode(s, casefold=False, map01=None)
+Base32 エンコードされた bytes-like object または ASCII 文字列 s をデコードし、デコードされた bytes を返します。
+
+オプション引数 casefold は小文字のアルファベットを受けつけるかどうかを指定します。セキュリティ上の理由により、デフォルトではこれは False になっています。
+
+RFC 3548 は付加的なマッピングとして、数字の 0 (零) をアルファベットの O (オー) に、数字の 1 (壱) をアルファベットの I (アイ) または L (エル) に対応させることを許しています。オプション引数は map01 は、 None でないときは、数字の 1 をどの文字に対応づけるかを指定します (map01 が None でないとき、数字の 0 はつねにアルファベットの O (オー) に対応づけられます)。セキュリティ上の理由により、これはデフォルトでは None になっているため、 0 および 1 は入力として許可されていません。
+
+s が正しくパディングされていない場合や、入力にアルファベットでない文字が含まれていた場合に、 binascii.Error 例外を発生させます。
+
+base64.b16encode(s)
+Base16 を使って bytes-like object の s をエンコードし、エンコードされた bytes を返します。
+
+base64.b16decode(s, casefold=False)
+Base16 エンコードされた bytes-like object または ASCII 文字列 s をデコードし、デコードされた bytes を返します。
+
+オプション引数 casefold は小文字のアルファベットを受けつけるかどうかを指定します。セキュリティ上の理由により、デフォルトではこれは False になっています。
+
+s が正しくパディングされていない場合や、入力にアルファベットでない文字が含まれていた場合に、 binascii.Error 例外を発生させます。
+
+base64.a85encode(b, *, foldspaces=False, wrapcol=0, pad=False, adobe=False)
+Ascii85 を使って bytes-like object の b をエンコードし、エンコードされた bytes を返します。
+
+foldspaces を使うと、4 つの連続した空白文字(ASCII 0x20)を 'btoa' によってサポートされている短い特殊文字 'y' に置き換えます。この機能は "標準" Ascii85 ではサポートされていません。
+
+wrapcol は何文字ごとに改行文字 (b'\n') を挿入するかを制御します。ゼロでない場合、出力の各行はこの与えられた文字数を超えません。
+
+pad を指定すると、エンコード前に入力が 4 の倍数になるようにパディングされます。なお、 btoa の実装は常にパディングします。
+
+adobe を指定すると、エンコードしたバイトシーケンスを <~ と ~> で囲みます。これは Adobe の実装で使われています。
+
+バージョン 3.4 で追加.
+
+base64.a85decode(b, *, foldspaces=False, adobe=False, ignorechars=b' \t\n\r\v')
+Ascii85 エンコードされた bytes-like object または ASCII 文字列 b をデコードし、デコードされた bytes を返します。
+
+foldspaces は、短い特殊文字 'y' を受け取って 4 つの連続した空白文字(ASCII 0x20)と解釈するかどうかを制御します。この機能は "標準" Ascii85 ではサポートされていません。
+
+adobe で、入力シーケンスが Adobe Ascii85 (つまり <~ と ~> で囲まれている)かどうかを伝えます。
+
+ignorechars には、入力に含まれていれば無視する文字で構成された bytes-like object または ASCII 文字列を指定してください。これは空白文字だけで構成されているべきです。デフォルトは ASCII における空白文字全てです。
+
+バージョン 3.4 で追加.
+
+base64.b85encode(b, pad=False)
+base85 (これは例えば git スタイルのバイナリ diff で用いられています) を使って bytes-like object の b をエンコードし、エンコードされた bytes を返します。
+
+pad が真ならば、エンコードに先立って、バイト数が 4 の倍数となるように入力が b'\0' でパディングされます。
+
+バージョン 3.4 で追加.
+
+base64.b85decode(b)
+base85でエンコードされた bytes-like object または ASCII 文字列の b をデコードし、デコードされた bytes を返します。パディングは、もしあれば、暗黙に削除されます。
+
+バージョン 3.4 で追加.
+
+レガシーなインターフェイスは以下のものを提供します:
+
+base64.decode(input, output)
+input ファイルの中身をデコードし、結果のバイナリデータを output ファイルに出力します。 input 、 output ともに file objects でなければなりません。 input は input.readline() が空バイト列を返すまで読まれます。
+
+base64.decodebytes(s)
+bytes-like object s をデコードし、デコードされた bytes を返します。 s には一行以上の base64 形式でエンコードされたデータが含まれている必要があります。
+
+バージョン 3.1 で追加.
+
+base64.encode(input, output)
+バイナリの input ファイルの中身を base64 形式でエンコードした結果を output ファイルに出力します。 input 、 output ともに file objects でなければなりません。 input は input.read() が空バイト列を返すまで読まれます。 encode() は76バイトの出力ごとに改行文字(b'\n')を挿入し、RFC 2045 (MIME) の規定にあるように常に出力が新しい行で終わることを保証します。
+
+base64.encodebytes(s)
+bytes-like object s (任意のバイナリデータを含むことができます) を、RFC 2045 (MIME) に規定されるように末尾に新しい行のある、76バイトの出力ごとに新しい行 (b'\n') が挿入された、base64 形式でエンコードしたデータを含む bytes を返します。
+
+バージョン 3.1 で追加.
+
+モジュールの使用例:
+
+>>>
+import base64
+encoded = base64.b64encode(b'data to be encoded')
+encoded
+b'ZGF0YSB0byBiZSBlbmNvZGVk'
+data = base64.b64decode(encoded)
+data
+b'data to be encoded'
+
+binhex --- binhex4 形式ファイルのエンコードおよびデコード
+ソースコード: Lib/binhex.py
+
+バージョン 3.9 で非推奨.
+
+このモジュールは binhex4 形式のファイルに対するエンコードやデコードを行います。binhex4 は Macintosh のファイルを ASCII で表現できるようにしたものです。データフォークだけが処理されます。
+
+binhex モジュールでは以下の関数を定義しています:
+
+binhex.binhex(input, output)
+ファイル名 input のバイナリファイルをファイル名 output の binhex 形式ファイルに変換します。 output パラメタはファイル名でも (write() および close() メソッドをサポートするような) ファイル様オブジェクトでもかまいません。
+
+binhex.hexbin(input, output)
+binhex 形式のファイル input をデコードします。 input はファイル名でも、 read() および close() メソッドをサポートするようなファイル様オブジェクトでもかまいません。変換結果のファイルはファイル名 output になります。この引数が None なら、出力ファイルは binhex ファイルの中から復元されます。
+
+以下の例外も定義されています:
+
+exception binhex.Error
+binhex 形式を使ってエンコードできなかった場合 (例えば、ファイル名が filename フィールドに収まらないくらい長かった場合など) や、入力が正しくエンコードされた binhex 形式のデータでなかった場合に送出される例外です。
+
+参考
+モジュール binascii
+ASCII からバイナリへ、バイナリから ASCII への変換をサポートするモジュール。
+
+注釈
+別のより強力なエンコーダおよびデコーダへのインターフェースが存在します。詳しくはソースを参照してください。
+
+非 Macintosh プラットフォームでテキストファイルをエンコードしたりデコードしたりする場合でも、古い Macintosh の改行文字変換 (行末をキャリッジリターンとする) が行われます。
+
+binascii --- バイナリデータと ASCII データとの間での変換¶
+binascii モジュールにはバイナリと ASCII コード化されたバイナリ表現との間の変換を行うための多数のメソッドが含まれています。通常、これらの関数を直接使う必要はなく、 uu 、 base64 や binhex といった、ラッパ (wrapper) モジュールを使うことになるでしょう。 binascii モジュールは C で書かれた高速な低水準関数を提供していて、それらは上記の高水準なモジュールで利用されます。
+
+注釈 a2b_* 関数は ASCII 文字だけを含むユニコード文字列を受け取ります。他の関数は (bytes や bytearray またはバッファープロトコルをサポートするその他のオブジェクトのような) bytes-like オブジェクト だけを受け取ります。
+バージョン 3.3 で変更: a2b_* 関数は ASCII のみのユニコード文字列を受け取るようになりました。
+
+binascii モジュールでは以下の関数を定義します:
+
+binascii.a2b_uu(string)
+uuencode された 1 行のデータをバイナリに変換し、変換後のバイナリデータを返します。最後の行を除いて、通常 1 行には (バイナリデータで) 45 バイトが含まれます。入力データの先頭には空白文字が連続していてもかまいません。
+
+binascii.b2a_uu(data, *, backtick=False)
+Convert binary data to a line of ASCII characters, the return value is the converted line, including a newline char. The length of data should be at most 45. If backtick is true, zeros are represented by '`' instead of spaces.
+
+バージョン 3.7 で変更: backtick パラメータを追加しました.
+
+binascii.a2b_base64(string)
+base64 でエンコードされたデータのブロックをバイナリに変換し、変換後のバイナリデータを返します。一度に 1 行以上のデータを与えてもかまいません。
+
+binascii.b2a_base64(data, *, newline=True)
+バイナリデータを base64 でエンコードされた 1 行の ASCII 文字列に変換します。戻り値は変換後の 1 行の文字列で、newline が真の場合改行文字を含みます。この関数の出力は RFC 3548 を遵守します。
+
+バージョン 3.6 で変更: パラメータに newline を追加しました。
+
+binascii.a2b_qp(data, header=False)
+quoted-printable 形式のデータをバイナリに変換し、バイナリデータを返します。一度に 1 行以上のデータを渡すことができます。オプション引数 header が与えられており、かつその値が真であれば、アンダースコアは空白文字にデコードされます。
+
+binascii.b2a_qp(data, quotetabs=False, istext=True, header=False)
+バイナリデータを quoted-printable 形式でエンコードして 1 行から複数行の ASCII 文字列に変換します。変換後の文字列を返します。オプション引数 quptetabs が存在し、かつその値が真であれば、全てのタブおよび空白文字もエンコードされます。オプション引数 istext が存在し、かつその値が真であれば、改行はエンコードされませんが、行末の空白文字はエンコードされます。オプション引数 header が存在し、かつその値が真である場合、空白文字は RFC 1522 にしたがってアンダースコアにエンコードされます。オプション引数 header が存在し、かつその値が偽である場合、改行文字も同様にエンコードされます。そうでない場合、復帰 (linefeed) 文字の変換によってバイナリデータストリームが破損してしまうかもしれません。
+
+binascii.a2b_hqx(string)
+binhex4 形式の ASCII 文字列データを RLE 展開を行わないでバイナリに変換します。文字列はバイナリのバイトデータを完全に含むような長さか、または (binhex4 データの最後の部分の場合) 余白のビットがゼロになっていなければなりません。
+
+バージョン 3.9 で非推奨.
+
+binascii.rledecode_hqx(data)
+data に対し、 binhex4 標準に従って RLE 展開を行います。このアルゴリズムでは、あるバイトの後ろに 0x90 がきた場合、そのバイトの反復を指示しており、さらにその後ろに反復カウントが続きます。カウントが 0 の場合 0x90 自体を示します。このルーチンは入力データの末端における反復指定が不完全でないかぎり解凍されたデータを返しますが、不完全な場合、例外 Incomplete が送出されます。
+
+バージョン 3.2 で変更: 入力として bytestring または bytearray オブジェクトのみを受け取ります。
+
+バージョン 3.9 で非推奨.
+
+binascii.rlecode_hqx(data)
+binhex4 方式の RLE 圧縮を data に対して行い、その結果を返します。
+
+バージョン 3.9 で非推奨.
+
+binascii.b2a_hqx(data)
+バイナリを hexbin4 エンコードして ASCII 文字列に変換し、変換後の文字列を返します。引数の data はすでに RLE エンコードされていなければならず、その長さは (最後のフラグメントを除いて) 3 で割り切れなければなりません。
+
+バージョン 3.9 で非推奨.
+
+binascii.crc_hqx(data, value)
+value を CRC の初期値として data の 16 ビット CRC 値を計算し、その結果を返します。 この関数は、よく 0x1021 と表現される CRC-CCITT 多項式 x16 + x12 + x5 + 1 を使います。 この CRC は binhex4 形式で使われています。
+
+binascii.crc32(data[, value])
+32 ビットチェックサムである CRC-32 を data に対して計算します。 crc の初期値は value です。デフォルトの CRC の初期値はゼロです。このアルゴリズムは ZIP ファイルのチェックサムと同じです。このアルゴリズムはチェックサムアルゴリズムとして設計されたもので、一般的なハッシュアルゴリズムには向きません。以下のようにして使います:
+
+print(binascii.crc32(b"hello world"))
+# Or, in two pieces:
+crc = binascii.crc32(b"hello")
+crc = binascii.crc32(b" world", crc)
+print('crc32 = {:#010x}'.format(crc))
+バージョン 3.0 で変更: 結果は常に unsigned です。すべてのバージョンとプラットフォームの Python に渡って同一の数値を生成するには、crc32(data) & 0xffffffff を使用します。
+
+binascii.b2a_hex(data[, sep[, bytes_per_sep=1]])
+binascii.hexlify(data[, sep[, bytes_per_sep=1]])
+バイナリ data の16進表現を返します。data の各バイトは、対応する2桁の16進表現に変換されます。したがって、返されるバイトオブジェクトは data の2倍の長さになります。
+
+Similar functionality (but returning a text string) is also conveniently accessible using the bytes.hex() method.
+
+If sep is specified, it must be a single character str or bytes object. It will be inserted in the output after every bytes_per_sep input bytes. Separator placement is counted from the right end of the output by default, if you wish to count from the left, supply a negative bytes_per_sep value.
+
+>>>
+import binascii
+binascii.b2a_hex(b'\xb9\x01\xef')
+b'b901ef'
+binascii.hexlify(b'\xb9\x01\xef', '-')
+b'b9-01-ef'
+binascii.b2a_hex(b'\xb9\x01\xef', b'_', 2)
+b'b9_01ef'
+binascii.b2a_hex(b'\xb9\x01\xef', b' ', -2)
+b'b901 ef'
+バージョン 3.8 で変更: The sep and bytes_per_sep parameters were added.
+
+binascii.a2b_hex(hexstr)
+binascii.unhexlify(hexstr)
+16進数表記の文字列 hexstr の表すバイナリデータを返します。この関数は b2a_hex() の逆です。 hexstr は 16進数字 (大文字でも小文字でも構いません) を偶数個含んでいなければなりません。そうでない場合、例外 Error が送出されます。
+
+Similar functionality (accepting only text string arguments, but more liberal towards whitespace) is also accessible using the bytes.fromhex() class method.
+
+exception binascii.Error
+エラーが発生した際に送出される例外です。通常はプログラムのエラーです。
+
+exception binascii.Incomplete
+変換するデータが不完全な場合に送出される例外です。通常はプログラムのエラーではなく、多少追加読み込みを行って再度変換を試みることで対処できます。
+
+参考
+base64 モジュール
+RFC 準拠の base64 形式の、底が 16、32、64、85 のエンコーディング。
+
+binhex モジュール
+Macintosh で使われる binhex フォーマットのサポート。
+
+uu モジュール
+Unix で使われる UU エンコードのサポート。
+
+quopri モジュール
+MIME 電子メールメッセージで使われる quoted-printable エンコードのサポート。
+
+quopri --- MIME quoted-printable 形式データのエンコードおよびデコード
+ソースコード: Lib/quopri.py
+
+このモジュールは RFC 1521: "MIME (Multipurpose Internet Mail Extensions) Part One: Mechanisms for Specifying and Describing the Format of Internet Message Bodies" で定義されている quoted-printable による伝送のエンコードおよびデコードを行います。 quoted-printable エンコーディングは比較的印字不可能な文字の少ないデータのために設計されています; 画像ファイルを送るときのように印字不可能な文字がたくさんある場合には、 base64 モジュールで利用できる base64 エンコーディングのほうがよりコンパクトになります。
+
+quopri.decode(input, output, header=False)
+ファイル input の内容をデコードして、デコードされたバイナリデータをファイル output に書き出します。 input および output は バイナリファイルオブジェクト でなければなりません。オプション引数 header が存在し、かつその値が真である場合、アンダースコアは空白文字にデコードされます。これは RFC 1522: "MIME (Multipurpose Internet Mail Extensions) Part Two: Message Header Extensions for Non-ASCII Text" で記述されているところの "Q"-エンコードされたヘッダをデコードするのに使われます。
+
+quopri.encode(input, output, quotetabs, header=False)
+ファイル input の内容をエンコードして、その結果の quoted-printable データをファイル output に書き出します。 input および output は バイナリファイルオブジェクト でなければなりません。 quotetabs は、内容に含まれている空白とタブ文字をエンコードするかどうかを制御する必須のフラグで、真のときは空白文字をエンコードし、偽のときはエンコードしないままにしておきます。 RFC 1521 に従って、行末にある空白とタブ文字は常にエンコードされることに注意してください。 header は、空白を RFC 1522 に従ってアンダースコアにエンコードするかどうかを制御するフラグです。
+
+quopri.decodestring(s, header=False)
+decode() に似ていますが、ソース bytes を受け取り、対応するデコードされた bytes を返します。
+
+quopri.encodestring(s, quotetabs=False, header=False)
+encode() に似ていますが、ソース bytes を受け取り、対応するエンコードされた bytes を返します。 デフォルトでは、 encode() 関数の quotetabs パラメータに False を渡します。
+
+参考
+base64 モジュール
+MIME base64 形式データのエンコードおよびデコード
+
+uu --- uuencode形式のエンコードとデコード
+ソースコード: Lib/uu.py
+
+このモジュールではファイルを uuencode 形式(任意のバイナリデータを ASCII 文字列に変換したもの)にエンコード、デコードする機能を提供します。引数としてファイルが仮定されている所では、ファイルのようなオブジェクトが利用できます。後方互換性のために、パス名を含む文字列も利用できるようにしていて、対応するファイルを開いて読み書きします。しかし、このインタフェースは利用しないでください。呼び出し側でファイルを開いて(Windows では 'rb' か 'wb' のモードで)利用する方法が推奨されます。
+
+このコードは Lance Ellinghouse によって提供され、Jack Jansen によって更新されました。
+
+uu モジュールでは以下の関数を定義しています:
+
+uu.encode(in_file, out_file, name=None, mode=None, *, backtick=False)
+in_file を out_file にエンコードします。 エンコードされたファイルには、デフォルトでデコード時に利用される name と mode を含んだヘッダがつきます。 省略された場合には、in_file から取得された名前か '-' という文字と、0o666 がそれぞれデフォルト値として与えられます。 backtick が真だった場合は、ゼロは空白ではなく '`' で表現されます。
+
+バージョン 3.7 で変更: backtick パラメータを追加しました.
+
+uu.decode(in_file, out_file=None, mode=None, quiet=False)
+uuencode 形式でエンコードされた in_file をデコードして varout_file に書き出します。もし out_file がパス名でかつファイルを作る必要があるときには、 mode がパーミッションの設定に使われます。 out_file と mode のデフォルト値は in_file のヘッダから取得されます。しかし、ヘッダで指定されたファイルが既に存在していた場合は、 uu.Error が送出されます。
+
+誤った実装の uuencoder による入力で、エラーから復旧できた場合、 decode() は標準エラー出力に警告を表示するかもしれません。 quiet を真にすることでこの警告を抑制することができます。
+
+exception uu.Error
+Exception のサブクラスで、 uu.decode() によって、さまざまな状況で送出される可能性があります。上で紹介された場合以外にも、ヘッダのフォーマットが間違っている場合や、入力ファイルが途中で区切れた場合にも送出されます。
+
+参考
+モジュール binascii
+ASCII からバイナリへ、バイナリから ASCII への変換をサポートするモジュール。

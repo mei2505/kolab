@@ -1,0 +1,2923 @@
+html --- HyperText Markup Language のサポート
+ソースコード: Lib/html/__init__.py
+
+このモジュールは HTML を操作するユーティリティを定義しています。
+
+html.escape(s, quote=True)
+文字列 s 内の &、<、および > を HTML セーフなシーケンスに変換します。これらの文字を含む HTML を表示する必要がある場合に使用します。オプションフラグ quote が真の場合、文字 (") および (') も変換します。これは例えば <a href="..."> など、引用符で括られている HTML 属性値を包含する時に役立ちます。
+
+バージョン 3.2 で追加.
+
+html.unescape(s)
+文字列 s 中の名前や数字による参照 (例えば &gt;, &#62;, &#x3e;) を全て対応するユニコード文字に変換します。 この関数は、 HTML 5 標準規格で定められた有効な文字参照および無効な文字参照、 list of HTML 5 named character references を対象とします。
+
+バージョン 3.4 で追加.
+
+html パッケージのサブモジュールは以下のとおりです:
+
+html.parser -- 許容性のあるモードを持つ HTML/XHTML パーサー
+
+html.entities -- HTML 実体の定義
+
+html.parser--- HTML および XHTML のシンプルなパーサー
+ソースコード: Lib/html/parser.py
+
+このモジュールでは HTMLParser クラスを定義します。このクラスは HTML (ハイパーテキスト記述言語、HyperText Mark-up Language) および XHTML で書式化されているテキストファイルを解釈するための基礎となります。
+
+class html.parser.HTMLParser(*, convert_charrefs=True)
+不正なマークアップをパースできるパーサーインスタンスを作成します。
+
+convert_charrefs が (デフォルトの) True である場合、全ての文字参照 (script/style 要素にあるものは除く) は自動的に対応する Unicode 文字に変換されます。
+
+HTMLParser インスタンスは、HTML データが入力されると、開始タグ、終了タグ、およびその他の要素が見つかる度にハンドラーメソッドを呼び出します。各メソッドの挙動を実装するには HTMLParser サブクラスを使ってそれぞれを上書きして行います。
+
+このパーサーは終了タグが開始タグと一致しているか調べたり、外側のタグ要素が閉じるときに内側で明示的に閉じられていないタグ要素のタグ終了ハンドラーを呼び出したりはしません。
+
+バージョン 3.4 で変更: キーワード引数 convert_charrefs を追加。
+
+バージョン 3.5 で変更: convert_charrefs のデフォルト値は True になりました。
+
+HTML パーサーアプリケーションの例
+基礎的な例として、HTMLParser クラスを使い、発見した開始タグ、終了タグ、およびデータを出力する、シンプルな HTML パーサーを以下に示します:
+
+from html.parser import HTMLParser
+
+class MyHTMLParser(HTMLParser):
+    def handle_starttag(self, tag, attrs):
+        print("Encountered a start tag:", tag)
+
+    def handle_endtag(self, tag):
+        print("Encountered an end tag :", tag)
+
+    def handle_data(self, data):
+        print("Encountered some data  :", data)
+
+parser = MyHTMLParser()
+parser.feed('<html><head><title>Test</title></head>'
+            '<body><h1>Parse me!</h1></body></html>')
+出力は以下のようになります:
+
+Encountered a start tag: html
+Encountered a start tag: head
+Encountered a start tag: title
+Encountered some data  : Test
+Encountered an end tag : title
+Encountered an end tag : head
+Encountered a start tag: body
+Encountered a start tag: h1
+Encountered some data  : Parse me!
+Encountered an end tag : h1
+Encountered an end tag : body
+Encountered an end tag : html
+HTMLParser メソッド
+HTMLParser インスタンスは以下のメソッドを提供します:
+
+HTMLParser.feed(data)
+パーサーにテキストを入力します。入力が完全なタグ要素で構成されている場合に限り処理が行われます; 不完全なデータであった場合、新たにデータが入力されるか、close() が呼び出されるまでバッファーされます。 data は str でなければなりません。
+
+HTMLParser.close()
+全てのバッファーされているデータについて、その後にファイル終端マークが続いているとみなして強制的に処理を行います。このメソッドは入力データの終端で行う追加処理を定義するために、派生クラスで再定義することができます。しかし、再定義されたバージョンでは、常に HTMLParser 基底クラスのメソッド close() を呼び出さなくてはなりません。
+
+HTMLParser.reset()
+インスタンスをリセットします。未処理のデータはすべて失われます。インスタンス化の際に暗黙的に呼び出されます。
+
+HTMLParser.getpos()
+現在の行番号およびオフセット値を返します。
+
+HTMLParser.get_starttag_text()
+最も最近開かれた開始タグのテキスト部分を返します。このテキストは必ずしも元データを構造化する上で必須ではありませんが、 "広く知られている (as deployed)" HTML を扱ったり、入力を最小限の変更で再生成 (属性間の空白をそのままにする、など) したりする場合に便利なことがあります。
+
+以下のメソッドはデータまたはマークアップ要素が見つかる度に呼び出されます。これらはサブクラスで上書きされることを想定されています。基底クラスの実装は (handle_startendtag() を除き) 何もしません:
+
+HTMLParser.handle_starttag(tag, attrs)
+このメソッドは開始タグを扱うために呼び出されます (例: <div id="main">)。
+
+引数 tag はタグの名前で、小文字に変換されます。引数 attrs は (name, value) のペアからなるリストで、タグの <> 括弧内にある属性が収められています。name は小文字に変換され、value 内の引用符は取り除かれ、文字参照と実態参照は置き換えられます。
+
+例えば、タグ <A HREF="https://www.cwi.nl/"> を処理する場合、このメソッドは handle_starttag('a', [('href', 'https://www.cwi.nl/')]) として呼び出されます。
+
+html.entities からのすべての実態参照は、属性値に置き換えられます。
+
+HTMLParser.handle_endtag(tag)
+このメソッドは要素の終了タグを扱うために呼び出されます (例: </div>)。
+
+引数 tag はタグの名前で、小文字に変換されます。
+
+HTMLParser.handle_startendtag(tag, attrs)
+handle_starttag() と似ていますが、パーサーが XHTML 形式の空タグ (<img ... />) を見つける度に呼び出されます。この特定の字句情報が必要な場合にこのメソッドをサブクラスで上書きすることができます; 既定の実装では、単に handle_starttag() および handle_endtag() を呼び出します。
+
+HTMLParser.handle_data(data)
+このメソッドは任意のデータを処理するために呼び出されます (例: テキストノードおよび <script>...</script> aや <style>...</style> の内容)。
+
+HTMLParser.handle_entityref(name)
+このメソッドは &name; 形式の名前指定文字参照 (例: &gt;) を処理するために呼び出されます。name は一般実体参照になります (例: 'gt')。このメソッドは convert_charrefs が True なら呼び出されることはありません。
+
+HTMLParser.handle_charref(name)
+このメソッドは &#NNN; あるいは &#xNNN; 形式の 10進および 16 進数値文字参照を処理するために呼び出されます。例えば、&gt; と等価な 10 進数は &#62; で、16進数は &#x3E; になります。この場合、メソッドは '62' あるいは 'x3E' を受け取ります。このメソッドは convert_charrefs が True なら呼び出されることはありません。
+
+HTMLParser.handle_comment(data)
+このメソッドはコメントが見つかった場合に呼び出されます (例: <!--comment-->)。
+
+例えば、コメント <!-- comment --> があると。このメソッドを引数 ' comment ' で呼び出されます。
+
+Internet Explorer 独自拡張の条件付きコメント (condcoms) はこのメソッドに送ることができます。<!--[if IE 9]>IE9-specific content<![endif]--> の場合、このメソッドは '[if IE 9]>IE9-specific content<![endif]' を受け取ります。
+
+HTMLParser.handle_decl(decl)
+このメソッドは HTML doctype 宣言を扱うために呼び出されます (例: <!DOCTYPE html>)。
+
+引数 decl は <!...> マークアップ内の宣言の内容全体になります (例: 'DOCTYPE html')。
+
+HTMLParser.handle_pi(data)
+処理指令が見つかった場合に呼び出されます。data には、処理指令全体が含まれ、例えば <?proc color='red'> という処理指令の場合、handle_pi("proc color='red'") のように呼び出されます。このメソッドは派生クラスで上書きするためのメソッドです; 基底クラスの実装では何も行いません。
+
+注釈 HTMLParser クラスでは、処理指令に SGML の構文を使用します。末尾に '?' がある XHTML の処理指令では、 '?' が data に含まれることになります。
+HTMLParser.unknown_decl(data)
+このメソッドはパーサーが未知の宣言を読み込んだ時に呼び出されます。
+
+パラメータ data は <![...]> マークアップ内の宣言の内容全体になります。 これは派生クラスで上書きする時に役立つことがあります。 基底クラスの実装では何もしません。
+
+使用例
+以下のクラスは、より多くの例を示すのに用いられるパーサーの実装です:
+
+from html.parser import HTMLParser
+from html.entities import name2codepoint
+
+class MyHTMLParser(HTMLParser):
+    def handle_starttag(self, tag, attrs):
+        print("Start tag:", tag)
+        for attr in attrs:
+            print("     attr:", attr)
+
+    def handle_endtag(self, tag):
+        print("End tag  :", tag)
+
+    def handle_data(self, data):
+        print("Data     :", data)
+
+    def handle_comment(self, data):
+        print("Comment  :", data)
+
+    def handle_entityref(self, name):
+        c = chr(name2codepoint[name])
+        print("Named ent:", c)
+
+    def handle_charref(self, name):
+        if name.startswith('x'):
+            c = chr(int(name[1:], 16))
+        else:
+            c = chr(int(name))
+        print("Num ent  :", c)
+
+    def handle_decl(self, data):
+        print("Decl     :", data)
+
+parser = MyHTMLParser()
+doctype をパースします:
+
+>>>
+>>> parser.feed('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" '
+...             '"http://www.w3.org/TR/html4/strict.dtd">')
+Decl     : DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd"
+要素のタイトルと一部属性をパースします:
+
+>>>
+>>> parser.feed('<img src="python-logo.png" alt="The Python logo">')
+Start tag: img
+     attr: ('src', 'python-logo.png')
+     attr: ('alt', 'The Python logo')
+>>>
+>>> parser.feed('<h1>Python</h1>')
+Start tag: h1
+Data     : Python
+End tag  : h1
+それ以上のパースを行わずに、script と style 要素の内容をそのまま返します:
+
+>>>
+>>> parser.feed('<style type="text/css">#python { color: green }</style>')
+Start tag: style
+     attr: ('type', 'text/css')
+Data     : #python { color: green }
+End tag  : style
+
+>>> parser.feed('<script type="text/javascript">'
+...             'alert("<strong>hello!</strong>");</script>')
+Start tag: script
+     attr: ('type', 'text/javascript')
+Data     : alert("<strong>hello!</strong>");
+End tag  : script
+コメントをパースします:
+
+>>>
+>>> parser.feed('<!-- a comment -->'
+...             '<!--[if IE 9]>IE-specific content<![endif]-->')
+Comment  :  a comment
+Comment  : [if IE 9]>IE-specific content<![endif]
+名前指定および数値文字参照をパースし、正しい文字に変換します (注: これら 3 個の参照はすべて '>' と等価です):
+
+>>>
+>>> parser.feed('&gt;&#62;&#x3E;')
+Named ent: >
+Num ent  : >
+Num ent  : >
+不完全なチャンクを feed() に入力しても、(convert_charrefs が True に設定されていない限り) handle_data() は 1 回以上呼び出される場合があります:
+
+>>>
+>>> for chunk in ['<sp', 'an>buff', 'ered ', 'text</s', 'pan>']:
+...     parser.feed(chunk)
+...
+Start tag: span
+Data     : buff
+Data     : ered
+Data     : text
+End tag  : span
+不正な HTML (例えば属性が引用符で括られていない) のパースも動作します:
+
+>>>
+>>> parser.feed('<p><a class=link href=#main>tag soup</p ></a>')
+Start tag: p
+Start tag: a
+     attr: ('class', 'link')
+     attr: ('href', '#main')
+Data     : tag soup
+End tag  : p
+End tag  : a
+
+html.entities --- HTML 一般実体の定義
+ソースコード: Lib/html/entities.py
+
+このモジュールは 4 つの辞書、html5、name2codepoint、codepoint2name、および entitydefs を定義しています。
+
+html.entities.html5
+HTML5 名前付き文字参照 1 と Unicode 文字とを対応付ける辞書です (例: html5['gt;'] == '>')。末尾のセミコロンは名前に含まれますが (例: 'gt;')、一部の名前はセミコロンなしでも標準で受け付けます。この場合、';' ありの名前と ';' なしの名前が両方存在します。 html.unescape() も参照してください。
+
+バージョン 3.3 で追加.
+
+html.entities.entitydefs
+各 XHTML 1.0 実体定義と ISO Latin-1 における置換テキストとを対応付ける辞書です。
+
+html.entities.name2codepoint
+HTML 実体名と Unicode コードポイントとを対応付ける辞書です。
+
+html.entities.codepoint2name
+Unicode コードポイントと HTML 実体名とを対応付ける辞書です。
+
+脚注
+
+1
+https://www.w3.org/TR/html5/syntax.html#named-character-references を参照してください
+
+XMLを扱うモジュール群
+ソースコード: Lib/xml/
+
+PythonのXMLを扱うインタフェースは xml パッケージにまとめられています。
+注意すべき重要な点として、 xml パッケージのモジュールは SAX に対応した XML パーザが少なくとも一つ利用可能でなければなりません。Expat パーザが Python に取り込まれているので、 xml.parsers.expat モジュールは常に利用できます。
+
+xml.dom および xml.sax パッケージのドキュメントは Python による DOM および SAX インタフェースへのバインディングに関する定義です。
+
+XML に関連するサブモジュール:
+
+xml.etree.ElementTree: ElementTree API、シンプルで軽量な XML プロセッサ
+
+xml.dom: DOM API の定義
+
+xml.dom.minidom: 最小限の DOM の実装
+
+xml.dom.pulldom: 部分的な DOM ツリー構築のサポート
+
+xml.sax: SAX2 基底クラスと便利関数群
+
+xml.parsers.expat: Expat parser バインディング
+
+XML の脆弱性
+XML 処理モジュールは悪意を持って生成されたデータに対して安全ではありません。攻撃者は XML の機能を悪用して DoS攻撃、ローカルファイルへのアクセス、他マシンへのネットワーク接続、ファイアーウォールの迂回などを行うことが出来ます。
+
+以下の表は既知の攻撃と各モジュールがそれに対し脆弱かどうかの概要を示しています。
+
+種類
+
+sax
+
+etree
+
+minidom
+
+pulldom
+
+xmlrpc
+
+billion laughs
+
+脆弱
+
+脆弱
+
+脆弱
+
+脆弱
+
+脆弱
+
+quadratic blowup
+
+脆弱
+
+脆弱
+
+脆弱
+
+脆弱
+
+脆弱
+
+external entity expansion
+
+安全 (4)
+
+安全 (1)
+
+安全 (2)
+
+安全 (4)
+
+安全 (3)
+
+DTD retrieval
+
+安全 (4)
+
+安全
+
+安全
+
+安全 (4)
+
+安全
+
+decompression bomb
+
+安全
+
+安全
+
+安全
+
+安全
+
+脆弱
+
+xml.etree.ElementTree は外部エンティティを展開せず、エンティティが現れた場合は ParserError を送出します。
+
+xml.dom.minidom は外部エンティティを展開せず、展開前のエンティティをそのまま返します。
+
+xmlrpclib は外部エンティティを展開せず、除外します。
+
+Python 3.7.1 からは、一般の外部エンティティはデフォルトで処理されなくなりました。
+
+billion laughs / exponential entity expansion
+Billion Laughs 攻撃 -- または指数関数的エンティティ展開 (exponential entity expansion) -- は複数階層の入れ子になったエンティティを使用します。 各エンティティは別のエンティティを複数回参照し、最終的なエンティティの定義は短い文字列です。 指数関数的に展開されることで数 GB のテキストができ、多くのメモリと CPU 時間を消費します。
+
+quadratic blowup entity expansion
+二次爆発攻撃 (quadratic blowup attack) はエンティティ展開を悪用する点で Billion Laughs 攻撃に似ています。 入れ子になったエンティティの代わりに、この攻撃は数千字の大きなエンティティを何度も繰り返します。 この攻撃は指数関数的なものほど効率的ではありませんが、パーザの深い入れ子になったエンティティを禁止する対抗手段をすり抜けます。
+
+external entity expansion
+(外部エンティティ展開) エンティティの定義はただのテキスト置換以上のことが出来ます。 外部のリソースやローカルファイルを参照することも出来ます。 XML パーザはリソースにアクセスしてその内容を XML 文書に埋め込みます。
+
+DTD retrieval
+Python の xml.dom.pulldom のような XML ライブラリは DTD をリモートやローカルの場所から読み込みます。 この機能には外部エンティティ展開の問題と同じことが予想されます。
+
+decompression bomb
+解凍爆弾 (あるいは ZIP 爆弾) は、gzip 圧縮 HTTP ストリームや LZMA 圧縮ファイルなどの圧縮された XML ストリームをパースできる全ての XML ライブラリに対し行われます。 攻撃者は送信データ量を1/3以下に減らすことができます。
+
+PyPI 上の defusedxml のドキュメントには既知の攻撃手法の詳細が例と文献付きであります。
+
+The defusedxml Package
+defusedxml は潜在的に悪意のある操作を防ぐ、修正された stdlib XML parsers のサブクラスが付属している純 Python パッケージです。信頼出来ない XML データをパースするサーバーコードではこのパッケージの使用が推奨されます。パッケージには悪用の例に加え、XPath injection 等のさらなる XML の悪用の例があります。
+
+xml.etree.ElementTree --- ElementTree XML API
+Source code: Lib/xml/etree/ElementTree.py
+
+xml.etree.ElementTree モジュールは、XML データを解析および作成するシンプルかつ効率的な API を実装しています。
+
+バージョン 3.3 で変更: This module will use a fast implementation whenever available.
+
+バージョン 3.3 で非推奨: The xml.etree.cElementTree module is deprecated.
+
+警告 xml.etree.ElementTree モジュールは悪意を持って作成されたデータに対して安全ではありません。信頼できないデータや認証されていないデータををパースする必要がある場合は XML の脆弱性 を参照してください。
+チュートリアル
+これは xml.etree.ElementTree (略して ET) を使用するための短いチュートリアルで、ブロックの構築およびモジュールの基本コンセプトを紹介することを目的としています。
+
+XML 木構造と要素
+XML は本質的に階層データ形式で、木構造で表すのが最も自然な方法です。ET はこの目的のために 2 つのクラス - XML 文書全体を木で表す ElementTree および木構造内の単一ノードを表す Element - を持っています。文書全体とのやりとり (ファイルの読み書き) は通常 ElementTree レベルで行います。単一 XML 要素およびその子要素とのやりとりは Element レベルで行います。
+
+XML の解析
+このセクションでは例として以下の XML 文書を使います:
+
+<?xml version="1.0"?>
+<data>
+    <country name="Liechtenstein">
+        <rank>1</rank>
+        <year>2008</year>
+        <gdppc>141100</gdppc>
+        <neighbor name="Austria" direction="E"/>
+        <neighbor name="Switzerland" direction="W"/>
+    </country>
+    <country name="Singapore">
+        <rank>4</rank>
+        <year>2011</year>
+        <gdppc>59900</gdppc>
+        <neighbor name="Malaysia" direction="N"/>
+    </country>
+    <country name="Panama">
+        <rank>68</rank>
+        <year>2011</year>
+        <gdppc>13600</gdppc>
+        <neighbor name="Costa Rica" direction="W"/>
+        <neighbor name="Colombia" direction="E"/>
+    </country>
+</data>
+ファイルを読み込むことでこのデータをインポートすることが出来ます:
+
+import xml.etree.ElementTree as ET
+tree = ET.parse('country_data.xml')
+root = tree.getroot()
+文字列から直接インポートすることも出来ます:
+
+root = ET.fromstring(country_data_as_string)
+fromstring() は XML を文字列から Element に直接パースします。Element はパースされた木のルート要素です。他のパース関数は ElementTree を作成するかもしれません。ドキュメントをきちんと確認してください。
+
+Element として、root はタグと属性の辞書を持ちます:
+
+>>>
+>>> root.tag
+'data'
+>>> root.attrib
+{}
+さらにイテレート可能な子ノードも持ちます:
+
+>>>
+>>> for child in root:
+...     print(child.tag, child.attrib)
+...
+country {'name': 'Liechtenstein'}
+country {'name': 'Singapore'}
+country {'name': 'Panama'}
+子ノードは入れ子になっており、インデックスで子ノードを指定してアクセスできます:
+
+>>>
+>>> root[0][1].text
+'2008'
+注釈 XML 入力の全ての要素が、パース後の木に要素として含まれる訳ではありません。現在、このモジュールは入力中のいかなる XML コメント、処理命令、ドキュメントタイプ宣言も読み飛ばします。しかし、XML テキストからのパースではなく、このモジュールの API を使用して構築された木には、コメントや処理命令を含むことができ、それらは XML 出力の生成時に含まれます。ドキュメントタイプ宣言は、 XMLParser コンストラクタにカスタムの TreeBuilder インスタンスを渡すことで、アクセスすることができます。
+非ブロックパースのためのプル API
+このモジュールが提供するパース関数のほとんどは、結果を返す前に、ドキュメント全体を読む必要があります。 XMLParser を使用して、インクリメンタルにデータを渡すことは可能ではありますが、それはコールバック対象のメソッドを呼ぶプッシュ API であり、多くの場合、低水準すぎて不便です。ユーザーが望むのは、完全に出来上がった Element オブジェクトを便利に使いながら、操作をブロックすることなく XML のパースをインクリメンタルに行えることです。
+
+これを行うための最も強力なツールは、 XMLPullParser です。XML データを取得するためにブロックするような読み込みは必要なく、 XMLPullParser.feed() を呼び出して、インクリメンタルにデータを読みます。パースされた XML 要素を取得するには、XMLPullParser.read_events() を呼び出します。以下に、例を示します。
+
+>>>
+>>> parser = ET.XMLPullParser(['start', 'end'])
+>>> parser.feed('<mytag>sometext')
+>>> list(parser.read_events())
+[('start', <Element 'mytag' at 0x7fa66db2be58>)]
+>>> parser.feed(' more text</mytag>')
+>>> for event, elem in parser.read_events():
+...     print(event)
+...     print(elem.tag, 'text=', elem.text)
+...
+end
+これの分かりやすい用途は、XML データをソケットから受信したり、ストレージデバイスからインクリメンタルに読み出したりするような、非ブロック式に動作するアプリケーションです。このような場合、ブロッキング読み出しは使用できません。
+
+XMLPullParser は柔軟性が非常に高いため、単純に使用したいユーザーにとっては不便かもしれません。アプリケーションにおいて、XML データの読み取り時にブロックすることに支障がないが、インクリメンタルにパースする能力が欲しい場合、iterparse() を参照してください。大きな XML ドキュメントを読んでいて、全てメモリ上にあるという状態にしたくない場合に有用です。
+
+関心ある要素の検索
+Element は、例えば、Element.iter() などの、配下 (その子ノードや孫ノードなど) の部分木全体を再帰的にイテレートするいくつかの役立つメソッドを持っています:
+
+>>>
+>>> for neighbor in root.iter('neighbor'):
+...     print(neighbor.attrib)
+...
+{'name': 'Austria', 'direction': 'E'}
+{'name': 'Switzerland', 'direction': 'W'}
+{'name': 'Malaysia', 'direction': 'N'}
+{'name': 'Costa Rica', 'direction': 'W'}
+{'name': 'Colombia', 'direction': 'E'}
+Element.findall() はタグで現在の要素の直接の子要素のみ検索します。 Element.find() は特定のタグで 最初の 子要素を検索し、 Element.text は要素のテキストコンテンツにアクセスします。 Element.get() は要素の属性にアクセスします:
+
+>>>
+>>> for country in root.findall('country'):
+...     rank = country.find('rank').text
+...     name = country.get('name')
+...     print(name, rank)
+...
+Liechtenstein 1
+Singapore 4
+Panama 68
+XPath を使用すると、より洗練された方法で、検索したい要素を指定することができます。
+
+XML ファイルの編集
+ElementTree は XML 文書を構築してファイルに出力する簡単な方法を提供しています。ElementTree.write() メソッドはこの目的に適います。
+
+Element オブジェクトを作成すると、そのフィールドの直接変更 (Element.text など) や、属性の追加および変更 (Element.set() メソッド)、あるいは新しい子ノードの追加 (例えば Element.append() など) によってそれを操作できます。
+
+例えば各 country の rank に 1 を足して、rank 要素に updated 属性を追加したい場合:
+
+>>>
+>>> for rank in root.iter('rank'):
+...     new_rank = int(rank.text) + 1
+...     rank.text = str(new_rank)
+...     rank.set('updated', 'yes')
+...
+>>> tree.write('output.xml')
+XML はこのようになります:
+
+<?xml version="1.0"?>
+<data>
+    <country name="Liechtenstein">
+        <rank updated="yes">2</rank>
+        <year>2008</year>
+        <gdppc>141100</gdppc>
+        <neighbor name="Austria" direction="E"/>
+        <neighbor name="Switzerland" direction="W"/>
+    </country>
+    <country name="Singapore">
+        <rank updated="yes">5</rank>
+        <year>2011</year>
+        <gdppc>59900</gdppc>
+        <neighbor name="Malaysia" direction="N"/>
+    </country>
+    <country name="Panama">
+        <rank updated="yes">69</rank>
+        <year>2011</year>
+        <gdppc>13600</gdppc>
+        <neighbor name="Costa Rica" direction="W"/>
+        <neighbor name="Colombia" direction="E"/>
+    </country>
+</data>
+Element.remove() を使って要素を削除することが出来ます。例えば rank が 50 より大きい全ての country を削除したい場合:
+
+>>>
+>>> for country in root.findall('country'):
+...     # using root.findall() to avoid removal during traversal
+...     rank = int(country.find('rank').text)
+...     if rank > 50:
+...         root.remove(country)
+...
+>>> tree.write('output.xml')
+Note that concurrent modification while iterating can lead to problems, just like when iterating and modifying Python lists or dicts. Therefore, the example first collects all matching elements with root.findall(), and only then iterates over the list of matches.
+
+XML はこのようになります:
+
+<?xml version="1.0"?>
+<data>
+    <country name="Liechtenstein">
+        <rank updated="yes">2</rank>
+        <year>2008</year>
+        <gdppc>141100</gdppc>
+        <neighbor name="Austria" direction="E"/>
+        <neighbor name="Switzerland" direction="W"/>
+    </country>
+    <country name="Singapore">
+        <rank updated="yes">5</rank>
+        <year>2011</year>
+        <gdppc>59900</gdppc>
+        <neighbor name="Malaysia" direction="N"/>
+    </country>
+</data>
+XML 文書の構築
+SubElement() 関数は、与えられた要素に新しい子要素を作成する便利な手段も提供しています:
+
+>>>
+>>> a = ET.Element('a')
+>>> b = ET.SubElement(a, 'b')
+>>> c = ET.SubElement(a, 'c')
+>>> d = ET.SubElement(c, 'd')
+>>> ET.dump(a)
+<a><b /><c><d /></c></a>
+名前空間のある XML の解析
+XML 入力が 名前空間 を持っている場合、 prefix:sometag の形式で修飾されたタグと属性が、その prefix が完全な URI で置換された {uri}sometag の形に展開されます。さらに、 デフォルトの XML 名前空間 があると、修飾されていない全てのタグにその完全 URI が前置されます。
+
+ひとつは接頭辞 "fictional" でもうひとつがデフォルト名前空間で提供された、 2 つの名前空間を組み込んだ XML の例をここにお見せします:
+
+<?xml version="1.0"?>
+<actors xmlns:fictional="http://characters.example.com"
+        xmlns="http://people.example.com">
+    <actor>
+        <name>John Cleese</name>
+        <fictional:character>Lancelot</fictional:character>
+        <fictional:character>Archie Leach</fictional:character>
+    </actor>
+    <actor>
+        <name>Eric Idle</name>
+        <fictional:character>Sir Robin</fictional:character>
+        <fictional:character>Gunther</fictional:character>
+        <fictional:character>Commander Clement</fictional:character>
+    </actor>
+</actors>
+この XML の例を、検索し、渡り歩くためのひとつの方法としては、 find() や findall() に渡す xpath で全てのタグや属性に手作業で URI を付けてまわる手があります:
+
+root = fromstring(xml_text)
+for actor in root.findall('{http://people.example.com}actor'):
+    name = actor.find('{http://people.example.com}name')
+    print(name.text)
+    for char in actor.findall('{http://characters.example.com}character'):
+        print(' |-->', char.text)
+もっと良い方法があります。接頭辞の辞書を作り、これを検索関数で使うことです:
+
+ns = {'real_person': 'http://people.example.com',
+      'role': 'http://characters.example.com'}
+
+for actor in root.findall('real_person:actor', ns):
+    name = actor.find('real_person:name', ns)
+    print(name.text)
+    for char in actor.findall('role:character', ns):
+        print(' |-->', char.text)
+どちらのアプローチでも同じ結果です:
+
+John Cleese
+ |--> Lancelot
+ |--> Archie Leach
+Eric Idle
+ |--> Sir Robin
+ |--> Gunther
+ |--> Commander Clement
+その他の情報
+http://effbot.org/zone/element-index.htm にはチュートリアルと他のドキュメントへのリンクがあります。
+
+XPath サポート
+このモジュールは木構造内の要素の位置決めのための XPath 式 を限定的にサポートしています。その目指すところは短縮構文のほんの一部だけのサポートであり、XPath エンジンのフルセットは想定していません。
+
+使用例
+以下はこのモジュールの XPath 機能の一部を紹介する例です。XML の解析 節から XML 文書 countrydata を使用します:
+
+import xml.etree.ElementTree as ET
+
+root = ET.fromstring(countrydata)
+
+# Top-level elements
+root.findall(".")
+
+# All 'neighbor' grand-children of 'country' children of the top-level
+# elements
+root.findall("./country/neighbor")
+
+# Nodes with name='Singapore' that have a 'year' child
+root.findall(".//year/..[@name='Singapore']")
+
+# 'year' nodes that are children of nodes with name='Singapore'
+root.findall(".//*[@name='Singapore']/year")
+
+# All 'neighbor' nodes that are the second child of their parent
+root.findall(".//neighbor[2]")
+For XML with namespaces, use the usual qualified {namespace}tag notation:
+
+# All dublin-core "title" tags in the document
+root.findall(".//{http://purl.org/dc/elements/1.1/}title")
+サポートされている XPath 構文
+操作
+
+意味
+
+tag
+
+Selects all child elements with the given tag. For example, spam selects all child elements named spam, and spam/egg selects all grandchildren named egg in all children named spam. {namespace}* selects all tags in the given namespace, {*}spam selects tags named spam in any (or no) namespace, and {}* only selects tags that are not in a namespace.
+
+バージョン 3.8 で変更: Support for star-wildcards was added.
+
+*
+
+Selects all child elements, including comments and processing instructions. For example, */egg selects all grandchildren named egg.
+
+.
+
+現在のノードを選択します。これはパスの先頭に置くことで相対パスであることを示すのに役立ちます。
+
+//
+
+現在の要素の下にある全てのレベルの全ての子要素を選択します。例えば、.//egg は木全体から egg 要素を選択します。
+
+..
+
+親ノードを選択します。パスが開始要素 (find が呼ばれた要素) の上の要素に進もうとした場合 None を返します。
+
+[@attrib]
+
+与えられた属性を持つ全ての要素を選択します。
+
+[@attrib='value']
+
+与えられた属性が与えられた値を持つ全ての要素を選択します。 値に引用符は含められません。
+
+[tag]
+
+tag という名前の子要素を持つ全ての要素を選択します。 直下の子要素のみサポートしています。
+
+[.='text']
+
+子孫のうち、与えられた text とテキスト全体が等しい全ての要素を選択します。
+
+バージョン 3.7 で追加.
+
+[tag='text']
+
+子孫を含む完全なテキストコンテンツと与えられた text が一致する、 tag と名付けられた子要素を持つすべての要素を選択します。
+
+[position]
+
+与えられた位置にあるすべての要素を選択します。位置は整数 (先頭は 1)、式 last() (末尾)、あるいは末尾からの相対位置 (例えば last()-1) のいずれかで指定できます。
+
+述語 (角括弧内の式) の前にはタグ名、アスタリスク、あるいはその他の述語がなければなりません。 position 述語の前にはタグ名がなければなりません。
+
+リファレンス
+関数
+xml.etree.ElementTree.canonicalize(xml_data=None, *, out=None, from_file=None, **options)
+C14N 2.0 transformation function.
+
+Canonicalization is a way to normalise XML output in a way that allows byte-by-byte comparisons and digital signatures. It reduced the freedom that XML serializers have and instead generates a more constrained XML representation. The main restrictions regard the placement of namespace declarations, the ordering of attributes, and ignorable whitespace.
+
+This function takes an XML data string (xml_data) or a file path or file-like object (from_file) as input, converts it to the canonical form, and writes it out using the out file(-like) object, if provided, or returns it as a text string if not. The output file receives text, not bytes. It should therefore be opened in text mode with utf-8 encoding.
+
+Typical uses:
+
+xml_data = "<root>...</root>"
+print(canonicalize(xml_data))
+
+with open("c14n_output.xml", mode='w', encoding='utf-8') as out_file:
+    canonicalize(xml_data, out=out_file)
+
+with open("c14n_output.xml", mode='w', encoding='utf-8') as out_file:
+    canonicalize(from_file="inputfile.xml", out=out_file)
+The configuration options are as follows:
+
+with_comments: set to true to include comments (default: false)
+
+strip_text: set to true to strip whitespace before and after text content
+(default: false)
+
+rewrite_prefixes: set to true to replace namespace prefixes by "n{number}"
+(default: false)
+
+qname_aware_tags: a set of qname aware tag names in which prefixes
+should be replaced in text content (default: empty)
+
+qname_aware_attrs: a set of qname aware attribute names in which prefixes
+should be replaced in text content (default: empty)
+
+exclude_attrs: a set of attribute names that should not be serialised
+
+exclude_tags: a set of tag names that should not be serialised
+
+In the option list above, "a set" refers to any collection or iterable of strings, no ordering is expected.
+
+バージョン 3.8 で追加.
+
+xml.etree.ElementTree.Comment(text=None)
+コメント要素のファクトリです。このファクトリ関数は、標準のシリアライザでは XML コメントにシリアライズされる特別な要素を作ります。コメント文字列はバイト文字列でも Unicode 文字列でも構いません。text はそのコメント文字列を含んだ文字列です。コメントを表わす要素のインスタンスを返します。
+
+XMLParser は、入力に含まれるコメントを読み飛ばし、コメントオブジェクトは作成しません。ElementTree は、Element メソッドの 1 つを使用して木内に挿入されたコメントノードのみを含みます。
+
+xml.etree.ElementTree.dump(elem)
+要素の木もしくは要素の構造を sys.stdout に出力します。この関数はデバッグ目的のみに使用してください。
+
+出力される形式の正確なところは実装依存です。このバージョンでは、通常の XML ファイルとして出力されます。
+
+elem は要素の木もしくは個別の要素です。
+
+バージョン 3.8 で変更: The dump() function now preserves the attribute order specified by the user.
+
+xml.etree.ElementTree.fromstring(text, parser=None)
+Parses an XML section from a string constant. Same as XML(). text is a string containing XML data. parser is an optional parser instance. If not given, the standard XMLParser parser is used. Returns an Element instance.
+
+xml.etree.ElementTree.fromstringlist(sequence, parser=None)
+文字列フラグメントのシーケンスから XML ドキュメントを解析します。 sequence は XML データのフラグメントを格納した、リストかその他のシーケンスです。 parser はオプションのパーザインスタンスです。パーザが指定されない場合、標準の XMLParser パーザが使用されます。 Element インスタンスを返します。
+
+バージョン 3.2 で追加.
+
+xml.etree.ElementTree.indent(tree, space=" ", level=0)
+Appends whitespace to the subtree to indent the tree visually. This can be used to generate pretty-printed XML output. tree can be an Element or ElementTree. space is the whitespace string that will be inserted for each indentation level, two space characters by default. For indenting partial subtrees inside of an already indented tree, pass the initial indentation level as level.
+
+バージョン 3.9 で追加.
+
+xml.etree.ElementTree.iselement(element)
+Check if an object appears to be a valid element object. element is an element instance. Return True if this is an element object.
+
+xml.etree.ElementTree.iterparse(source, events=None, parser=None)
+Parses an XML section into an element tree incrementally, and reports what's going on to the user. source is a filename or file object containing XML data. events is a sequence of events to report back. The supported events are the strings "start", "end", "comment", "pi", "start-ns" and "end-ns" (the "ns" events are used to get detailed namespace information). If events is omitted, only "end" events are reported. parser is an optional parser instance. If not given, the standard XMLParser parser is used. parser must be a subclass of XMLParser and can only use the default TreeBuilder as a target. Returns an iterator providing (event, elem) pairs.
+
+iterparse() は木をインクリメンタルに構築しますが、source (または指定のファイル) でのブロッキング読みを起こします。したがって、ブロッキング読みが許可されないアプリケーションには適しません。完全に非ブロックのパースのためには、XMLPullParser を参照してください。
+
+注釈 iterparse() は "start" イベントを発行した時に開始タグの文字 ">" が現れたことだけを保証します。そのため、属性は定義されますが、その時点ではテキストの内容も tail 属性も定義されていません。同じことは子要素にも言えて、その時点ではあるともないとも言えません。
+全部揃った要素が必要ならば、"end" イベントを探してください。
+
+バージョン 3.4 で非推奨: parser 引数。
+
+バージョン 3.8 で変更: The comment and pi events were added.
+
+xml.etree.ElementTree.parse(source, parser=None)
+XML 断片を解析して要素の木にします。 source には XML データを含むファイル名またはファイルオブジェクトを指定します。 parser はオプションでパーザインスタンスを指定します。パーザが指定されない場合、標準の XMLParser パーザが使用されます。 ElementTree インスタンスを返します。
+
+xml.etree.ElementTree.ProcessingInstruction(target, text=None)
+PI 要素のファクトリです。このファクトリ関数は XML の処理命令としてシリアライズされた特別な要素を作成します。target は PI ターゲットを含んだ文字列です。text を指定する場合は PI コンテンツを含む文字列にします。PI を表わす要素インスタンスを返します。
+
+XMLParser は、入力に含まれる処理命令を読み飛ばし、コメントオブジェクトは作成しません。ElementTree は、Element メソッドの 1 つを使用して木内に挿入された処理命令ノードのみを含みます。
+
+xml.etree.ElementTree.register_namespace(prefix, uri)
+名前空間の接頭辞を登録します。レジストリはグローバルで、与えられた接頭辞か名前空間 URI のどちらかの既存のマッピングはすべて削除されます。prefix には名前空間の接頭辞を指定します。uri には名前空間の URI を指定します。この名前空間のタグや属性は、可能な限り与えられた接頭辞をつけてシリアライズされます。
+
+バージョン 3.2 で追加.
+
+xml.etree.ElementTree.SubElement(parent, tag, attrib={}, **extra)
+子要素のファクトリです。この関数は要素インスタンスを作成し、それを既存の要素に追加します。
+
+要素名、属性名、および属性値はバイト文字列でも Unicode 文字列でも構いません。 parent には親要素を指定します。 tag には要素名を指定します。attrib はオプションで要素の属性を含む辞書を指定します。 extra は追加の属性で、キーワード引数として与えます。要素インスタンスを返します。
+
+xml.etree.ElementTree.tostring(element, encoding="us-ascii", method="xml", *, xml_declaration=None, default_namespace=None, short_empty_elements=True)
+Generates a string representation of an XML element, including all subelements. element is an Element instance. encoding 1 is the output encoding (default is US-ASCII). Use encoding="unicode" to generate a Unicode string (otherwise, a bytestring is generated). method is either "xml", "html" or "text" (default is "xml"). xml_declaration, default_namespace and short_empty_elements has the same meaning as in ElementTree.write(). Returns an (optionally) encoded string containing the XML data.
+
+バージョン 3.4 で追加: short_empty_elements 引数。
+
+バージョン 3.8 で追加: The xml_declaration and default_namespace parameters.
+
+バージョン 3.8 で変更: The tostring() function now preserves the attribute order specified by the user.
+
+xml.etree.ElementTree.tostringlist(element, encoding="us-ascii", method="xml", *, xml_declaration=None, default_namespace=None, short_empty_elements=True)
+Generates a string representation of an XML element, including all subelements. element is an Element instance. encoding 1 is the output encoding (default is US-ASCII). Use encoding="unicode" to generate a Unicode string (otherwise, a bytestring is generated). method is either "xml", "html" or "text" (default is "xml"). xml_declaration, default_namespace and short_empty_elements has the same meaning as in ElementTree.write(). Returns a list of (optionally) encoded strings containing the XML data. It does not guarantee any specific sequence, except that b"".join(tostringlist(element)) == tostring(element).
+
+バージョン 3.2 で追加.
+
+バージョン 3.4 で追加: short_empty_elements 引数。
+
+バージョン 3.8 で追加: The xml_declaration and default_namespace parameters.
+
+バージョン 3.8 で変更: The tostringlist() function now preserves the attribute order specified by the user.
+
+xml.etree.ElementTree.XML(text, parser=None)
+文字列定数で与えられた XML 断片を解析します。この関数は Python コードに "XML リテラル" を埋め込むのに使えます。 text には XML データを含む文字列を指定します。 parser はオプションで、パーザのインスタンスを指定します。指定されなかった場合、標準の XMLParser パーザを使用します。 Element インスタンスを返します。
+
+xml.etree.ElementTree.XMLID(text, parser=None)
+文字列定数で与えられた XML 断片を解析し、要素 ID と要素を対応付ける辞書を返します。 text には XMLデータを含んだ文字列を指定します。 parser はオプションで、パーザのインスタンスを指定します。指定されなかった場合、標準の XMLParser パーザを使用します。 Element のインスタンスと辞書のタプルを返します。
+
+XInclude support
+This module provides limited support for XInclude directives, via the xml.etree.ElementInclude helper module. This module can be used to insert subtrees and text strings into element trees, based on information in the tree.
+
+使用例
+Here's an example that demonstrates use of the XInclude module. To include an XML document in the current document, use the {http://www.w3.org/2001/XInclude}include element and set the parse attribute to "xml", and use the href attribute to specify the document to include.
+
+<?xml version="1.0"?>
+<document xmlns:xi="http://www.w3.org/2001/XInclude">
+  <xi:include href="source.xml" parse="xml" />
+</document>
+By default, the href attribute is treated as a file name. You can use custom loaders to override this behaviour. Also note that the standard helper does not support XPointer syntax.
+
+To process this file, load it as usual, and pass the root element to the xml.etree.ElementTree module:
+
+from xml.etree import ElementTree, ElementInclude
+
+tree = ElementTree.parse("document.xml")
+root = tree.getroot()
+
+ElementInclude.include(root)
+The ElementInclude module replaces the {http://www.w3.org/2001/XInclude}include element with the root element from the source.xml document. The result might look something like this:
+
+<document xmlns:xi="http://www.w3.org/2001/XInclude">
+  <para>This is a paragraph.</para>
+</document>
+If the parse attribute is omitted, it defaults to "xml". The href attribute is required.
+
+To include a text document, use the {http://www.w3.org/2001/XInclude}include element, and set the parse attribute to "text":
+
+<?xml version="1.0"?>
+<document xmlns:xi="http://www.w3.org/2001/XInclude">
+  Copyright (c) <xi:include href="year.txt" parse="text" />.
+</document>
+The result might look something like:
+
+<document xmlns:xi="http://www.w3.org/2001/XInclude">
+  Copyright (c) 2003.
+</document>
+リファレンス
+関数
+xml.etree.ElementInclude.default_loader(href, parse, encoding=None)
+Default loader. This default loader reads an included resource from disk. href is a URL. parse is for parse mode either "xml" or "text". encoding is an optional text encoding. If not given, encoding is utf-8. Returns the expanded resource. If the parse mode is "xml", this is an ElementTree instance. If the parse mode is "text", this is a Unicode string. If the loader fails, it can return None or raise an exception.
+
+xml.etree.ElementInclude.include(elem, loader=None, base_url=None, max_depth=6)
+This function expands XInclude directives. elem is the root element. loader is an optional resource loader. If omitted, it defaults to default_loader(). If given, it should be a callable that implements the same interface as default_loader(). base_url is base URL of the original file, to resolve relative include file references. max_depth is the maximum number of recursive inclusions. Limited to reduce the risk of malicious content explosion. Pass a negative value to disable the limitation.
+
+Returns the expanded resource. If the parse mode is "xml", this is an ElementTree instance. If the parse mode is "text", this is a Unicode string. If the loader fails, it can return None or raise an exception.
+
+バージョン 3.9 で追加: The base_url and max_depth parameters.
+
+Element オブジェクト
+class xml.etree.ElementTree.Element(tag, attrib={}, **extra)
+要素クラスです。この関数は Element インタフェースを定義すると同時に、そのリファレンス実装を提供します。
+
+要素名、属性名、および属性値はバイト文字列でも Unicode 文字列でも構いません。 tag には要素名を指定します。attrib はオプションで、要素と属性を含む辞書を指定します。extra は追加の属性で、キーワード引数として与えます。要素インスタンスを返します。
+
+tag
+この要素が表すデータの種類を示す文字列です (言い替えると、要素の型です)。
+
+text
+tail
+これらの属性は要素に結びつけられた付加的なデータを保持するのに使われます。これらの属性値はたいてい文字列ですが、アプリケーション固有のオブジェクトであって構いません。要素が XML ファイルから作られる場合、 text 属性は要素の開始タグとその最初の子要素または終了タグまでのテキストか、あるいは None を保持し、 tail 属性は要素の終了タグと次のタグまでのテキストか、あるいは None を保持します。このような XML データ
+
+<a><b>1<c>2<d/>3</c></b>4</a>
+の場合、 a 要素は text, tail 属性ともに None, b 要素は text に "1" で tail に "4", c 要素は text に "2" で tail は None, d 要素 は text が None で tail に "3" をそれぞれ保持します。
+
+要素の内側のテキストを収集するためには、itertext() を参照してください。例えば "".join(element.itertext()) のようにします。
+
+アプリケーションはこれらの属性に任意のオブジェクトを格納できます。
+
+attrib
+要素の属性を保持する辞書です。 attrib の値は常に書き換え可能な Python 辞書ですが、ElementTree の実装によっては別の内部表現を使用し、要求されたときにだけ辞書を作るようにしているかもしれません。そうした実装の利益を享受するために、可能な限り下記の辞書メソッドを通じて使用してください。
+
+以下の辞書風メソッドが要素の属性に対して動作します。
+
+clear()
+要素をリセットします。この関数は全ての子要素を削除し、全属性を消去し、テキストとテール属性を None に設定します。
+
+get(key, default=None)
+要素の key という名前の属性を取得します。
+
+属性の値、または属性がない場合は default を返します。
+
+items()
+要素の属性を (名前, 値) ペアのシーケンスとして返します。返される属性の順番は決まっていません。
+
+keys()
+要素の属性名をリストとして返します。返される名前の順番は決まっていません。
+
+set(key, value)
+要素の属性 key に value をセットします。
+
+以下のメソッドは要素の子要素 (副要素) に対して動作します。
+
+append(subelement)
+要素 subelement を、要素の子要素の内部リストの末尾に追加します。subelement Element でない場合、TypeError を送出します。
+
+extend(subelements)
+0 個以上の要素のシーケンスオブジェクトによって subelements を拡張します。subelements が Element でない場合、TypeError を送出します。
+
+バージョン 3.2 で追加.
+
+find(match, namespaces=None)
+Finds the first subelement matching match. match may be a tag name or a path. Returns an element instance or None. namespaces is an optional mapping from namespace prefix to full name. Pass '' as prefix to move all unprefixed tag names in the expression into the given namespace.
+
+findall(match, namespaces=None)
+Finds all matching subelements, by tag name or path. Returns a list containing all matching elements in document order. namespaces is an optional mapping from namespace prefix to full name. Pass '' as prefix to move all unprefixed tag names in the expression into the given namespace.
+
+findtext(match, default=None, namespaces=None)
+Finds text for the first subelement matching match. match may be a tag name or a path. Returns the text content of the first matching element, or default if no element was found. Note that if the matching element has no text content an empty string is returned. namespaces is an optional mapping from namespace prefix to full name. Pass '' as prefix to move all unprefixed tag names in the expression into the given namespace.
+
+insert(index, subelement)
+要素内の指定された位置に subelement を挿入します。subelement が Element でない場合、TypeError を送出します。
+
+iter(tag=None)
+現在の要素を根とする木の イテレータ を作成します。イテレータは現在の要素とそれ以下のすべての要素を、文書内での出現順 (深さ優先順) でイテレートします。 tag が None または '*' でない場合、与えられたタグに等しいものについてのみイテレータから返されます。イテレート中に木構造が変更された場合の結果は未定義です。
+
+バージョン 3.2 で追加.
+
+iterfind(match, namespaces=None)
+タグ名または パス にマッチするすべての子要素を検索します。マッチしたすべての要素を文書内での出現順で yield するイテレータを返します。namespaces はオプションで、名前空間接頭辞と完全名を対応付けるマップオブジェクトを指定します。
+
+バージョン 3.2 で追加.
+
+itertext()
+テキストのイテレータを作成します。イテレータは、この要素とすべての子要素を文書上の順序で巡回し、すべての内部のテキストを返します。
+
+バージョン 3.2 で追加.
+
+makeelement(tag, attrib)
+現在の要素と同じ型の新しい要素オブジェクトを作成します。このメソッドは呼び出さずに、 SubElement() ファクトリ関数を使って下さい。
+
+remove(subelement)
+要素から subelement を削除します。find* メソッド群と異なり、このメソッドは要素をインスタンスの同一性で比較します。タグや内容では比較しません。
+
+Element オブジェクトは以下のシーケンス型のメソッドを、サブ要素を操作するためにサポートします: __delitem__(), __getitem__(), __setitem__(), __len__().
+
+注意: 子要素を持たない要素の真偽値は False になります。この挙動は将来のバージョンで変更されるかもしれません。直接真偽値をテストするのでなく、 len(elem) か elem is None を利用してください。
+
+element = root.find('foo')
+
+if not element:  # careful!
+    print("element not found, or element has no subelements")
+
+if element is None:
+    print("element not found")
+Prior to Python 3.8, the serialisation order of the XML attributes of elements was artificially made predictable by sorting the attributes by their name. Based on the now guaranteed ordering of dicts, this arbitrary reordering was removed in Python 3.8 to preserve the order in which attributes were originally parsed or created by user code.
+
+In general, user code should try not to depend on a specific ordering of attributes, given that the XML Information Set explicitly excludes the attribute order from conveying information. Code should be prepared to deal with any ordering on input. In cases where deterministic XML output is required, e.g. for cryptographic signing or test data sets, canonical serialisation is available with the canonicalize() function.
+
+In cases where canonical output is not applicable but a specific attribute order is still desirable on output, code should aim for creating the attributes directly in the desired order, to avoid perceptual mismatches for readers of the code. In cases where this is difficult to achieve, a recipe like the following can be applied prior to serialisation to enforce an order independently from the Element creation:
+
+def reorder_attributes(root):
+    for el in root.iter():
+        attrib = el.attrib
+        if len(attrib) > 1:
+            # adjust attribute order, e.g. by sorting
+            attribs = sorted(attrib.items())
+            attrib.clear()
+            attrib.update(attribs)
+ElementTree オブジェクト
+class xml.etree.ElementTree.ElementTree(element=None, file=None)
+ElementTree ラッパークラスです。このクラスは要素の全階層を表現し、さらに標準 XML との相互変換を追加しています。
+
+element は根要素です。file が指定されている場合、その XML ファイルの内容により木は初期化されます。
+
+_setroot(element)
+この木の根要素を置き換えます。従って現在の木の内容は破棄され、与えられた要素が代わりに使われます。注意して使ってください。 element は要素インスタンスです。
+
+find(match, namespaces=None)
+Element.find() と同じで、木の根要素を起点とします。
+
+findall(match, namespaces=None)
+Element.findall() と同じで、木の根要素を起点とします。
+
+findtext(match, default=None, namespaces=None)
+Element.findtext() と同じで、木の根要素を起点とします。
+
+getroot()
+この木のルート要素を返します。
+
+iter(tag=None)
+根要素に対する、木を巡回するイテレータを返します。イテレータは木のすべての要素に渡ってセクション順にループします。tag は探したいタグです (デフォルトではすべての要素を返します)。
+
+iterfind(match, namespaces=None)
+Element.iterfind() と同じで、木の根要素を起点とします。
+
+バージョン 3.2 で追加.
+
+parse(source, parser=None)
+外部の XML 断片をこの要素木に入れます。source にはファイル名か ファイルオブジェクト を指定します。parser はオプションで、パーザインスタンスを指定します。パーザが指定されない場合、標準の XMLParser パーザが使用されます。断片の根要素を返します。
+
+write(file, encoding="us-ascii", xml_declaration=None, default_namespace=None, method="xml", *, short_empty_elements=True)
+要素の木をファイルに XML として書き込みます。 file は、書き込み用に開かれたファイル名または ファイルオブジェクト です。 encoding 1 は出力エンコーディング(デフォルトは US-ASCII)です。 xml_declaration は、 XML 宣言がファイルに書かれるかどうかを制御します。 False の場合は常に書かれず、 True の場合は常に書かれ、 None の場合は US-ASCII 、 UTF-8 、 Unicode 以外の場合に書かれます (デフォルトは None です)。 default_namespace でデフォルトの XML 名前空間 ("xmlns" 用) を指定します。 method は "xml", "html", "text" のいずれかです (デフォルトは "xml" です)。 キーワード専用の short_empty_elements 引数は、内容がない属性のフォーマットを制御します。 True (既定) の場合、単一の空要素タグとして書かれ、False の場合、開始タグと終了タグのペアとしてかかれます。
+
+出力は引数 encoding によって、文字列 (str) かバイト列 (bytes) になります。encoding が "unicode" の場合、出力は文字列になり、それ以外ではバイト列になります。file が ファイルオブジェクト の場合、型が衝突する場合があります。文字列をバイト列ファイルへ書き込んだり、その逆を行わないよう注意してください。
+
+バージョン 3.4 で追加: short_empty_elements 引数。
+
+バージョン 3.8 で変更: The write() method now preserves the attribute order specified by the user.
+
+以下はこれから操作する XML ファイルです:
+
+<html>
+    <head>
+        <title>Example page</title>
+    </head>
+    <body>
+        <p>Moved to <a href="http://example.org/">example.org</a>
+        or <a href="http://example.com/">example.com</a>.</p>
+    </body>
+</html>
+第 1 段落のすべてのリンクの "target" 属性を変更する例:
+
+>>>
+>>> from xml.etree.ElementTree import ElementTree
+>>> tree = ElementTree()
+>>> tree.parse("index.xhtml")
+<Element 'html' at 0xb77e6fac>
+>>> p = tree.find("body/p")     # Finds first occurrence of tag p in body
+>>> p
+<Element 'p' at 0xb77ec26c>
+>>> links = list(p.iter("a"))   # Returns list of all links
+>>> links
+[<Element 'a' at 0xb77ec2ac>, <Element 'a' at 0xb77ec1cc>]
+>>> for i in links:             # Iterates through all found links
+...     i.attrib["target"] = "blank"
+>>> tree.write("output.xhtml")
+QName オブジェクト
+class xml.etree.ElementTree.QName(text_or_uri, tag=None)
+QName ラッパーです。 このクラスは QName 属性値をラップし、出力時に適切な名前空間の扱いを得るために使われます。 text_or_uri は {uri}local という形式の QName 値を含む文字列、または tag 引数が与えられた場合には QName の URI 部分の文字列です。 tag が与えられた場合、一つめの引数は URI と解釈され、この引数はローカル名と解釈されます。 QName インスタンスは不透明です。
+
+TreeBuilder オブジェクト
+class xml.etree.ElementTree.TreeBuilder(element_factory=None, *, comment_factory=None, pi_factory=None, insert_comments=False, insert_pis=False)
+Generic element structure builder. This builder converts a sequence of start, data, end, comment and pi method calls to a well-formed element structure. You can use this class to build an element structure using a custom XML parser, or a parser for some other XML-like format.
+
+element_factory, when given, must be a callable accepting two positional arguments: a tag and a dict of attributes. It is expected to return a new element instance.
+
+The comment_factory and pi_factory functions, when given, should behave like the Comment() and ProcessingInstruction() functions to create comments and processing instructions. When not given, the default factories will be used. When insert_comments and/or insert_pis is true, comments/pis will be inserted into the tree if they appear within the root element (but not outside of it).
+
+close()
+ビルダのバッファをフラッシュし、最上位の文書要素を返します。戻り値は Element インスタンスになります。
+
+data(data)
+現在の要素にテキストを追加します。 data は文字列です。バイト文字列もしくは Unicode 文字列でなければなりません。
+
+end(tag)
+現在の要素を閉じます。 tag は要素の名前です。閉じられた要素を返します。
+
+start(tag, attrs)
+新しい要素を開きます。 tag は要素の名前です。 attrs は要素の属性を保持した辞書です。開かれた要素を返します。
+
+comment(text)
+Creates a comment with the given text. If insert_comments is true, this will also add it to the tree.
+
+バージョン 3.8 で追加.
+
+pi(target, text)
+Creates a comment with the given target name and text. If insert_pis is true, this will also add it to the tree.
+
+バージョン 3.8 で追加.
+
+In addition, a custom TreeBuilder object can provide the following methods:
+
+doctype(name, pubid, system)
+doctype 宣言を処理します。 name は doctype 名です。 pubid は公式の識別子です。 system はシステム識別子です。このメソッドはデフォルトの TreeBuilder クラスには存在しません。
+
+バージョン 3.2 で追加.
+
+start_ns(prefix, uri)
+Is called whenever the parser encounters a new namespace declaration, before the start() callback for the opening element that defines it. prefix is '' for the default namespace and the declared namespace prefix name otherwise. uri is the namespace URI.
+
+バージョン 3.8 で追加.
+
+end_ns(prefix)
+Is called after the end() callback of an element that declared a namespace prefix mapping, with the name of the prefix that went out of scope.
+
+バージョン 3.8 で追加.
+
+class xml.etree.ElementTree.C14NWriterTarget(write, *, with_comments=False, strip_text=False, rewrite_prefixes=False, qname_aware_tags=None, qname_aware_attrs=None, exclude_attrs=None, exclude_tags=None)
+A C14N 2.0 writer. Arguments are the same as for the canonicalize() function. This class does not build a tree but translates the callback events directly into a serialised form using the write function.
+
+バージョン 3.8 で追加.
+
+XMLParser オブジェクト
+class xml.etree.ElementTree.XMLParser(*, target=None, encoding=None)
+This class is the low-level building block of the module. It uses xml.parsers.expat for efficient, event-based parsing of XML. It can be fed XML data incrementally with the feed() method, and parsing events are translated to a push API - by invoking callbacks on the target object. If target is omitted, the standard TreeBuilder is used. If encoding 1 is given, the value overrides the encoding specified in the XML file.
+
+バージョン 3.8 で変更: Parameters are now keyword-only. The html argument no longer supported.
+
+close()
+パーザへのデータの提供を完了します。構築中に渡される target の close() メソッドを呼び出す結果を返します。既定では、これがトップレベルのドキュメント要素になります。
+
+feed(data)
+パーザへデータを入力します。 data はエンコードされたデータです。
+
+XMLParser.feed() calls target's start(tag, attrs_dict) method for each opening tag, its end(tag) method for each closing tag, and data is processed by method data(data). For further supported callback methods, see the TreeBuilder class. XMLParser.close() calls target's method close(). XMLParser can be used not only for building a tree structure. This is an example of counting the maximum depth of an XML file:
+
+>>>
+>>> from xml.etree.ElementTree import XMLParser
+>>> class MaxDepth:                     # The target object of the parser
+...     maxDepth = 0
+...     depth = 0
+...     def start(self, tag, attrib):   # Called for each opening tag.
+...         self.depth += 1
+...         if self.depth > self.maxDepth:
+...             self.maxDepth = self.depth
+...     def end(self, tag):             # Called for each closing tag.
+...         self.depth -= 1
+...     def data(self, data):
+...         pass            # We do not need to do anything with data.
+...     def close(self):    # Called when all data has been parsed.
+...         return self.maxDepth
+...
+>>> target = MaxDepth()
+>>> parser = XMLParser(target=target)
+>>> exampleXml = """
+... <a>
+...   <b>
+...   </b>
+...   <b>
+...     <c>
+...       <d>
+...       </d>
+...     </c>
+...   </b>
+... </a>"""
+>>> parser.feed(exampleXml)
+>>> parser.close()
+4
+XMLPullParser オブジェクト
+class xml.etree.ElementTree.XMLPullParser(events=None)
+A pull parser suitable for non-blocking applications. Its input-side API is similar to that of XMLParser, but instead of pushing calls to a callback target, XMLPullParser collects an internal list of parsing events and lets the user read from it. events is a sequence of events to report back. The supported events are the strings "start", "end", "comment", "pi", "start-ns" and "end-ns" (the "ns" events are used to get detailed namespace information). If events is omitted, only "end" events are reported.
+
+feed(data)
+指定したバイトデータをパーザに与えます。
+
+close()
+パーザに、データストリームが終了したことを伝えます。XMLParser.close() とは異なり、このメソッドは常に None を返します。パーザがクローズした時にまだ帰って来ていないイベントは、まだ read_events() で読むことができます。
+
+read_events()
+Return an iterator over the events which have been encountered in the data fed to the parser. The iterator yields (event, elem) pairs, where event is a string representing the type of event (e.g. "end") and elem is the encountered Element object, or other context value as follows.
+
+start, end: the current Element.
+
+comment, pi: the current comment / processing instruction
+
+start-ns: a tuple (prefix, uri) naming the declared namespace mapping.
+
+end-ns: None (this may change in a future version)
+
+read_events() の前の呼び出しで提供されたイベントは、再度 yield されることはありません。イベントは、イテレータから取得された場合にのみ内部キューから消費されるため、read_events() から取得されたイテレータに対して複数の読み出しを並行して反復的に行うと、予期せぬ結果が引き起こされます。
+
+注釈 XMLPullParser は "start" イベントを発行した時に開始タグの文字 ">" が現れたことだけを保証します。そのため、属性は定義されますが、その時点ではテキストの内容も tail 属性も定義されていません。子要素にもそれが存在する、しないにかかわらず同じ物が適用されます。
+全部揃った要素が必要ならば、"end" イベントを探してください。
+
+バージョン 3.4 で追加.
+
+バージョン 3.8 で変更: The comment and pi events were added.
+
+例外
+class xml.etree.ElementTree.ParseError
+解析に失敗した時、このモジュールの様々なメソッドから送出される XML 解析エラーです。この例外のインスタンスが表す文字列は、ユーザフレンドリなメッセージを含んでいます。その他に、以下の属性も利用できます:
+
+code
+expat パーザからの数値エラーコードです。エラーコードの一覧とそれらの意味については、xml.parsers.expat のドキュメントを参照してください。
+
+position
+エラーが発生した場所を示す line と column 番号のタプルです。
+
+xml.dom --- 文書オブジェクトモデル (DOM) API¶
+ソースコード: Lib/xml/dom/__init__.py
+
+文書オブジェクトモデル (Document Object Model)、すなわち "DOM" は、ワールドワイドウェブコンソーシアム (World Wide Web Consortium, W3C) による、XML ドキュメントにアクセスしたり変更を加えたりするための、プログラミング言語間共通の API です。DOM 実装によって、XML ドキュメントはツリー構造として表現されます。また、クライアントコード側でツリー構造をゼロから構築できるようになります。さらに、前述の構造に対して、よく知られたインタフェースをもつ一連のオブジェクトを通したアクセス手段も提供します。
+
+DOM はランダムアクセスを行うアプリケーションで非常に有用です。SAX では、一度に閲覧することができるのはドキュメントのほんの一部分です。ある SAX 要素に注目している際には、別の要素をアクセスすることはできません。またテキストノードに注目しているときには、その中に入っている要素をアクセスすることができません。SAX によるアプリケーションを書くときには、プログラムがドキュメント内のどこを処理しているのかを追跡するよう、コードのどこかに記述する必要があります。SAX 自体がその作業を行ってくれることはありません。さらに、XML ドキュメントに対する先読み (look ahead) が必要だとすると不運なことになります。
+
+アプリケーションによっては、ツリーにアクセスできなければイベント駆動モデルを実現できません。もちろん、何らかのツリーを SAX イベントに応じて自分で構築することもできるでしょうが、DOM ではそのようなコードを書かなくてもよくなります。DOM は XML データに対する標準的なツリー表現なのです。
+
+文書オブジェクトモデルは、W3C によっていくつかの段階、W3C の用語で言えば "レベル (level)" で定義されています。Python においては、DOM API への対応付けは実質的には DOM レベル 2 勧告に基づいています。
+
+DOM アプリケーションは、普通は XML を DOM に解析するところから始まります。どのようにして解析を行うかについては DOM レベル 1 では全くカバーしておらず、レベル 2 では限定的な改良だけが行われました: レベル 2 では Document を生成するメソッドを提供する DOMImplementation オブジェクトクラスがありますが、実装に依存しない方法で XML リーダ(reader)/パーザ(parser)/文書ビルダ (Document builder) にアクセスする方法はありません。また、既存の Document オブジェクトなしにこれらのメソッドにアクセスするような、よく定義された方法もありません。 Python では、各々の DOM 実装で getDOMImplementation() が定義されているはずです。 DOM レベル 3 ではロード(Load)/ストア(Store) 仕様が追加され、リーダのインタフェースにを定義していますが、Python 標準ライブラリではまだ利用することができません。
+
+DOM 文書オブジェクトを生成したら、そのプロパティとメソッドを使って XML 文書の一部にアクセスできます。これらのプロパティは DOM 仕様で定義されています; 本リファレンスマニュアルでは、Python において DOM 仕様がどのように解釈されているかを記述しています。
+
+W3C から提供されている仕様は、 DOM API を Java、ECMAScript、および OMG IDL で定義しています。ここで定義されている Python での対応づけは、大部分がこの仕様の IDL 版に基づいていますが、厳密な準拠は必要とされていません (実装で IDL の厳密な対応付けをサポートするのは自由ですが)。API への対応付けに関する詳細な議論は 適合性 を参照してください。
+
+参考
+Document Object Model (DOM) Level 2 Specification
+Python DOM API が準拠している W3C 勧告。
+
+Document Object Model (DOM) Level 1 Specification
+xml.dom.minidom でサポートされている W3C の DOM に関する勧告。
+
+Python Language Mapping Specification
+このドキュメントでは OMG IDL から Python への対応付けを記述しています。
+
+モジュールコンテンツ
+xml.dom には以下の関数があります:
+
+xml.dom.registerDOMImplementation(name, factory)
+ファクトリ関数 (factory function) factory を名前 name で登録します。ファクトリ関数は DOMImplementation インタフェースを実装するオブジェクトを返さなければなりません。特定の実装 (例えば実装が何らかのカスタマイズをサポートしている場合) に適切となるように、ファクトリ関数は毎回同じオブジェクトを返したり、呼び出しごとに新しいオブジェクトを返したりすることが出来ます。
+
+xml.dom.getDOMImplementation(name=None, features=())
+適切な DOM 実装を返します。name は、よく知られた DOM 実装のモジュール名か、 None になります。 None でない場合、対応するモジュールを import して、import が成功した場合 DOMImplementation オブジェクトを返します。 name が与えられておらず、環境変数 PYTHON_DOM が設定されていた場合、 DOM 実装を見つけるのに環境変数が使われます。
+
+name が与えられない場合、利用可能な実装を調べて、指定された機能 (feature) セットを持つものを探します。実装が見つからなければ ImportError を送出します。 features のリストは (feature, version) のペアからなるシーケンスで、利用可能な DOMImplementation オブジェクトの hasFeature() メソッドに渡されます。
+
+いくつかの便利な定数も提供されています:
+
+xml.dom.EMPTY_NAMESPACE
+DOM 内のノードに名前空間が何も関連づけられていないことを示すために使われる値です。この値は通常、ノードの namespaceURI の値として見つかったり、名前空間特有のメソッドに対する namespaceURI パラメタとして使われます。
+
+xml.dom.XML_NAMESPACE
+Namespaces in XML (4 節) で定義されている、予約済みプレフィクス (reserved prefix) xml に関連付けられた名前空間 URI です。
+
+xml.dom.XMLNS_NAMESPACE
+Document Object Model (DOM) Level 2 Core Specification (1.1.8 節) で定義されている、名前空間宣言への名前空間 URI です。
+
+xml.dom.XHTML_NAMESPACE
+XHTML 1.0: The Extensible HyperText Markup Language (3.1.1 節) で定義されている、XHTML 名前空間 URI です。
+
+加えて、 xml.dom には基底となる Node クラスと DOM 例外クラスが収められています。このモジュールで提供されている Node クラスは DOM 仕様で定義されているメソッドや属性は何ら実装していません; これらは具体的な DOM 実装において提供しなければなりません。このモジュールの一部として提供されている Node クラスでは、具体的な Node オブジェクトの nodeType 属性として使う定数を提供しています; これらの定数は、DOM 仕様に適合するため、クラスではなくモジュールのレベルに配置されています。
+
+DOM 内のオブジェクト
+DOM について最も明確に限定しているドキュメントは W3C による DOM 仕様です。
+
+DOM 属性は単純な文字列としてだけではなく、ノードとして操作されるかもしれないので注意してください。とはいえ、そうしなければならない場合はかなり稀なので、今のところ記述されていません。
+
+インタフェース
+
+節
+
+目的
+
+DOMImplementation
+
+DOMImplementation オブジェクト
+
+根底にある実装へのインタフェース。
+
+Node
+
+Node オブジェクト
+
+ドキュメント内の大部分のオブジェクトに対する基底インタフェース。
+
+NodeList
+
+NodeList オブジェクト
+
+ノード列に対するインタフェース。
+
+DocumentType
+
+DocumentType オブジェクト
+
+ドキュメントの処理に必要な宣言についての情報。
+
+Document
+
+Document オブジェクト
+
+ドキュメント全体を表現するオブジェクト。
+
+Element
+
+Element オブジェクト
+
+ドキュメント階層内の要素ノード。
+
+Attr
+
+Attr オブジェクト
+
+要素ノード上の属性値ノード。
+
+Comment
+
+Comment オブジェクト
+
+ソースドキュメント内のコメント表現。
+
+Text
+
+Text オブジェクトおよび CDATASection オブジェクト
+
+ドキュメント内のテキスト記述を含むノード。
+
+ProcessingInstruction
+
+ProcessingInstruction オブジェクト
+
+処理命令 (processing instruction) 表現。
+
+さらに追加の節として、Python で DOM を利用するために定義されている例外について記述しています。
+
+DOMImplementation オブジェクト
+DOMImplementation インタフェースは、利用している DOM 実装において特定の機能が利用可能かどうかを決定するための方法をアプリケーションに提供します。DOM レベル 2 では、 DOMImplementation を使って新たな Document オブジェクトや DocumentType オブジェクトを生成する機能も追加しています。
+
+DOMImplementation.hasFeature(feature, version)
+Return True if the feature identified by the pair of strings feature and version is implemented.
+
+DOMImplementation.createDocument(namespaceUri, qualifiedName, doctype)
+新たな(DOMのスーパークラスである) Document クラスのオブジェクトを返します。このクラスは namespaceUri と qualifiedName が設定された子クラス Element のオブジェクトを所有しています。 doctype は createDocumentType() によって生成された DocumentType クラスのオブジェクト、または None である必要があります。 Python DOM APIでは、子クラスである Element を作成しないことを示すために、はじめの２つの引数を None に設定することができます。
+
+DOMImplementation.createDocumentType(qualifiedName, publicId, systemId)
+新たな DocumentType クラスのオブジェクトを返します。このオブジェクトは qualifiedName 、 publicId 、そして systemId 文字列をふくんでおり、XML文書の形式情報を表現しています。
+
+Node オブジェクト
+XML 文書の全ての構成要素は Node のサブクラスです。
+
+Node.nodeType
+ノード (node) の型を表現する整数値です。型に対応する以下のシンボル定数: ELEMENT_NODE 、 ATTRIBUTE_NODE 、 TEXT_NODE 、 CDATA_SECTION_NODE 、 ENTITY_NODE 、 PROCESSING_INSTRUCTION_NODE 、 COMMENT_NODE 、 DOCUMENT_NODE 、 DOCUMENT_TYPE_NODE 、 NOTATION_NODE 、が Node オブジェクトで定義されています。読み出し専用の属性です。
+
+Node.parentNode
+現在のノードの親ノードか、文書ノードの場合には None になります。この値は常に Node オブジェクトか None になります。 Element ノードの場合、この値はルート要素 (root element) の場合を除き親要素 (parent element) となり、ルート要素の場合には Document オブジェクトとなります。 Attr ノードの場合、この値は常に None となります。読み出し専用の属性です。
+
+Node.attributes
+属性オブジェクトの NamedNodeMap です。要素だけがこの属性に実際の値を持ちます; その他のオブジェクトでは、この属性を None にします。読み出し専用の属性です。
+
+Node.previousSibling
+このノードと同じ親ノードを持ち、直前にくるノードです。例えば、self 要素の開始タグの直前にくる終了タグを持つ要素です。もちろん、XML 文書は要素だけで構成されているだけではないので、直前にくる兄弟関係にある要素 (sibling) はテキストやコメント、その他になる可能性があります。このノードが親ノードにおける先頭の子ノードである場合、属性値は None になります。読み出し専用の属性です。
+
+Node.nextSibling
+このノードと同じ親ノードを持ち、直後にくるノードです。例えば、 previousSibling も参照してください。このノードが親ノードにおける末尾の子ノードである場合、属性値は None になります。読み出し専用の属性です。
+
+Node.childNodes
+このノード内に収められているノードからなるリストです。読み出し専用の属性です。
+
+Node.firstChild
+このノードに子ノードがある場合、その先頭のノードです。そうでない場合 None になります。読み出し専用の属性です。
+
+Node.lastChild
+このノードに子ノードがある場合、その末尾のノードです。そうでない場合 None になります。読み出し専用の属性です。
+
+Node.localName
+tagName にコロンがあれば、コロン以降の部分に、なければ tagName 全体になります。値は文字列です。
+
+Node.prefix
+tagName のコロンがあれば、コロン以前の部分に、なければ空文字列になります。値は文字列か、 None になります。
+
+Node.namespaceURI
+要素名に関連付けられた名前空間です。文字列か None になります。読み出し専用の属性です。
+
+Node.nodeName
+この属性はノード型ごとに異なる意味を持ちます。その詳細は DOM 仕様を参照してください。この属性で得られることになる情報は、全てのノード型では tagName 、属性では name プロパティといったように、常に他のプロパティで得ることができます。全てのノード型で、この属性の値は文字列か None になります。読み出し専用の属性です。
+
+Node.nodeValue
+この属性はノード型ごとに異なる意味を持ちます。その詳細は DOM 仕様を参照してください。その状況は nodeName と似ています。この属性の値は文字列または None になります。
+
+Node.hasAttributes()
+Return True if the node has any attributes.
+
+Node.hasChildNodes()
+Return True if the node has any child nodes.
+
+Node.isSameNode(other)
+Return True if other refers to the same node as this node. This is especially useful for DOM implementations which use any sort of proxy architecture (because more than one object can refer to the same node).
+
+注釈 このメソッドは DOM レベル 3 API の提案に基づいたもので、まだ "ワーキングドラフト(working draft)" の段階です。しかし、このインタフェースには異論は出ないと考えられます。W3C による変更があっても、必ずしも Python DOM インタフェースにおけるこのメソッドに影響するとは限りません (ただしこのメソッドに対する何らかの新しい W3C API もサポートされるかもしれません)。
+Node.appendChild(newChild)
+現在のノードの子ノードリストの末尾に新たな子ノードを追加し、newChild を返します。もしノードが既にツリーにあれば、最初に削除されます。
+
+Node.insertBefore(newChild, refChild)
+新たな子ノードを既存の子ノードの前に挿入します。 refChild は現在のノードの子ノードである場合に限られます; そうでない場合、 ValueError が送出されます。 newChild が返されます。もし refChild が None なら、 newChild を子ノードリストの最後に挿入します。
+
+Node.removeChild(oldChild)
+子ノードを削除します。 oldChild はこのノードの子ノードでなければなりません。そうでない場合、 ValueError が送出されます。成功した場合 oldChild が返されます。 oldChild をそれ以降使わない場合、 unlink() メソッドを呼び出さなければなりません。
+
+Node.replaceChild(newChild, oldChild)
+既存のノードと新たなノードを置き換えます。この操作は oldChild が現在のノードの子ノードである場合に限られます; そうでない場合、 ValueError が送出されます。
+
+Node.normalize()
+一続きのテキスト全体を一個の Text インスタンスとして保存するために隣接するテキストノードを結合します。これにより、多くのアプリケーションで DOM ツリーからのテキスト処理が簡単になります。
+
+Node.cloneNode(deep)
+このノードを複製 (clone) します。deep を設定すると、子ノードも同様に複製することを意味します。複製されたノードを返します。
+
+NodeList オブジェクト
+NodeList はノードのシーケンスを表現します。 これらのオブジェクトは DOM コア勧告 (DOM Core recommendation) において、二通りに使われています: Element オブジェクトでは、子ノードのリストを提供するのに NodeList を利用します。 また、このインタフェースにおける Node の getElementsByTagName() および getElementsByTagNameNS() メソッドは、クエリに対する結果を表現するのに NodeList を利用します。
+
+DOM レベル 2 勧告では、これらのオブジェクトに対し、以下のようにメソッドを一つ、属性を一つ定義しています。
+
+NodeList.item(i)
+存在する場合シークエンスの i 番目の要素を、そうでない場合 None を返します。i は 0 未満やシークエンスの長さ以上であってはなりません。
+
+NodeList.length
+シーケンス中のノードの数です。
+
+この他に、Python の DOM インタフェースでは、 NodeList オブジェクトを Python のシーケンスとして使えるようにするサポートが追加されていることが必要です。 NodeList の実装では、全て __len__() と __getitem__() をサポートしなければなりません; このサポートにより、 for 文内で NodeList にわたる繰り返しと、組み込み関数 len() の適切なサポートができるようになります。
+
+DOM 実装が文書の変更をサポートしている場合、 NodeList の実装でも __setitem__() および __delitem__() メソッドをサポートしなければなりません。
+
+DocumentType オブジェクト
+文書で宣言されている記法 (notation) やエンティティ (entity) に関する (外部サブセット(external subset) がパーザから利用でき、情報を提供できる場合にはそれも含めた) 情報は、 DocumentType オブジェクトから手に入れることができます。文書の DocumentType は、 Document オブジェクトの doctype 属性で入手することができます; 文書の DOCTYPE 宣言がない場合、文書の doctype 属性は、このインタフェースを持つインスタンスの代わりに None に設定されます。
+
+DocumentType は Node を特殊化したもので、以下の属性を加えています:
+
+DocumentType.publicId
+文書型定義 (document type definition) の外部サブセットに対する公開識別子 (public identifier) です。文字列または None になります。
+
+DocumentType.systemId
+文書型定義 (document type definition) の外部サブセットに対するシステム識別子 (system identifier) です。文字列の URI または None になります。
+
+DocumentType.internalSubset
+ドキュメントの完全な内部サブセットを与える文字列です。サブセットを囲むブラケットは含みません。ドキュメントが内部サブセットを持たない場合、この値は None です。
+
+DocumentType.name
+DOCTYPE 宣言でルート要素の名前が与えられている場合、その値になります。
+
+DocumentType.entities
+外部エンティティの定義を与える NamedNodeMap です。複数回定義されているエンティティに対しては、最初の定義だけが提供されます (その他は XML 勧告での要求仕様によって無視されます)。パーザによって情報が提供されないか、エンティティが定義されていない場合には、この値は None になることがあります。
+
+DocumentType.notations
+記法の定義を与える NamedNodeMap です。複数回定義されている記法名に対しては、最初の定義だけが提供されます (その他は XML 勧告での要求仕様によって無視されます)。パーザによって情報が提供されないか、エンティティが定義されていない場合には、この値は None になることがあります。
+
+Document オブジェクト
+Document は XML ドキュメント全体を表現し、その構成要素である要素、属性、処理命令、コメント等を持ちます。 Document は Node からプロパティを継承していることを思い出してください。
+
+Document.documentElement
+ドキュメントの唯一無二のルート要素です。
+
+Document.createElement(tagName)
+新たな要素ノードを生成して返します。要素は、生成された時点ではドキュメント内に挿入されません。 insertBefore() や appendChild() のような他のメソッドの一つを使って明示的に挿入を行う必要があります。
+
+Document.createElementNS(namespaceURI, tagName)
+名前空間を伴う新たな要素ノードを生成して返します。 tagName には接頭辞 (prefix) があってもかまいません。要素は、生成された時点では文書内に挿入されません。 insertBefore() や appendChild() のような他のメソッドの一つを使って明示的に挿入を行う必要があります。
+
+Document.createTextNode(data)
+引数として渡されたデータの入ったテキストノードを生成して返します。他の生成 (create) メソッドと同じく、このメソッドは生成されたノードをツリーに挿入しません。
+
+Document.createComment(data)
+引数として渡されたデータの入ったコメントノードを生成して返します。他の生成 (create) メソッドと同じく、このメソッドは生成されたノードをツリーに挿入しません。
+
+Document.createProcessingInstruction(target, data)
+引数として渡された target および data の入った処理命令ノードを生成して返します。他の生成 (create) メソッドと同じく、このメソッドは生成されたノードをツリーに挿入しません。
+
+Document.createAttribute(name)
+属性ノードを生成して返します。このメソッドは属性ノードを特定の要素に関連づけることはしません。新たに生成された属性インスタンスを使うには、適切な Element オブジェクトの setAttributeNode() を使わなければなりません。
+
+Document.createAttributeNS(namespaceURI, qualifiedName)
+名前空間を伴う新たな属性ノードを生成して返します。 tagName には接頭辞 (prefix) があってもかまいません。このメソッドは属性ノードを特定の要素に関連づけることはしません。新たに生成された属性インスタンスを使うには、適切な Element オブジェクトの setAttributeNode() を使わなければなりません。
+
+Document.getElementsByTagName(tagName)
+全ての下位要素 (直接の子要素、子要素の子要素等) から特定の要素型名を持つものを検索します。
+
+Document.getElementsByTagNameNS(namespaceURI, localName)
+全ての下位要素 (直接の子要素、子要素の子要素等) から特定の名前空間 URI とローカル名 (local name) を持つものを検索します。ローカル名は名前空間における接頭辞以降の部分です。
+
+Element オブジェクト
+Element は Node のサブクラスです。このため Node クラスの全ての属性を継承します。
+
+Element.tagName
+要素型名です。名前空間使用の文書では、要素型名中にコロンがあるかもしれません。値は文字列です。
+
+Element.getElementsByTagName(tagName)
+Document クラス内における同名のメソッドと同じです。
+
+Element.getElementsByTagNameNS(namespaceURI, localName)
+Document クラス内における同名のメソッドと同じです。
+
+Element.hasAttribute(name)
+Return True if the element has an attribute named by name.
+
+Element.hasAttributeNS(namespaceURI, localName)
+Return True if the element has an attribute named by namespaceURI and localName.
+
+Element.getAttribute(name)
+name で指定した属性の値を文字列として返します。もし、属性が存在しない、もしくは属性に値が設定されていない場合、空の文字列が返されます。
+
+Element.getAttributeNode(attrname)
+attrname で指定された属性の Attr ノードを返します。
+
+Element.getAttributeNS(namespaceURI, localName)
+namespaceURI と localName によって指定した属性の値を文字列として返します。もし、属性が存在しない、もしくは属性に値が設定されていない場合、空の文字列が返されます。
+
+Element.getAttributeNodeNS(namespaceURI, localName)
+指定した namespaceURI および localName を持つ属性値をノードとして返します。
+
+Element.removeAttribute(name)
+名前で指定された属性を削除します。該当する属性がない場合、NotFoundErr が送出されます。
+
+Element.removeAttributeNode(oldAttr)
+oldAttr が属性リストにある場合、削除して返します。 oldAttr が存在しない場合、 NotFoundErr が送出されます。
+
+Element.removeAttributeNS(namespaceURI, localName)
+名前で指定された属性を削除します。このメソッドは qname ではなく localName を使うので注意してください。該当する属性がなくても例外は送出されません。
+
+Element.setAttribute(name, value)
+文字列を使って属性値を設定します。
+
+Element.setAttributeNode(newAttr)
+新たな属性ノードを要素に追加します。 name 属性が既存の属性に一致した場合、必要に応じて属性を置換します。置換が行われると古い属性ノードが返されます。 newAttr がすでに使われていれば、 InuseAttributeErr が送出されます。
+
+Element.setAttributeNodeNS(newAttr)
+新たな属性ノードを要素に追加します。 namespaceURI および localName 属性が既存の属性に一致した場合、必要に応じて属性を置き換えます。置換が生じると、古い属性ノードが返されます。 newAttr がすでに使われていれば、 InuseAttributeErr が送出されます。
+
+Element.setAttributeNS(namespaceURI, qname, value)
+指定された namespaceURI および qname で与えられた属性の値を文字列で設定します。qname は属性の完全な名前であり、この点が上記のメソッドと違うので注意してください。
+
+Attr オブジェクト
+Attr は Node を継承しており、全ての属性を継承しています。
+
+Attr.name
+要素型名です。名前空間使用の文書では、要素型名中にコロンが含まれるかもしれません。
+
+Attr.localName
+名前にコロンがあればコロン以降の部分に、なければ名前全体になります。
+
+Attr.prefix
+名前にコロンがあればコロン以前の部分に、なければ空文字列になります。
+
+Attr.value
+その要素の text value. これは nodeValue 属性の別名です。
+
+NamedNodeMap Objects
+NamedNodeMap は Node を継承して いません 。
+
+NamedNodeMap.length
+属性リストの長さです。
+
+NamedNodeMap.item(index)
+特定のインデクスを持つ属性を返します。属性の並び方は任意ですが、 DOM 文書が生成されている間は一定になります。各要素は属性ノードです。属性値はノードの value 属性で取得してください。
+
+このクラスをよりマップ型的な動作ができるようにする実験的なメソッドもあります。そうしたメソッドを使うこともできますし、 Element オブジェクトに対して、標準化された getAttribute*() ファミリのメソッドを使うこともできます。
+
+Comment オブジェクト
+Comment は XML 文書中のコメントを表現します。 Comment は Node のサブクラスですが、子ノードを持つことはありません。
+
+Comment.data
+文字列によるコメントの内容です。この属性には、コメントの先頭にある <!- - と末尾にある - -> 間の全ての文字が入っていますが、<!- - と - -> 自体は含みません。
+
+Text オブジェクトおよび CDATASection オブジェクト
+Text インタフェースは XML 文書内のテキストを表現します。パーザおよび DOM 実装が DOM の XML 拡張をサポートしている場合、 CDATA でマークされた区域 (section) に入れられている部分テキストは CDATASection オブジェクトに記憶されます。これら二つのインタフェースは同一のものですが、 nodeType 属性が異なります。
+
+これらのインタフェースは Node インタフェースを拡張したものです。しかし子ノードを持つことはできません。
+
+Text.data
+文字列によるテキストノードの内容です。
+
+注釈 CDATASection ノードの利用は、ノードが完全な CDATA マーク区域を表現するという意味ではなく、ノードの内容が CDATA 区域の一部であるということを意味するだけです。単一の CDATA セクションは文書ツリー内で複数のノードとして表現されることがあります。二つの隣接する CDATASection ノードが、異なる CDATA マーク区域かどうかを決定する方法はありません。
+ProcessingInstruction オブジェクト
+XML 文書内の処理命令を表現します; Node インタフェースを継承していますが、子ノードを持つことはできません。
+
+ProcessingInstruction.target
+最初の空白文字までの処理命令の内容です。読み出し専用の属性です。
+
+ProcessingInstruction.data
+最初の空白文字以降の処理命令の内容です。
+
+例外
+DOM レベル 2 勧告では、単一の例外 DOMException と、どの種のエラーが発生したかをアプリケーションが決定できるようにする多くの定数を定義しています。 DOMException インスタンスは、特定の例外に関する適切な値を提供する code 属性を伴っています。
+
+Python DOM インタフェースでは、上記の定数を提供していますが、同時に一連の例外を拡張して、DOM で定義されている各例外コードに対して特定の例外が存在するようにしています。 DOM の実装では、適切な特定の例外を送出しなければならず、各例外は code 属性に対応する適切な値を伴わなければなりません。
+
+exception xml.dom.DOMException
+全ての特定の DOM 例外で使われている基底例外クラスです。この例外クラスを直接インスタンス化することはできません。
+
+exception xml.dom.DomstringSizeErr
+指定された範囲のテキストが文字列に収まらない場合に送出されます。この例外は Python の DOM 実装で使われるかどうかは判っていませんが、Python で書かれていない DOM 実装から送出される場合があります。
+
+exception xml.dom.HierarchyRequestErr
+挿入できない型のノードを挿入しようと試みたときに送出されます。
+
+exception xml.dom.IndexSizeErr
+メソッドに与えたインデクスやサイズパラメタが負の値や許容範囲の値を超えた際に送出されます。
+
+exception xml.dom.InuseAttributeErr
+文書中にすでに存在する Attr ノードを挿入しようと試みた際に送出されます。
+
+exception xml.dom.InvalidAccessErr
+パラメタまたは操作が根底にあるオブジェクトでサポートされていない場合に送出されます。
+
+exception xml.dom.InvalidCharacterErr
+この例外は、文字列パラメタが、現在使われているコンテキストで XML 1.0 勧告によって許可されていない場合に送出されます。例えば、要素型に空白の入った Element ノードを生成しようとすると、このエラーが送出されます。
+
+exception xml.dom.InvalidModificationErr
+ノードの型を変更しようと試みた際に送出されます。
+
+exception xml.dom.InvalidStateErr
+定義されていないオブジェクトや、もはや利用できなくなったオブジェクトを使おうと試みた際に送出されます。
+
+exception xml.dom.NamespaceErr
+Namespaces in XML に照らして許可されていない方法でオブジェクトを変更しようと試みた場合、この例外が送出されます。
+
+exception xml.dom.NotFoundErr
+参照しているコンテキスト中に目的のノードが存在しない場合に送出される例外です。例えば、 NamedNodeMap.removeNamedItem() は渡されたノードがノードマップ中に存在しない場合にこの例外を送出します。
+
+exception xml.dom.NotSupportedErr
+要求された方のオブジェクトや操作が実装でサポートされていない場合に送出されます。
+
+exception xml.dom.NoDataAllowedErr
+データ属性をサポートしないノードにデータを指定した際に送出されます。
+
+exception xml.dom.NoModificationAllowedErr
+オブジェクトに対して (読み出し専用ノードに対する修正のように) 許可されていない修正を行おうと試みた際に送出されます。
+
+exception xml.dom.SyntaxErr
+無効または不正な文字列が指定された際に送出されます。
+
+exception xml.dom.WrongDocumentErr
+ノードが現在属している文書と異なる文書に挿入され、かつある文書から別の文書へのノードの移行が実装でサポートされていない場合に送出されます。
+
+DOM 勧告で定義されている例外コードは、以下のテーブルに従って上記の例外と対応付けられます:
+
+定数
+
+例外
+
+DOMSTRING_SIZE_ERR
+
+DomstringSizeErr
+
+HIERARCHY_REQUEST_ERR
+
+HierarchyRequestErr
+
+INDEX_SIZE_ERR
+
+IndexSizeErr
+
+INUSE_ATTRIBUTE_ERR
+
+InuseAttributeErr
+
+INVALID_ACCESS_ERR
+
+InvalidAccessErr
+
+INVALID_CHARACTER_ERR
+
+InvalidCharacterErr
+
+INVALID_MODIFICATION_ERR
+
+InvalidModificationErr
+
+INVALID_STATE_ERR
+
+InvalidStateErr
+
+NAMESPACE_ERR
+
+NamespaceErr
+
+NOT_FOUND_ERR
+
+NotFoundErr
+
+NOT_SUPPORTED_ERR
+
+NotSupportedErr
+
+NO_DATA_ALLOWED_ERR
+
+NoDataAllowedErr
+
+NO_MODIFICATION_ALLOWED_ERR
+
+NoModificationAllowedErr
+
+SYNTAX_ERR
+
+SyntaxErr
+
+WRONG_DOCUMENT_ERR
+
+WrongDocumentErr
+
+適合性
+この節では適合性に関する要求と、Python DOM API、W3C DOM 勧告、および OMG IDL の Python API への対応付けとの間の関係について述べます。
+
+型の対応付け
+DOM 仕様で使われている IDL 型は、以下のテーブルに従って Python の型に対応付けられています。
+
+IDL 型
+
+Python の型
+
+boolean
+
+bool または int
+
+int
+
+int
+
+long int
+
+int
+
+unsigned int
+
+int
+
+DOMString
+
+str または bytes
+
+null
+
+None
+
+アクセサメソッド
+OMG IDL から Python への対応付けは、IDL attribute 宣言へのアクセサ関数の定義を、Java による対応付けが行うのとほとんど同じように行います。IDL 宣言の対応付け
+
+readonly attribute string someValue;
+         attribute string anotherValue;
+は、三つのアクセサ関数: someValue に対する "get" メソッド (_get_someValue())、そして anotherValue に対する "get" および "set" メソッド (_get_anotherValue() および _set_anotherValue()) を生成します。とりわけ、対応付けでは、IDL 属性が通常の Python 属性としてアクセス可能であることは必須ではありません: object.someValue が動作することは必須 ではなく 、 AttributeError を送出してもかまいません。
+
+しかしながら、Python DOM API では、通常の属性アクセスが動作することが必須です。これは、Python IDL コンパイラによって生成された典型的な代用物はまず動作することはなく、DOM オブジェクトが CORBA を介してアクセスされる場合には、クライアント上でラッパオブジェクトが必要であることを意味します。CORBA DOM クライアントでは他にもいくつか考慮すべきことがある一方で、Python から CORBA を介して DOM を使った経験を持つ実装者はこのことを問題視していません。readonly であると宣言された属性は、全ての DOM 実装で書き込みアクセスを制限しているとは限りません。
+
+Python DOM API では、アクセサ関数は必須ではありません。アクセサ関数が提供された場合、Python IDL 対応付けによって定義された形式をとらなければなりませんが、属性は Python から直接アクセスすることができるので、それらのメソッドは必須ではないと考えられます。readonly であると宣言された属性に対しては、 "set" アクセサを提供してはなりません。
+
+このIDLでの定義はW3C DOM APIの全ての要件を実装しているわけではありません。例えば、一部のオブジェクトの概念や getElementsByTagName() が "live" であることなどです。 Python DOM API はこれらの要件を実装することを強制しません。
+
+xml.dom.minidom --- 最小限の DOM の実装¶
+ソースコード: Lib/xml/dom/minidom.py
+
+xml.dom.minidom は、 Document Object Model インタフェースの最小の実装です。他言語の実装と似た API を持ちます。このモジュールは、完全な DOM に比べて単純で、非常に小さくなるように意図されています。 DOM について既に熟知しているユーザを除き、 XML 処理には代わりに xml.etree.ElementTree モジュールを使うことを検討すべきです。
+
+警告 xml.dom.minidom モジュールは悪意を持って作成されたデータに対して安全ではありません。信頼できないデータや認証されていないデータをパースする必要がある場合は XML の脆弱性 を参照してください。
+DOM アプリケーションは通常、XML を DOM に解析 (parse) することで開始します。 xml.dom.minidom では、以下のような解析用の関数を介して行います:
+
+from xml.dom.minidom import parse, parseString
+
+dom1 = parse('c:\\temp\\mydata.xml')  # parse an XML file by name
+
+datasource = open('c:\\temp\\mydata.xml')
+dom2 = parse(datasource)  # parse an open file
+
+dom3 = parseString('<myxml>Some data<empty/> some more data</myxml>')
+parse() 関数はファイル名か、開かれたファイルオブジェクトを引数にとることができます。
+
+xml.dom.minidom.parse(filename_or_file, parser=None, bufsize=None)
+与えられた入力から Document を返します。 filename_or_file はファイル名でもファイルオブジェクトでもかまいません。 parser を指定する場合、SAX2 パーザオブジェクトでなければなりません。この関数はパーザの文書ハンドラを変更し、名前空間サポートを有効にします; (エンティティリゾルバ (entity resolver) のような) 他のパーザ設定は前もっておこなわなければなりません。
+
+XML データを文字列で持っている場合、 parseString() を代わりに使うことができます:
+
+xml.dom.minidom.parseString(string, parser=None)
+string を表わす Document を返します。このメソッドは、文字列に対する io.StringIO オブジェクトを作成し、それを parse() に渡します。
+
+これらの関数は両方とも、文書の内容を表現する Document オブジェクトを返します。
+
+parse() や parseString() といった関数が行うのは、 XML パーザを、何らかの SAX パーザからくる解析イベント (parse event) を受け取って DOM ツリーに変換できるような "DOM ビルダ (DOM builder)" に結合することです。関数は誤解を招くような名前になっているかもしれませんが、インタフェースについて学んでいるときには理解しやすいでしょう。文書の解析はこれらの関数が戻るより前に完結します; 要するに、これらの関数自体はパーザ実装を提供しないということです。
+
+"DOM 実装" オブジェクトのメソッドを呼び出して Document を生成することもできます。このオブジェクトは、 xml.dom パッケージ、または xml.dom.minidom モジュールの getDOMImplementation() 関数を呼び出して取得できます。 Document を取得したら、DOM を構成するために子ノードを追加していくことができます:
+
+from xml.dom.minidom import getDOMImplementation
+
+impl = getDOMImplementation()
+
+newdoc = impl.createDocument(None, "some_tag", None)
+top_element = newdoc.documentElement
+text = newdoc.createTextNode('Some textual content.')
+top_element.appendChild(text)
+DOM 文書オブジェクトを手にしたら、XML 文書のプロパティやメソッドを使って、文書の一部にアクセスすることができます。これらのプロパティは DOM 仕様で定義されています。文書オブジェクトの主要なプロパティは documentElement プロパティです。このプロパティは XML 文書の主要な要素、つまり他の全ての要素を保持する要素を与えます。以下にプログラム例を示します。
+
+dom3 = parseString("<myxml>Some data</myxml>")
+assert dom3.documentElement.tagName == "myxml"
+DOM ツリーを使い終えたとき、 unlink() メソッドを呼び出して不要になったオブジェクトが早く片付けられるように働きかけることができます。 unlink() は、 DOM API に対する xml.dom.minidom 特有の拡張です。ノードに対して unlink() を呼び出した後は、ノードとその下位ノードは本質的には無意味なものとなります。このメソッドを呼び出さなくても、 Python のガベージコレクタがいつかはツリーのオブジェクトを後片付けします。
+
+参考
+Document Object Model (DOM) Level 1 Specification
+xml.dom.minidom でサポートされている W3C の DOM に関する勧告。
+
+DOM オブジェクト
+Python の DOM API 定義は xml.dom モジュールドキュメントの一部として与えられています。この節では、 xml.dom の API と xml.dom.minidom との違いについて列挙します。
+
+Node.unlink()
+DOM との内部的な参照を破壊して、循環参照ガベージコレクションを持たないバージョンの Python でもガベージコレクションされるようにします。循環参照ガベージコレクションが利用できる場合でも、このメソッドを使えば大量のメモリをすぐに使えるようにできるため、不要になったらすぐに DOM オブジェクトに対してこのメソッドを呼ぶのが良い習慣です。このメソッドは Document オブジェクトに対して呼び出すだけでよいのですが、あるノードの子ノードを破棄するために子ノードに対して呼び出してもかまいません。
+
+with ステートメントを使用することで、このメソッドを明示的に呼ばないようにできます。 with ブロックから出る時に自動的に次のコードが dom を unlink します:
+
+with xml.dom.minidom.parse(datasource) as dom:
+    ... # Work with dom.
+Node.writexml(writer, indent="", addindent="", newl="", encoding=None, standalone=None)
+XML を writer オブジェクトに書き込みます。 writer は入力としてテキストは受け付けますが、バイト列は受け付けません。 writer はファイルオブジェクトインタフェースの write() に該当するメソッドを持たなければなりません。 indent 引数には現在のノードのインデントを指定します。 addindent 引数には現在のノードの下にサブノードを追加する際のインデント増分を指定します。 newl には、改行時に行末を終端する文字列を指定します。
+
+Document ノードでは、追加のキーワード引数 encoding を使って XML ヘッダの encoding フィールドを指定することができます。
+
+Silimarly, explicitly stating the standalone argument causes the standalone document declarations to be added to the prologue of the XML document. If the value is set to True, standalone="yes" is added, otherwise it is set to "no". Not stating the argument will omit the declaration from the document.
+
+バージョン 3.8 で変更: The writexml() method now preserves the attribute order specified by the user.
+
+Node.toxml(encoding=None, standalone=None)
+DOM ノードによって表わされる XML を含んだ文字列またはバイト文字列を返します。
+
+明示的に encoding 1 引数を渡すと、結果は指定されたエンコードのバイト文字列になります。encoding 引数なしだと、結果は unicode 文字列です。また、結果として生じる文字列の中の XML 宣言はエンコーディングを指定しません。XML のデフォルトエンコーディングは UTF-8 なので、この文字列を UTF-8 以外でエンコードすることはおそらく正しくありません。
+
+The standalone argument behaves exactly as in writexml().
+
+バージョン 3.8 で変更: The toxml() method now preserves the attribute order specified by the user.
+
+Node.toprettyxml(indent="\t", newl="\n", encoding=None, standalone=None)
+文書の整形されたバージョンを返します。 indent はインデントを行うための文字で、デフォルトはタブです; newl には行末で出力される文字列を指定し、デフォルトは \n です。
+
+encoding 引数は toxml() の対応する引数と同様に振る舞います。
+
+The standalone argument behaves exactly as in writexml().
+
+バージョン 3.8 で変更: The toprettyxml() method now preserves the attribute order specified by the user.
+
+DOM の例
+以下のプログラム例は、単純なプログラムのかなり現実的な例です。特にこの例に関しては、DOM の柔軟性をあまり活用してはいません。
+
+import xml.dom.minidom
+
+document = """\
+<slideshow>
+<title>Demo slideshow</title>
+<slide><title>Slide title</title>
+<point>This is a demo</point>
+<point>Of a program for processing slides</point>
+</slide>
+
+<slide><title>Another demo slide</title>
+<point>It is important</point>
+<point>To have more than</point>
+<point>one slide</point>
+</slide>
+</slideshow>
+"""
+
+dom = xml.dom.minidom.parseString(document)
+
+def getText(nodelist):
+    rc = []
+    for node in nodelist:
+        if node.nodeType == node.TEXT_NODE:
+            rc.append(node.data)
+    return ''.join(rc)
+
+def handleSlideshow(slideshow):
+    print("<html>")
+    handleSlideshowTitle(slideshow.getElementsByTagName("title")[0])
+    slides = slideshow.getElementsByTagName("slide")
+    handleToc(slides)
+    handleSlides(slides)
+    print("</html>")
+
+def handleSlides(slides):
+    for slide in slides:
+        handleSlide(slide)
+
+def handleSlide(slide):
+    handleSlideTitle(slide.getElementsByTagName("title")[0])
+    handlePoints(slide.getElementsByTagName("point"))
+
+def handleSlideshowTitle(title):
+    print("<title>%s</title>" % getText(title.childNodes))
+
+def handleSlideTitle(title):
+    print("<h2>%s</h2>" % getText(title.childNodes))
+
+def handlePoints(points):
+    print("<ul>")
+    for point in points:
+        handlePoint(point)
+    print("</ul>")
+
+def handlePoint(point):
+    print("<li>%s</li>" % getText(point.childNodes))
+
+def handleToc(slides):
+    for slide in slides:
+        title = slide.getElementsByTagName("title")[0]
+        print("<p>%s</p>" % getText(title.childNodes))
+
+handleSlideshow(dom)
+minidom と DOM 標準
+xml.dom.minidom モジュールは、本質的には DOM 1.0 互換の DOM に、いくつかの DOM 2 機能 (主に名前空間機能) を追加したものです。
+
+Python における DOM インタフェースは率直なものです。以下の対応付け規則が適用されます:
+
+インタフェースはインスタンスオブジェクトを介してアクセスされます。アプリケーション自身から、クラスをインスタンス化してはなりません; Document オブジェクト上で利用可能な生成関数 (creator function) を使わなければなりません。派生インタフェースでは基底インタフェースの全ての演算 (および属性) に加え、新たな演算をサポートします。
+
+演算はメソッドとして使われます。DOM では in パラメタのみを使うので、引数は通常の順番 (左から右へ) で渡されます。オプション引数はありません。 void 演算は None を返します。
+
+IDL 属性はインスタンス属性に対応付けられます。OMG IDL 言語における Python への対応付けとの互換性のために、属性 foo はアクセサメソッド _get_foo() および _set_foo() でもアクセスできます。 readonly 属性は変更してはなりません; とはいえ、これは実行時には強制されません。
+
+short int 、 unsigned int 、 unsigned long long 、および boolean 型は、全て Python 整数オブジェクトに対応付けられます。
+
+DOMString 型は Python 文字列型に対応付けられます。 xml.dom.minidom ではバイト列か文字列のどちらかに対応づけられますが、通常文字列を生成します。 DOMString 型の値は、W3C の DOM 仕様で、IDL null 値になってもよいとされている場所では None になることもあります。
+
+const 宣言を行うと、 (xml.dom.minidom.Node.PROCESSING_INSTRUCTION_NODE のように) 対応するスコープ内の変数に対応付けを行います; これらは変更してはなりません。
+
+DOMException は現状では xml.dom.minidom でサポートされていません。その代わり、 xml.dom.minidom は、 TypeError や AttributeError といった標準の Python 例外を使います。
+
+NodeList オブジェクトは Python の組み込みのリスト型を使って実装されています。これらのオブジェクトは DOM 仕様で定義されたインタフェースを提供していますが、以前のバージョンの Python では、公式の API をサポートしていません。しかしながら、これらの API は W3C 勧告で定義されたインタフェースよりも "Python 的な" ものになっています。
+
+以下のインタフェースは xml.dom.minidom では全く実装されていません:
+
+DOMTimeStamp
+
+EntityReference
+
+これらの大部分は、ほとんどの DOM のユーザにとって一般的な用途として有用とはならないような XML 文書内の情報を反映しています。
+
+脚注
+
+1
+XML 出力に含まれるエンコード名は適切な規格に従っていなければなりません。例えば "UTF-8" は有効ですが、 "UTF8" は XML 文書の宣言では有効ではありません。後者はエンコード名として Python に認められるとしてもです。
+
+xml.dom.pulldom --- 部分的な DOM ツリー構築のサポート
+Source code: Lib/xml/dom/pulldom.py
+
+xml.dom.pulldom モジュールは "プルパーザ" を提供します。 プルパーザは必要に応じて文書の DOM アクセス可能な断片を生成することができます。 基本概念は、入力 XML のストリームから "イベント" を取り出し (pull し) て処理することです。 SAX とは、コールバックつきのイベント駆動処理モデルを採用しているという点で同様ですが、SAX とは対照的に、プルパーザの使用者には処理が完了するかエラー状態が発生するまで、明示的にストリームからイベントを取り出し、イベントに対しループを回す責任があります。
+
+警告 xml.dom.pulldom モジュールは悪意を持って作成されたデータに対して安全ではありません。信頼できないデータや認証されていないデータをパースする必要がある場合は XML の脆弱性 を参照してください。
+バージョン 3.7.1 で変更: SAXパーサーは、デフォルトでセキュリティーを向上させるために、一般的な外部エンティティーをデフォルトでは処理しなくなりました。外部エンティティの処理を有効にするには、次の場所にカスタムパーサーインスタンスを渡します:
+
+from xml.dom.pulldom import parse
+from xml.sax import make_parser
+from xml.sax.handler import feature_external_ges
+
+parser = make_parser()
+parser.setFeature(feature_external_ges, True)
+parse(filename, parser=parser)
+以下はプログラム例です:
+
+from xml.dom import pulldom
+
+doc = pulldom.parse('sales_items.xml')
+for event, node in doc:
+    if event == pulldom.START_ELEMENT and node.tagName == 'item':
+        if int(node.getAttribute('price')) > 50:
+            doc.expandNode(node)
+            print(node.toxml())
+event は定数で以下の内の一つです:
+
+START_ELEMENT
+
+END_ELEMENT
+
+COMMENT
+
+START_DOCUMENT
+
+END_DOCUMENT
+
+CHARACTERS
+
+PROCESSING_INSTRUCTION
+
+IGNORABLE_WHITESPACE
+
+node は型 xml.dom.minidom.Document、 xml.dom.minidom.Element または xml.dom.minidom.Text のオブジェクトです。
+
+文書はイベントの フラットな 流れとして扱われるため、文書の "木" は暗黙のうちに全て読み込まれ、目的の要素は木の中の深さに依らずに見つけられます。つまり、文書ノードの再帰的な検索のような階層的な問題を考える必要はありません。しかしながら要素の前後関係が重要な場合は、前後関係の状態を維持する (すなわち文章中の任意の点の場所を記憶する) か、 DOMEventStream.expandNode() メソッドを使用して DOM 関連の処理に切り替える必要があります。
+
+class xml.dom.pulldom.PullDom(documentFactory=None)
+xml.sax.handler.ContentHandler のサブクラスです。
+
+class xml.dom.pulldom.SAX2DOM(documentFactory=None)
+xml.sax.handler.ContentHandler のサブクラスです。
+
+xml.dom.pulldom.parse(stream_or_string, parser=None, bufsize=None)
+与えられた入力から DOMEventStream を返します。stream_or_string はファイル名かファイル様オブジェクトのいずれかです。parser は、与えれた場合、 XMLReader オブジェクトでなければなりません。この関数はパーザの文書ハンドラを変えて名前空間のサポートを有効にします。パーザの他の設定 (例えばエンティティリゾルバ) は前もってしておかなければなりません。
+
+XML データを文字列で持っている場合、 parseString() を代わりに使うことができます:
+
+xml.dom.pulldom.parseString(string, parser=None)
+(ユニコード) string を表す DOMEventStream を返します。
+
+xml.dom.pulldom.default_bufsize
+parse() の bufsize パラメタのデフォルト値です。
+
+この変数の値は parse() を呼び出す前に変更することができます。その場合、その新しい値が有効になります。
+
+DOMEventStream オブジェクト
+class xml.dom.pulldom.DOMEventStream(stream, parser, bufsize)
+バージョン 3.8 で非推奨: Support for sequence protocol is deprecated.
+
+getEvent()
+event が START_DOCUMENT の場合は event と xml.dom.minidom.Document としての現在の node からなるタプルを、 START_ELEMENT か END_ELEMENT の場合は xml.dom.minidom.Element を、 CHARACTERS の場合は xml.dom.minidom.Text を返します。 expandNode() が呼ばれない限り、現在のノードは子ノードの情報を持ちません。
+
+expandNode(node)
+node の全子ノードを node に展開します。例:
+
+from xml.dom import pulldom
+
+xml = '<html><title>Foo</title> <p>Some text <div>and more</div></p> </html>'
+doc = pulldom.parseString(xml)
+for event, node in doc:
+    if event == pulldom.START_ELEMENT and node.tagName == 'p':
+        # Following statement only prints '<p/>'
+        print(node.toxml())
+        doc.expandNode(node)
+        # Following statement prints node with all its children '<p>Some text <div>and more</div></p>'
+        print(node.toxml())
+reset()
+
+xml.sax --- SAX2 パーサのサポート¶
+ソースコード: Lib/xml/sax/__init__.py
+
+xml.sax パッケージは Python 用の Simple API for XML (SAX) インターフェースを実装した数多くのモジュールを提供しています。またパッケージには SAX 例外と SAX API 利用者が頻繁に利用するであろう有用な関数群も含まれています。
+
+警告 xml.sax モジュールは悪意を持って作成されたデータに対して安全ではありません。信頼できないデータや認証されていないデータをパースする必要がある場合は XML の脆弱性 を参照してください。
+バージョン 3.7.1 で変更: SAXパーサーは、セキュリティーを向上させるために、デフォルトで一般的な外部エンティティーを処理しなくなりました。以前は、パーサーは、DTDおよびエンティティ用にファイルシステムからリモートファイルまたはロードされたローカルファイルをフェッチするためのネットワーク接続を作成していました。この機能は parser オブジェクトと(実) 引数 feature_external_ges の setFeature() メソッドで再度有効にすることができます。
+
+その関数群は以下の通りです:
+
+xml.sax.make_parser(parser_list=[])
+Create and return a SAX XMLReader object. The first parser found will be used. If parser_list is provided, it must be an iterable of strings which name modules that have a function named create_parser(). Modules listed in parser_list will be used before modules in the default list of parsers.
+
+バージョン 3.8 で変更: The parser_list argument can be any iterable, not just a list.
+
+xml.sax.parse(filename_or_stream, handler, error_handler=handler.ErrorHandler())
+SAX パーサを生成し、そのパーサをドキュメントの解析に使用します。filename_or_stream として与えられるドキュメントは、ファイル名でもファイルオブジェクトでもかまいません。 handler 引数は SAX ContentHandler のインスタントである必要があります。error_handler が与えられる場合は、 SAX ErrorHandler のインスタンスである必要があります。この引数を省略した場合、全ての例外に対して SAXParseException が発生します。 戻り値はありません。すべての操作は渡される handler によって行われなければなりません。
+
+xml.sax.parseString(string, handler, error_handler=handler.ErrorHandler())
+parse() と同様ですが、こちらは引数で受け取ったバッファ string をパースします。 string は str インスタンスか bytes-like object でなければなりません。
+
+バージョン 3.5 で変更: str インスタンスがサポートされました。
+
+典型的な SAX アプリケーションでは3種類のオブジェクト(リーダ、ハンドラ、入力元)が用いられます。ここで言うリーダとはパーサを指しています。つまり、入力元からバイト列または文字列を読み込み、一連のイベントを発生させるコード片のことです。発生したイベントはハンドラ・オブジェクトに割り振られます。言い換えると、リーダがハンドラのメソッドを呼び出すわけです。つまり、 SAX アプリケーションは、リーダ・オブジェクトを作成し、入力元のオブジェクトを作成するか開き、ハンドラ・オブジェクトを作成し、これら3つのオブジェクトを連携させる必要があります。準備の最終段階では、リーダが呼び出され、入力をパースします。パース中には、入力データからの構造イベントや構文イベントに基づいて、ハンドラ・オブジェクトのメソッドが呼び出されます。
+
+これらのオブジェクトでは、インタフェースだけが関係します。通常、これらはアプリケーション自体によってはインスタンス化されません。 Python は明示的なインタフェースの概念を持たないので、インタフェースはクラスとして導入されました。しかし、アプリケーションは、提供されたクラスを継承せずに実装してもかまいません。 インタフェース InputSource, Locator, Attributes, AttributesNS, XMLReader はモジュール xml.sax.xmlreader で定義されています。ハンドラインタフェースは xml.sax.handler で定義されています。利便性のため、 InputSource (よく直接インスタンス化されるクラス) とハンドラクラスは xml.sax からもアクセスできます。これらのインタフェースについて下記で説明します。
+
+このほかに xml.sax は次の例外クラスも提供しています。
+
+exception xml.sax.SAXException(msg, exception=None)
+XML エラーと警告をカプセル化します。このクラスには XML パーサとアプリケーションで発生するエラーおよび警告の基本的な情報を持たせることができます。また機能追加や地域化のためにサブクラス化することも可能です。なお ErrorHandler で定義されているハンドラがこの例外のインスタンスを受け取ることに注意してください。実際に例外を発生させることは必須でなく、情報のコンテナとして利用されることもあるからです。
+
+インスタンスを作成する際 msg はエラー内容を示す可読データにしてください。オプションの exception 引数は None にするか、パース用コードで捕捉されて情報として渡される例外にしてください。
+
+このクラスはSAX 例外の基底クラスになります。
+
+exception xml.sax.SAXParseException(msg, exception, locator)
+パースエラー時に発生する SAXException のサブクラスです。パースエラーに関する情報として、このクラスのインスタンスが SAX ErrorHandler インターフェースのメソッドに渡されます。このクラスは SAXException 同様 SAX Locator インターフェースもサポートしています。
+
+exception xml.sax.SAXNotRecognizedException(msg, exception=None)
+SAX XMLReader が認識できない機能やプロパティに遭遇したとき発生させる SAXException のサブクラスです。 SAX アプリケーションや拡張モジュールにおいて同様の目的にこのクラスを利用することもできます。
+
+exception xml.sax.SAXNotSupportedException(msg, exception=None)
+SAX XMLReader が要求された機能をサポートしていないとき発生させる SAXException のサブクラスです。 SAX アプリケーションや拡張モジュールにおいて同様の目的にこのクラスを利用することもできます。
+
+参考
+SAX: The Simple API for XML
+SAX API 定義に関し中心となっているサイトです。Java による実装とオンライン・ドキュメントが提供されています。実装と SAX API の歴史に関する情報のリンクも掲載されています。
+
+xml.sax.handler モジュール
+アプリケーションが提供するオブジェクトのインターフェース定義。
+
+xml.sax.saxutils モジュール
+SAX アプリケーション向けの有用な関数群。
+
+xml.sax.xmlreader モジュール
+パーサが提供するオブジェクトのインターフェース定義。
+
+SAXException オブジェクト
+SAXException 例外クラスは以下のメソッドをサポートしています:
+
+SAXException.getMessage()
+エラー状態を示す可読メッセージを返します。
+
+SAXException.getException()
+カプセル化した例外オブジェクトまたは None を返します。
+
+xml.sax.handler --- SAX ハンドラの基底クラス¶
+ソースコード: Lib/xml/sax/handler.py
+
+SAX API はコンテント・ハンドラ、DTD ハンドラ、エラー・ハンドラ、エンティティ・リゾルバという4種類のハンドラを定義しています。通常アプリケーション側で実装する必要があるインターフェースは、使用したいイベントを発生させるものだけです。インターフェースは1つのオブジェクトにまとめることも、複数のオブジェクトに分けることも可能です。ハンドラの実装は、 xml.sax.handler で提供される基底クラスを継承して、すべてのメソッドがデフォルトで実装されるようにしてください。
+
+class xml.sax.handler.ContentHandler
+アプリケーションにとって最も重要なメインの SAX コールバック・インターフェースです。このインターフェースで発生するイベントの順序はドキュメント内の情報の順序を反映しています。
+
+class xml.sax.handler.DTDHandler
+DTD イベントのハンドラです。
+
+パースされていないエンティティや属性など、基本的なパースに必要な DTD イベントの指定だけを行うインターフェースです。
+
+class xml.sax.handler.EntityResolver
+エンティティ解決用の基本インターフェースです。このインターフェースを実装したオブジェクトを作成しパーサに登録することで、パーサはすべての外部エンティティを解決するメソッドを呼び出すようになります。
+
+class xml.sax.handler.ErrorHandler
+エラーや警告メッセージをアプリケーションに通知するためにパーサが使用するインターフェースです。このオブジェクトのメソッドが、エラーをただちに例外に変換するか、あるいは別の方法で処理するかの制御をしています。
+
+これらのクラスに加え、 xml.sax.handler は機能やプロパティ名のシンボル定数を提供しています。
+
+xml.sax.handler.feature_namespaces
+値: "http://xml.org/sax/features/namespaces"
+真: 名前空間を処理します。
+偽: オプションで名前空間を処理しません (暗黙に名前空間接頭辞も無効にします; デフォルト)。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.feature_namespace_prefixes
+値: "http://xml.org/sax/features/namespace-prefixes"
+真: 名前空間宣言で用いられている元々の接頭辞付きの名前と属性を報告します。
+偽: 名前空間宣言で用いられている属性を報告しません。オプションで元々の接頭辞付きの名前も報告しません (デフォルト)。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.feature_string_interning
+値: "http://xml.org/sax/features/string-interning"
+真: 全ての要素名、接頭辞、属性名、名前空間 URI、ローカル名を組込みの intern 関数を使ってシンボルに登録します。
+偽: 名前を必ずしもシンボルに登録しませんが、されるかもしれません (デフォルト)。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.feature_validation
+値: "http://xml.org/sax/features/validation"
+真: 全ての妥当性検査エラーを報告します (外部一般エンティティと外部変数エンティティが暗示されます)。
+偽: 妥当性検査エラーを報告しません。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.feature_external_ges
+値: "http://xml.org/sax/features/external-general-entities"
+真: 全ての外部一般 (テキスト) エンティティを取り込みます。
+偽: 外部一般エンティティを取り込みません。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.feature_external_pes
+値: "http://xml.org/sax/features/external-parameter-entities"
+真: 外部 DTD サブセットを含む全ての外部変数エンティティを取り込みます。
+偽: 外部 DTD サブセットであっても外部変数エンティティを取り込みません。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.all_features
+全機能のリスト。
+
+xml.sax.handler.property_lexical_handler
+値: "http://xml.org/sax/properties/lexical-handler"
+データ型: xml.sax.sax2lib.LexicalHandler (Python 2 では未サポート)
+説明: コメントなど字句解析イベント用のオプション拡張ハンドラ。
+アクセス: 読み書き可
+xml.sax.handler.property_declaration_handler
+値: "http://xml.org/sax/properties/declaration-handler"
+データ型: xml.sax.sax2lib.DeclHandler (Python 2 では未サポート)
+説明: 表記や未解析エンティティをのぞく DTD 関連イベント用のオプション拡張ハンドラ。
+アクセス: 読み書き可
+xml.sax.handler.property_dom_node
+値: "http://xml.org/sax/properties/dom-node"
+データ型: org.w3c.dom.Node (Python 2 では未サポート)
+説明: パース時は DOM イテレータならば現在の DOM ノードです。非パース時はイテレートのルート DOM ノードです。
+アクセス: (パース時) 読み込み専用; (パース時以外) 読み書き可
+xml.sax.handler.property_xml_string
+値: "http://xml.org/sax/properties/xml-string"
+データ型: 文字列
+説明: 現在のイベントの元になったリテラル文字列。
+アクセス: 読み出し専用
+xml.sax.handler.all_properties
+既知の全プロパティ名のリスト。
+
+ContentHandler オブジェクト
+ContentHandler はアプリケーション側でサブクラス化して利用することが前提になっています。パーサは入力ドキュメントのイベントにより、それぞれに対応する以下のメソッドを呼び出します:
+
+ContentHandler.setDocumentLocator(locator)
+アプリケーションにドキュメントイベントの発生位置を指すロケータを与えるためにパーサから呼び出されます。
+
+SAX パーサによるロケータの提供は強く推奨されています(必須ではありません)。もし提供する場合は、DocumentHandler インターフェースのどのメソッドよりも先にこのメソッドが呼び出されるようにしなければなりません。
+
+パーサがエラーを報告しない場合でも、ロケータによってアプリケーションは全てのドキュメント関連イベントの終了位置を知ることが出来ます。 通常、アプリケーションは自身のエラー (例えば文字コンテンツがアプリケーションの規則に適合しない場合) を報告するためにこれを使用します。 ロケータが返す情報は検索エンジンでの利用にはおそらく不充分です。
+
+ロケータが正しい情報を返すのは、このインターフェースからイベントの呼出しが実行されている間だけです。それ以外のときは使用すべきでありません。
+
+ContentHandler.startDocument()
+ドキュメントの開始通知を受け取ります。
+
+SAX パーサはこのインターフェースやDTDHandler のどのメソッド (setDocumentLocator() を除く) よりも先にこのメソッドを一度だけ呼び出します。
+
+ContentHandler.endDocument()
+ドキュメントの終了通知を受け取ります。
+
+SAX パーサはこのメソッドを一度だけ呼び出します。パース中に呼び出す最後のメソッドです。パーサは (回復不能なエラーで) パース処理を中断するか、あるいは入力の最後に到達するまでこのメソッドを呼び出しません。
+
+ContentHandler.startPrefixMapping(prefix, uri)
+接頭辞と URI 名前空間の関連付けのスコープを開始します。
+
+このイベントからの情報は名前空間処理に必須ではありません。SAX XML リーダは feature_namespaces 機能が有効な場合 (デフォルト)、要素と属性名の接頭辞を自動的に置換します。
+
+しかしながら、接頭辞の自動展開を安全に行えないために、アプリケーションが文字データや属性値の中で接頭辞を使わなければならない場合があります。 必要ならば startPrefixMapping() や endPrefixMapping() イベントはアプリケーションにコンテキスト自身の中で接頭辞を展開するための情報を提供します。
+
+startPrefixMapping() と endPrefixMapping() イベントは相互に正しい入れ子関係になることが保証されていないので注意が必要です。すべての startPrefixMapping() は対応する startElement() の前に発生し、 endPrefixMapping() イベントは対応する endElement() の後で発生しますが、その順序は保証されていません。
+
+ContentHandler.endPrefixMapping(prefix)
+接頭辞と URI の関連付けのスコープを終了します。
+
+詳しくは startPrefixMapping() を参照してください。このイベントは常に対応する endElement() の後で発生しますが、複数の endPrefixMapping() イベントの順序は特に保証されません。
+
+ContentHandler.startElement(name, attrs)
+非名前空間モードでの要素の開始を通知します。
+
+name 引数は要素型の生の XML 1.0 名を文字列として持ち、attrs 引数は要素の属性を持つ Attributes インターフェイス (Attributes インタフェース を参照) のオブジェクトを保持します。 attrs ととして渡されたオブジェクトはパーサに再利用されるかもしれません。 そのため、それへの参照を確保するのは属性のコピーを保持する確実な方法ではありません。 属性のコピーを保持するには attrs 属性の copy() メソッドを使用してください。
+
+ContentHandler.endElement(name)
+非名前空間モードでの要素の終了を通知します。
+
+name 引数は startElement() イベントとまったく同じ要素型名を持ちます。
+
+ContentHandler.startElementNS(name, qname, attrs)
+名前空間モードでの要素の開始を通知します。
+
+name 引数は要素型の名前を (uri, localname) というタプルとして持ち、qname 引数は元の文書で使われている生の XML 1.0 名を持ち、要素の属性を持つ AttributesNS インターフェイス (AttributesNS インタフェース を参照) のインスタンスを保持します。 名前空間が要素に関連付けられていない場合、name の uri 要素は None です。 attrs ととして渡されたオブジェクトはパーサに再利用されるかもしれません。 そのため、それへの参照を確保するのは属性のコピーを保持する確実な方法ではありません。 属性のコピーを保持するには attrs 属性の copy() メソッドを使用してください。
+
+feature_namespace_prefixes 機能が有効でなければ、パーサで qname を None に設定することも可能です。
+
+ContentHandler.endElementNS(name, qname)
+名前空間モードでの要素の終了を通知します。
+
+name 引数は startElementNS() イベントとまったく同じ要素型を持ちます。 qname 引数も同様です。
+
+ContentHandler.characters(content)
+文字データの通知を受け取ります。
+
+パーサはこのメソッドを呼び出して文字データの各チャンクを報告します。SAX パーサは一連の文字データを単一のチャンクとして返す場合と複数のチャンクに分けて返す場合がありますが、ロケータの情報が正しく保たれるように、一つのイベントの文字データは常に同じ外部エンティティのものでなければなりません。
+
+content は文字列、バイト列のどちらでもかまいませんが、expat リーダ・モジュールは常に文字列を生成するようになっています。
+
+注釈 Python XML SIG が提供していた初期 SAX 1 では、このメソッドにもっと JAVA 風のインターフェースが用いられています。しかし Python で採用されている大半のパーサでは古いインターフェースを有効に使うことができないため、よりシンプルなものに変更されました。古いコードを新しいインターフェースに変更するには、古い offset と length パラメータでスライスせずに、content を指定するようにしてください。
+ContentHandler.ignorableWhitespace(whitespace)
+要素内容中の無視できる空白文字の通知を受け取ります。
+
+妥当性検査を行うパーサはこのメソッドを使って、無視できる空白文字 (W3C XML 1.0 勧告の 2.10 節参照) の各チャンクを報告しなければなりません。妥当性検査をしないパーサもコンテンツモデルの利用とパースが可能な場合、このメソッドを利用することが可能です。
+
+SAX パーサは連続する複数の空白文字を単一のチャンクとして返す場合と複数のチャンクに分けて返す場合があります。しかし、ロケータが有用な情報を提供できるように、単一のイベント中のすべての文字は同じ外部エンティティからのものでなければなりません。
+
+ContentHandler.processingInstruction(target, data)
+処理命令の通知を受け取ります。
+
+パーサは処理命令が見つかるたびにこのメソッドを呼び出します。処理命令はメインのドキュメント要素の前や後にも発生することがあるので注意してください。
+
+SAX パーサがこのメソッドを使って XML 宣言 (XML 1.0 のセクション 2.8) やテキスト宣言 (XML 1.0 のセクション 4.3.1) の通知をすることはありません。
+
+ContentHandler.skippedEntity(name)
+スキップしたエンティティの通知を受け取ります。
+
+パーサはエンティティをスキップするたびにこのメソッドを呼び出します。妥当性検査をしないプロセッサは (外部 DTD サブセットで宣言されているなどの理由で) 宣言が見当たらないエンティティをスキップします。すべてのプロセッサは feature_external_ges および feature_external_pes 属性の値によっては外部エンティティをスキップすることがあります。
+
+DTDHandler オブジェクト
+DTDHandler インスタンスは以下のメソッドを提供します:
+
+DTDHandler.notationDecl(name, publicId, systemId)
+表記宣言イベントの通知を扱います。
+
+DTDHandler.unparsedEntityDecl(name, publicId, systemId, ndata)
+未パースのエンティティ宣言イベントの通知を扱います。
+
+EntityResolver オブジェクト
+EntityResolver.resolveEntity(publicId, systemId)
+エンティティのシステム識別子を解決し、文字列として読み込んだシステム識別子あるいは InputSource オブジェクトのいずれかを返します。デフォルトの実装では systemId を返します。
+
+ErrorHandler オブジェクト
+このインターフェイスのあるオブジェクトを使って XMLReader からエラーと警告情報を受け取ります。 このインターフェイスを実装しているオブジェクトを作った場合、それを XMLReader に登録します。そうすると、パーサはすべての警告とエラーを報告するためにオブジェクトのメソッドを呼びます。 利用可能なエラーには、次の3つのレベルがあります: 警告、(おそらく) 回復可能なエラー、回復不能なエラーです。 全てのメソッドは唯一の引数として SAXParseException を受け取ります。 警告とエラーは、渡された例外オブジェクトを送出することにより、例外に変換される場合があります。
+
+ErrorHandler.error(exception)
+パーサが回復可能なエラーに遭遇すると呼び出されます。このメソッドが例外を送出しない場合パースは継続されますが、アプリケーションは更なるドキュメント情報を期待すべきではありません。パーサの処理を継続を認めることで入力ドキュメント内の他のエラーを見つけることができます。
+
+ErrorHandler.fatalError(exception)
+パーサが回復不能なエラーに遭遇すると呼び出されます。このメソッドが return したとき、パースの停止が求められています。
+
+ErrorHandler.warning(exception)
+パーサが軽微な警告情報をアプリケーションに通知するときに呼び出されます。このメソッドが return したときはパースの継続が求められ、ドキュメント情報はアプリケーションに送り続けられます。このメソッドでの例外の送出はパースを終了します。
+
+xml.sax.saxutils --- SAX ユーティリティ¶
+ソースコード: Lib/xml/sax/saxutils.py
+
+モジュール xml.sax.saxutils には SAX アプリケーションの作成に役立つ多くの関数やクラスも含まれており、直接利用したり、基底クラスとして使うことができます。
+
+xml.sax.saxutils.escape(data, entities={})
+文字列データ内の '&', '<', '>' をエスケープします。
+
+オプションの entities 引数に辞書を渡すことで、そのほかの文字列データをエスケープすることも可能です。辞書のキーと値はすべて文字列で、キーは対応する値に置換されます。entities が与えられている場合でも、 '&', '<', '>' は常にエスケープされます。
+
+xml.sax.saxutils.unescape(data, entities={})
+エスケープされた文字列 '&amp;', '&lt;', '&gt;' を元の文字に戻します。
+
+オプションの entities 引数に辞書を渡すことで、そのほかの文字列データをエスケープ解除することも可能です。辞書のキーと値はすべて文字列で、キーは対応する値に置換されます。entities が与えられている場合でも、'&amp', '&lt;', and '&gt;' は常に元の文字に戻されます。
+
+xml.sax.saxutils.quoteattr(data, entities={})
+escape() に似ていますが、 data は属性値の作成に使われます。戻り値はクォート済みの data で、置換する文字の追加も可能です。 quoteattr() はクォートすべき文字を data の文脈から判断し、クォートすべき文字を残さないように文字列をエンコードします。 data の中にシングル・クォート、ダブル・クォートがあれば、両方ともエンコードし、全体をダブルクォートで囲みます。戻り値の文字列はそのままで属性値として利用できます:
+
+>>>
+>>> print("<element attr=%s>" % quoteattr("ab ' cd \" ef"))
+<element attr="ab ' cd &quot; ef">
+この関数は参照具象構文を使って、 HTML や SGML の属性値を生成するのに便利です。
+
+class xml.sax.saxutils.XMLGenerator(out=None, encoding='iso-8859-1', short_empty_elements=False)
+このクラスは SAX イベントを XML 文書に書き戻すことで ContentHandler インターフェースを実装しています。 つまり、 XMLGenerator をコンテントハンドラとして用いることで、パースしている元々の文書を複製することが出来ます。 out にはファイル様オブジェクトでなければなりません。 デフォルトは sys.stdout です。 encoding は出力ストリームのエンコーディングで、デフォルトは 'iso-8859-1' です。 short_empty_elements は 内容を持たない要素のフォーマットを制御します。 False (デフォルト) の場合、開始/終了タグのペアとなり、 True の場合、1つの空タグになります。
+
+バージョン 3.2 で追加: short_empty_elements 引数。
+
+class xml.sax.saxutils.XMLFilterBase(base)
+このクラスは XMLReader とクライアント・アプリケーションのイベント・ハンドラとの間に位置するものとして設計されています。デフォルトでは何もせず、ただリクエストをリーダに、イベントをハンドラに、それぞれ加工せず渡すだけです。しかし、サブクラスでメソッドをオーバーライドすると、イベント・ストリームやリクエストを加工してから渡すように変更可能です。
+
+xml.sax.saxutils.prepare_input_source(source, base='')
+この関数は引数に入力ソース、オプションとして URL を取り、読み取り可能な解決済み InputSource オブジェクトを返します。入力ソースは文字列、ファイル風オブジェクト、 InputSource のいずれでも良く、この関数を使うことで、パーサは様々な source パラメータを parse() に渡すことが可能になります。
+
+xml.sax.xmlreader --- XML パーサのインタフェース
+ソースコード: Lib/xml/sax/xmlreader.py
+
+各 SAX パーサは Python モジュールとして XMLReader インタフェースを実装しており、関数 create_parser() を提供しています。この関数は新たなパーサ・オブジェクトを生成する際、 xml.sax.make_parser() から引数なしで呼び出されます。
+
+class xml.sax.xmlreader.XMLReader
+SAX パーサが継承可能な基底クラスです。
+
+class xml.sax.xmlreader.IncrementalParser
+入力ソースを一度にパースするのではなく、ドキュメントのチャンクが利用可能になるごとに取得したいことがあります。SAX リーダは通常、ファイル全体を一気に読み込まず、チャンク単位で処理するのですが、全体の処理が終わるまで parse() は返りません。そのため、 parse() の排他的挙動を望まないときにこれらのインタフェースを使用してください。
+
+パーサのインスタンスが作成されるとすぐに、feed メソッドを通じてデータを受け入れられるようになります。パースが完了して閉じるための呼び出しが行われた後、パーサがフィードからまたはパースメソッドを使用して新しいデータを受け入れられるように、reset メソッドが呼び出される必要があります。
+
+これらのメソッドをパース処理の途中で呼び出すことはできません。つまり、パースが実行された後で、パーサから return する前に呼び出す必要があるのです。
+
+デフォルトでは、SAX 2.0 ドライバを書く人のために、このクラスは IncrementalParser の feed、close、reset メソッドを使って XMLReader インタフェースの parse メソッドを実装しています。
+
+class xml.sax.xmlreader.Locator
+SAX イベントと文書の位置を関連付けるインタフェースです。locator オブジェクトは DocumentHandler メソッドを呼び出している間だけ正しい結果を返し、それ以外とのときは、予測できない結果を返します。情報を利用できない場合、メソッドは None を返すこともあります。
+
+class xml.sax.xmlreader.InputSource(system_id=None)
+XMLReader がエンティティを読み込むために必要な情報をカプセル化します。
+
+このクラスには公開識別子、システム識別子、(場合によっては文字エンコーディング情報を含む) バイト・ストリーム、そしてエンティティの文字ストリームなどの情報が含まれます。
+
+アプリケーションは XMLReader.parse() メソッドでの使用や EntityResolver.resolveEntity の戻り値としてこのオブジェトを作成します。
+
+InputSource はアプリケーションに属します。 XMLReader はアプリケーションから渡された InputSource オブジェクトの変更を許可されていませんが、コピーを作ってそれを変更することは可能です。
+
+class xml.sax.xmlreader.AttributesImpl(attrs)
+Attributes インタフェース (Attributes インタフェース 参照) の実装です。これは辞書風のオブジェクトで、 startElement() 内で要素の属性を表示します。最も有用な辞書操作に加え、インタフェースに記述されているメソッドを多数サポートしています。このクラスのオブジェクトはリーダによってインスタンス化されなければなりません。attrs は属性名と属性値の対応付けを含む辞書風オブジェクトでなければなりません。
+
+class xml.sax.xmlreader.AttributesNSImpl(attrs, qnames)
+AttributesImpl を名前空間認識型に改良したクラスで、 startElementNS() に渡されます。 AttributesImpl の派生クラスですが、 namespaceURI と localname の2要素のタプルを解釈します。さらに、元の文書に出てくる修飾名を返す多くのメソッドを提供します。このクラスは AttributesNS インタフェース (AttributesNS インタフェース 参照) の実装です。
+
+XMLReader オブジェクト
+XMLReader は次のメソッドをサポートします:
+
+XMLReader.parse(source)
+Process an input source, producing SAX events. The source object can be a system identifier (a string identifying the input source -- typically a file name or a URL), a pathlib.Path or path-like object, or an InputSource object. When parse() returns, the input is completely processed, and the parser object can be discarded or reset.
+
+バージョン 3.5 で変更: 文字ストリームがサポートされました。
+
+バージョン 3.8 で変更: Added support of path-like objects.
+
+XMLReader.getContentHandler()
+現在の ContentHandler を返します。
+
+XMLReader.setContentHandler(handler)
+現在の ContentHandler を設定します。 ContentHandler が設定されていない場合、内容イベントは破棄されます。
+
+XMLReader.getDTDHandler()
+現在の DTDHandler を返します。
+
+XMLReader.setDTDHandler(handler)
+現在の DTDHandler を返します。 DTDHandler が設定されていな場合、DTD イベントは破棄されます。
+
+XMLReader.getEntityResolver()
+現在の EntityResolver を返します。
+
+XMLReader.setEntityResolver(handler)
+現在の EntityResolver を返します。 EntityResolver が設定されていない場合、外部エンティティの解決を試行することでエンティティのシステム識別子が開かれます。利用できない場合は失敗します。
+
+XMLReader.getErrorHandler()
+現在の ErrorHandler を返します。
+
+XMLReader.setErrorHandler(handler)
+現在のエラーハンドラを設定します。ErrorHandler が設定されていない場合、エラーが例外として送出され、警告が表示されます。
+
+XMLReader.setLocale(locale)
+アプリケーションにエラーや警告のロケール設定を許可します。
+
+SAX パーサにとって、エラーや警告の地域化は必須ではありません。しかし、パーサが要求されたロケールをサポートしていない場合、SAX 例外を送出しなければなりません。アプリケーションはパースの途中でロケールの変更を要求することができます。
+
+XMLReader.getFeature(featurename)
+機能 featurename の現在の設定を返します。その機能が認識できないときは、 SAXNotRecognizedException を送出します。有名な機能名はモジュール xml.sax.handler に列挙されています。
+
+XMLReader.setFeature(featurename, value)
+機能名 featurename に値 value を設定します。その機能が認識できないときは、 SAXNotRecognizedException を送出します。また、パーサが指定された機能や設定をサポートしていないときは、 SAXNotSupportedException を送出します。
+
+XMLReader.getProperty(propertyname)
+属性名 propertyname の現在の値を返します。その属性が認識できないときは、 SAXNotRecognizedException を送出します。有名な属性名はモジュール xml.sax.handler に列挙されています。
+
+XMLReader.setProperty(propertyname, value)
+属性名 propertyname に値 value を設定します。その機能が認識できないときは、 SAXNotRecognizedException を送出します。また、パーサが指定された機能や設定をサポートしていないときは、 SAXNotSupportedException を送出します。
+
+IncrementalParser オブジェクト
+IncrementalParser のインスタンスは次の追加メソッドを提供します:
+
+IncrementalParser.feed(data)
+data のチャンクを処理します。
+
+IncrementalParser.close()
+文書の終端を決定します。文書の適格性を調べ (終端でのみ可能)、ハンドラを起動し、パース時に割り当てた資源を解放します。
+
+IncrementalParser.reset()
+このメソッドは close が呼び出された後、新しい文書をパースできるように、パーサをリセットするのに呼び出されます。close 後 reset を呼び出さずに parse や feed を呼び出した場合の戻り値は未定義です。
+
+Locator オブジェクト
+Locator のインスタンスは次のメソッドを提供します:
+
+Locator.getColumnNumber()
+現在のイベントが開始する列番号を返します。
+
+Locator.getLineNumber()
+現在のイベントが開始する行番号を返します。
+
+Locator.getPublicId()
+現在の文書イベントの公開識別子を返します。
+
+Locator.getSystemId()
+現在のイベントのシステム識別子を返します。
+
+InputSource オブジェクト
+InputSource.setPublicId(id)
+この InputSource の公開識別子を設定します。
+
+InputSource.getPublicId()
+この InputSource の公開識別子を返します。
+
+InputSource.setSystemId(id)
+この InputSource のシステム識別子を設定します。
+
+InputSource.getSystemId()
+この InputSource のシステム識別子を返します。
+
+InputSource.setEncoding(encoding)
+この InputSource の文字エンコーディングを設定します。
+
+エンコーディングは XML エンコーディング宣言として受け入れられる文字列でなければなりません (XML 勧告の 4.3.3 節を参照)。
+
+InputSource も文字ストリームを含んでいた場合、InputSource のエンコーディング属性は無視されます。
+
+InputSource.getEncoding()
+この InputSource の文字エンコーディングを取得します。
+
+InputSource.setByteStream(bytefile)
+この入力ソースのバイトストリーム (binary file) を設定します。
+
+文字ストリームも指定されている場合、SAX パーサはこのバイトストリームを無視しますが、URI 接続自体を開くときには優先してバイトストリームを使います。
+
+アプリケーションがバイトストリームの文字エンコーディングを知っている場合は、setEncoding メソッドで設定する必要があります。
+
+InputSource.getByteStream()
+この入力ソースのバイトストリームを取得します。
+
+getEncoding メソッドは、このバイトストリームの文字エンコーディングを返します。不明なときは None を返します。
+
+InputSource.setCharacterStream(charfile)
+この入力ソースの文字ストリーム (text file) を設定します。
+
+文字ストリームが指定された場合、SAX パーサは全バイトストリームを無視し、システム識別子への URI 接続の開始を試みません。
+
+InputSource.getCharacterStream()
+この入力ソースの文字ストリームを取得します。
+
+Attributes インタフェース
+Attributes オブジェクトは copy()、get()、__contains__()、items()、keys()、values() を含む マッピングプロトコル の一部を実装しています。以下のメソッドも提供されています:
+
+Attributes.getLength()
+属性の数を返します。
+
+Attributes.getNames()
+属性の名前を返します。
+
+Attributes.getType(name)
+属性名 name のタイプを返します。通常は 'CDATA' です。
+
+Attributes.getValue(name)
+属性 name の値を返します。
+
+AttributesNS インタフェース
+このインタフェースは Attributes インタフェース (Attributes インタフェース 参照) のサブタイプです。 Attributes インタフェースがサポートしているすべてのメソッドは AttributesNS オブジェクトでも利用可能です。
+
+次のメソッドもサポートされています:
+
+AttributesNS.getValueByQName(name)
+修飾名の値を返します。
+
+AttributesNS.getNameByQName(name)
+修飾名 name に対応する (namespace, localname) のペアを返します。
+
+AttributesNS.getQNameByName(name)
+(namespace, localname) のペアに対応する修飾名を返します。
+
+AttributesNS.getQNames()
+すべての属性の修飾名を返します。
+
+xml.parsers.expat --- Expat を使った高速な XML 解析
+警告 pyexpat モジュールは悪意を持って作成されたデータに対して安全ではありません。信頼できないデータや認証されていないデータをパースする必要がある場合は XML の脆弱性 を参照してください。
+xml.parsers.expat モジュールは、検証 (validation) を行わない XML パーザ (parser, 解析器)、Expat への Python インタフェースです。モジュールは一つの拡張型 xmlparser を提供します。これは XMLパーザの現在の状況を表します。一旦 xmlparser オブジェクトを生成すると、オブジェクトの様々な属性をハンドラ関数 (handler function) に設定できます。その後、XML 文書をパーザに入力すると、 XML文書の文字列とマークアップに応じてハンドラ関数が呼び出されます。
+
+このモジュールでは、Expatパーザへのアクセスを提供するために pyexpat モジュールを使用します。 pyexpat モジュールの直接使用は撤廃されています。
+
+このモジュールは、例外を一つと型オブジェクトを一つ提供しています:
+
+exception xml.parsers.expat.ExpatError
+Expat がエラーを報告したときに例外を送出します。 Expatのエラーを解釈する上での詳細な情報は、 ExpatError 例外 を参照してください。
+
+exception xml.parsers.expat.error
+ExpatError の別名です。
+
+xml.parsers.expat.XMLParserType
+ParserCreate() 関数から返された戻り値の型を示します。
+
+xml.parsers.expat モジュールには以下の 2 つの関数が収められています:
+
+xml.parsers.expat.ErrorString(errno)
+与えられたエラー番号 errno を解説する文字列を返します。
+
+xml.parsers.expat.ParserCreate(encoding=None, namespace_separator=None)
+新しい xmlparser オブジェクトを作成し、返します。 encoding が指定されていた場合、XMLデータで使われている文字列のエンコード名でなければなりません。 Expatは、Pythonのように多くのエンコードをサポートしておらず、またエンコーディングのレパートリを拡張することはできません; サポートするエンコードは、UTF-8, UTF-16, ISO-8859-1 (Latin1), ASCII です。 encoding 1 が指定されると、文書に対する明示的、非明示的なエンコード指定を上書き (override) します。
+
+Expat はオプションで XML 名前空間の処理を行うことができます。これは引数 namespace_separator に値を指定することで有効になります。この値は、1文字の文字列でなければなりません; 文字列が誤った長さを持つ場合には ValueError が送出されます (None は値の省略と見なされます)。名前空間の処理が可能なとき、名前空間に属する要素と属性が展開されます。要素のハンドラである StartElementHandler と EndElementHandler に渡された要素名は、名前空間の URI、名前空間の区切り文字、要素名のローカル部を連結したものになります。名前空間の区切り文字が 0 バイト (chr(0)) の場合、名前空間の URI とローカル部は区切り文字なしで連結されます。
+
+たとえば、namespace_separator に空白文字(' ')がセットされ、次のような文書が解析されるとします:
+
+<?xml version="1.0"?>
+<root xmlns    = "http://default-namespace.org/"
+      xmlns:py = "http://www.python.org/ns/">
+  <py:elem1 />
+  <elem2 xmlns="" />
+</root>
+StartElementHandler は各要素ごとに次のような文字列を受け取ります:
+
+http://default-namespace.org/ root
+http://www.python.org/ns/ elem1
+elem2
+pyexpat が使っている Expat ライブラリの制限により、返される xmlparser インスタンスは単独の XML ドキュメントの解析にしか使えません。それぞれのドキュメントごとに別々のパーサのインスタンスを作るために ParserCreate を呼び出してください。
+
+参考
+The Expat XML Parser
+Expatプロジェクトのホームページ。
+
+XMLParser オブジェクト
+xmlparser オブジェクトは以下のようなメソッドを持ちます:
+
+xmlparser.Parse(data[, isfinal])
+文字列 data の内容を解析し、解析されたデータを処理するための適切な関数を呼び出します。このメソッドを最後に呼び出す時は isfinal を真にしなければなりません; 単体ファイルを細切れに渡して解析出来ることを意味しますが、複数ファイルは扱えません。 data にはいつでも空の文字列を渡せます。
+
+xmlparser.ParseFile(file)
+file オブジェクトから読み込んだXMLデータを解析します。 file には read(nbytes) メソッドのみが必要です。このメソッドはデータがなくなった場合に空文字列を返さねばなりません。。
+
+xmlparser.SetBase(base)
+(XML) 宣言中のシステム識別子中の相対 URI を解決するための、基底 URI を設定します。相対識別子の解決はアプリケーションに任されます: この値は関数 ExternalEntityRefHandler() や NotationDeclHandler(), UnparsedEntityDeclHandler() に引数 base としてそのまま渡されます。
+
+xmlparser.GetBase()
+以前の SetBase() によって設定された基底 URI を文字列の形で返します。 SetBase() が呼ばれていないときには None を返します。
+
+xmlparser.GetInputContext()
+現在のイベントを発生させた入力データを文字列として返します。データはテキストの入っているエンティティが持っているエンコードになります。イベントハンドラがアクティブでないときに呼ばれると、戻り値は None となります。
+
+xmlparser.ExternalEntityParserCreate(context[, encoding])
+親となるパーザで解析された内容が参照している、外部で解析されるエンティティを解析するために使える "子の" パーザを作成します。 context パラメータは、以下に記すように ExternalEntityRefHandler() ハンドラ関数に渡される文字列でなければなりません。子のパーザは ordered_attributes, specified_attributes が現在のパーザの値に設定されて生成されます。
+
+xmlparser.SetParamEntityParsing(flag)
+パラメータエンティティ (外部DTDサブセットを含む) の解析を制御します。 flag の有効な値は、 XML_PARAM_ENTITY_PARSING_NEVER, XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE, XML_PARAM_ENTITY_PARSING_ALWAYS です。 flag の設定をしたら true を返します。
+
+xmlparser.UseForeignDTD([flag])
+flag の値をデフォルトのtrueにすると、Expatは代わりのDTDをロードするため、すべての引数に None を設定して ExternalEntityRefHandler を呼び出します。XML文書が文書型定義を持っていなければ、 ExternalEntityRefHandler が呼び出しますが、 StartDoctypeDeclHandler と EndDoctypeDeclHandler は呼び出されません。
+
+flag にfalseを与えると、メソッドが前回呼ばれた時のtrueの設定が解除されますが、他には何も起こりません。
+
+このメソッドは Parse() または ParseFile() メソッドが呼び出される前にだけ呼び出されます;これら2つのメソッドのどちらかが呼び出されたあとにメソッドが呼ばれると、 code に定数 errors.codes[errors.XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING] が設定されて例外 ExpatError が送出されます。
+
+xmlparser オブジェクトは次のような属性を持ちます:
+
+xmlparser.buffer_size
+buffer_text が真の時に使われるバッファのサイズです。この属性に新しい整数値を代入することで違うバッファサイズにできます。サイズが変えられるときにバッファはフラッシュされます。
+
+xmlparser.buffer_text
+この値を真にすると、 xmlparser オブジェクトが Expatから返されたもとの内容をバッファに保持するようになります。これにより可能なときに何度も CharacterDataHandler() を呼び出してしまうようなことを避けることができます。Expatは通常、文字列のデータを行末ごと大量に破棄するため、かなりパフォーマンスを改善できるはずです。この属性はデフォルトでは偽で、いつでも変更可能です。
+
+xmlparser.buffer_used
+buffer_text が利用可能なとき、バッファに保持されたバイト数です。これらのバイトはUTF-8でエンコードされたテキストを表します。この属性は buffer_text が偽の時には意味がありません。
+
+xmlparser.ordered_attributes
+この属性をゼロ以外の整数にすると、報告される(XMLノードの) 属性を辞書型ではなくリスト型にします。属性は文書のテキスト中の出現順で示されます。それぞれの属性は、2つのリストのエントリ: 属性名とその値、が与えられます。 (このモジュールの古いバージョンでも、同じフォーマットが使われています。) デフォルトでは、この属性はデフォルトでは偽となりますが、いつでも変更可能です。
+
+xmlparser.specified_attributes
+ゼロ以外の整数にすると、パーザは文書のインスタンスで特定される属性だけを報告し、属性宣言から導出された属性は報告しないようになります。この属性が指定されたアプリケーションでは、XMLプロセッサの振る舞いに関する標準に従うために必要とされる (文書型) 宣言によって、どのような付加情報が利用できるのかということについて特に注意を払わなければなりません。デフォルトで、この属性は偽となりますが、いつでも変更可能です。
+
+以下の属性には、 xmlparser オブジェクトで最も最近に起きたエラーに関する値が入っており、また Parse() または ParseFile() メソッドが xml.parsers.expat.ExpatError 例外を送出した際にのみ正しい値となります。
+
+xmlparser.ErrorByteIndex
+エラーが発生したバイトのインデクスです。
+
+xmlparser.ErrorCode
+エラーを特定する数値によるコードです。この値は ErrorString() に渡したり、 errors オブジェクトで定義された内容と比較できます。
+
+xmlparser.ErrorColumnNumber
+エラーの発生したカラム番号です。
+
+xmlparser.ErrorLineNumber
+エラーの発生した行番号です。
+
+以下の属性は xmlparser オブジェクトがその時パースしている位置に関する値を保持しています。コールバックがパースイベントを報告している間、これらの値はイベントの生成した文字列の先頭の位置を指し示します。コールバックの外から参照された時には、（対応するコールバックであるかにかかわらず）直前のパースイベントの位置を示します。
+
+xmlparser.CurrentByteIndex
+パーサへの入力の、現在のバイトインデックス。
+
+xmlparser.CurrentColumnNumber
+パーサへの入力の、現在のカラム番号。
+
+xmlparser.CurrentLineNumber
+パーサへの入力の、現在の行番号。
+
+以下に指定可能なハンドラのリストを示します。 xmlparser オブジェクト o にハンドラを指定するには、 o.handlername = func を使用します。 handlername は、以下のリストに挙げた値をとらなければならず、また func は正しい数の引数を受理する呼び出し可能なオブジェクトでなければなりません。引数は特に明記しない限り、すべて文字列となります。
+
+xmlparser.XmlDeclHandler(version, encoding, standalone)
+XML 宣言が解析された時に呼ばれます。 XML宣言は XML 勧告の適用バージョン、文書テクストのエンコード、ならびに任意の "standalone" 宣言の (任意の) 宣言です。 version と encoding は文字列で、standalone は文書がスタンドアローンと宣言された場合は 1、スタンドアローンでないと宣言された場合は 0、スタンドアローン節がない場合は -1 です。 Expat のバージョン 1.95.0 以降でのみ使用できます。
+
+xmlparser.StartDoctypeDeclHandler(doctypeName, systemId, publicId, has_internal_subset)
+Expatが文書型宣言 (<!DOCTYPE ...)を解析し始めたときに呼び出されます。 doctypeName は、与えられた値がそのまま Expat に提供されます。 systemId と publicId パラメタが指定されている場合、それぞれシステムと公開識別子を与えます。省略する時には None にします。文書が内部的な文書宣言のサブセット (internal document declaration subset) を持つか、サブセット自体の場合、 has_internal_subset は true になります。このハンドラには、Expat version 1.2以上が必要です。
+
+xmlparser.EndDoctypeDeclHandler()
+Expatが文書型宣言の解析を終えたときに呼び出されます。このハンドラには、Expat version 1.2以上が必要です。
+
+xmlparser.ElementDeclHandler(name, model)
+それぞれの要素型宣言ごとに呼び出されます。 name は要素型の名前であり、 model は内容モデル (content model) の表現です。
+
+xmlparser.AttlistDeclHandler(elname, attname, type, default, required)
+ひとつの要素型で宣言される属性ごとに呼び出されます。属性リストの宣言が 3つの属性を宣言したとすると、このハンドラは各属性に1度ずつ、 3度呼び出されます。 elname は要素名であり、これに対して宣言が適用され、 attname が宣言された属性名となります。属性型は文字列で、 type として渡されます。取り得る値は、 'CDATA', 'ID', 'IDREF', ... です。 default は、文書のインスタンスによって属性が指定されていないときに使用されるデフォルト値です。デフォルト値(#IMPLIED values)が存在しないときには None を与えます。文書のインスタンス中に属性値を与える必要のあるときには required が true になります。これにはExpat version 1.95.0 以上が必要です。
+
+xmlparser.StartElementHandler(name, attributes)
+要素の開始ごとに呼び出されます。 name は要素名を持つ文字列で、 attributes は要素の属性です。 ordered_attributes が真の場合これはリストです (詳細は ordered_attributes を参照してください)。 そうでなければ名前を値に対応させる辞書です。
+
+xmlparser.EndElementHandler(name)
+要素の終端を処理するごとに呼び出されます。
+
+xmlparser.ProcessingInstructionHandler(target, data)
+処理命令を処理するごとに呼び出されます。
+
+xmlparser.CharacterDataHandler(data)
+文字データを処理するときに呼びだされます。このハンドラは通常の文字データ、 CDATAセクション、無視できる空白文字列のために呼び出されます。これらを識別しなければならないアプリケーションは、要求された情報を収集するために StartCdataSectionHandler, EndCdataSectionHandler, and ElementDeclHandler コールバックメソッドを使用できます。
+
+xmlparser.UnparsedEntityDeclHandler(entityName, base, systemId, publicId, notationName)
+解析されていない (NDATA) エンティティ宣言を処理するために呼び出されます。このハンドラは Expat ライブラリのバージョン1.2のためだけに存在します; より最近のバージョンでは、代わりに EntityDeclHandler を使用してください (根底にある Expat ライブラリ内の関数は、撤廃されたものであると宣言されています)。
+
+xmlparser.EntityDeclHandler(entityName, is_parameter_entity, value, base, systemId, publicId, notationName)
+エンティティ宣言ごとに呼び出されます。パラメタと内部エンティティについて、 value はエンティティ宣言の宣言済みの内容を与える文字列となります; 外部エンティティの時には None となります。解析済みエンティティの場合、 notationName パラメタは None となり、解析されていないエンティティの時には記法 (notation) 名となります。 is_parameter_entity は、エンティティがパラメタエンティティの場合真に、一般エンティティ (general entitiy) の場合には偽になります (ほとんどのアプリケーションでは、一般エンティティのことしか気にする必要がありません)。このハンドラは Expat ライブラリのバージョン1.95.0 以降でのみ使用できます。
+
+xmlparser.NotationDeclHandler(notationName, base, systemId, publicId)
+記法の宣言 (notation declaration) で呼び出されます。 notationName, base, systemId, および publicId を与える場合、文字列にします。public な識別子が省略された場合、 publicId は None になります。
+
+xmlparser.StartNamespaceDeclHandler(prefix, uri)
+要素が名前空間宣言を含んでいる場合に呼び出されます。名前空間宣言は、宣言が配置されている要素に対して StartElementHandler が呼び出される前に処理されます。
+
+xmlparser.EndNamespaceDeclHandler(prefix)
+名前空間宣言を含んでいたエレメントの終了タグに到達したときに呼び出されます。このハンドラは、要素に関する名前空間宣言ごとに、 StartNamespaceDeclHandler とは逆の順番で一度だけ呼び出され、各名前空間宣言のスコープが開始されたことを示します。このハンドラは、要素が終了する際、対応する EndElementHandler が呼ばれた後に呼び出されます。
+
+xmlparser.CommentHandler(data)
+コメントで呼び出されます。 data はコメントのテキストで、先頭の '<!- -' と末尾の '- ->' を除きます。
+
+xmlparser.StartCdataSectionHandler()
+CDATA セクションの開始時に呼び出されます。CDATA セクションの構文的な開始と終了位置を識別できるようにするには、このハンドラと EndCdataSectionHandler が必要です。
+
+xmlparser.EndCdataSectionHandler()
+CDATA セクションの終了時に呼び出されます。
+
+xmlparser.DefaultHandler(data)
+XML 文書中で、適用可能なハンドラが指定されていない文字すべてに対して呼び出されます。この文字とは、検出されたことが報告されるが、ハンドラは指定されていないようなコンストラクト (construct) の一部である文字を意味します。
+
+xmlparser.DefaultHandlerExpand(data)
+DefaultHandler() と同じですが、内部エンティティの展開を禁止しません。エンティティ参照はデフォルトハンドラに渡されません。
+
+xmlparser.NotStandaloneHandler()
+XML 文書がスタンドアロンの文書として宣言されていない場合に呼び出されます。外部サブセットやパラメタエンティティへの参照が存在するが、XML 宣言が XML 宣言中で standalone 変数を yes に設定していない場合に起きます。このハンドラが 0 を返すと、パーザは XML_ERROR_NOT_STANDALONE を発生させます。このハンドラが設定されていなければ、パーザは前述の事態で例外を送出しません。
+
+xmlparser.ExternalEntityRefHandler(context, base, systemId, publicId)
+外部エンティティの参照時に呼び出されます。 base は現在の基底 (base) で、以前の SetBase() で設定された値になっています。 public、および system の識別子である、 systemId と publicId が指定されている場合、値は文字列です; public 識別子が指定されていない場合、 publicId は None になります。 context の値は不明瞭なものであり、以下に記述するようにしか使ってはなりません。
+
+外部エンティティが解析されるようにするには、このハンドラを実装しなければなりません。このハンドラは、 ExternalEntityParserCreate(context) を使って適切なコールバックを指定し、子パーザを生成して、エンティティを解析する役割を担います。このハンドラは整数を返さなければなりません; 0 を返した場合、パーザは XML_ERROR_EXTERNAL_ENTITY_HANDLING エラーを送出します。そうでない場合、解析を継続します。
+
+このハンドラが与えられておらず、 DefaultHandler コールバックが指定されていれば、外部エンティティは DefaultHandler で報告されます。
+
+ExpatError 例外
+ExpatError 例外はいくつかの興味深い属性を備えています:
+
+ExpatError.code
+特定のエラーに対する Expat の内部エラー番号です。 errors.messages 辞書はこれらのエラー番号を Expat のエラーメッセージに対応させます。 例えば:
+
+from xml.parsers.expat import ParserCreate, ExpatError, errors
+
+p = ParserCreate()
+try:
+    p.Parse(some_xml_document)
+except ExpatError as err:
+    print("Error:", errors.messages[err.code])
+errors モジュールはエラーメッセージ定数と、それらのメッセージをエラーコードに対応させる辞書 codes も提供しています。以下を参照してください。
+
+ExpatError.lineno
+エラーが検出された場所の行番号です。最初の行の番号は 1 です。
+
+ExpatError.offset
+エラーが発生した場所の行内でのオフセットです。最初のカラムの番号は 0 です。
+
+使用例
+以下のプログラムでは、与えられた引数を出力するだけの三つのハンドラを定義しています。
+
+import xml.parsers.expat
+
+# 3 handler functions
+def start_element(name, attrs):
+    print('Start element:', name, attrs)
+def end_element(name):
+    print('End element:', name)
+def char_data(data):
+    print('Character data:', repr(data))
+
+p = xml.parsers.expat.ParserCreate()
+
+p.StartElementHandler = start_element
+p.EndElementHandler = end_element
+p.CharacterDataHandler = char_data
+
+p.Parse("""<?xml version="1.0"?>
+<parent id="top"><child1 name="paul">Text goes here</child1>
+<child2 name="fred">More text</child2>
+</parent>""", 1)
+このプログラムの出力は以下のようになります:
+
+Start element: parent {'id': 'top'}
+Start element: child1 {'name': 'paul'}
+Character data: 'Text goes here'
+End element: child1
+Character data: '\n'
+Start element: child2 {'name': 'fred'}
+Character data: 'More text'
+End element: child2
+Character data: '\n'
+End element: parent
+内容モデルの記述
+内容モデルは入れ子になったタプルを使って記述されています。各タプルには以下の 4 つの値が収められています: 型、限定詞 (quantifier)、名前、そして子のタプル。子のタプルは単に内容モデルを記述したものです。
+
+最初の二つのフィールドの値は xml.parsers.expat.model モジュールで定義されている定数です。これらの定数は二つのグループ: モデル型 (model type) グループと限定子 (quantifier) グループ、に取りまとめられます。
+
+以下にモデル型グループにおける定数を示します:
+
+xml.parsers.expat.model.XML_CTYPE_ANY
+モデル名で指定された要素は ANY の内容モデルを持つと宣言されます。
+
+xml.parsers.expat.model.XML_CTYPE_CHOICE
+指定されたエレメントはいくつかのオプションから選択できるようになっています; (A | B | C) のような内容モデルで用いられます。
+
+xml.parsers.expat.model.XML_CTYPE_EMPTY
+EMPTY であると宣言されている要素はこのモデル型を持ちます。
+
+xml.parsers.expat.model.XML_CTYPE_MIXED
+xml.parsers.expat.model.XML_CTYPE_NAME
+xml.parsers.expat.model.XML_CTYPE_SEQ
+順々に続くようなモデルの系列を表すモデルがこのモデル型で表されます。 (A, B, C) のようなモデルで用いられます。
+
+限定子グループにおける定数を以下に示します:
+
+xml.parsers.expat.model.XML_CQUANT_NONE
+修飾子 (modifier) が指定されていません。従って A のように、厳密に一つだけです。
+
+xml.parsers.expat.model.XML_CQUANT_OPT
+このモデルはオプションです: A? のように、一つか全くないかです。
+
+xml.parsers.expat.model.XML_CQUANT_PLUS
+このモデルは (A+ のように) 一つかそれ以上あります。
+
+xml.parsers.expat.model.XML_CQUANT_REP
+このモデルは A* のようにゼロ回以上あります。
+
+Expat エラー定数
+以下の定数は xml.parsers.expat.errors モジュールで提供されています。 これらの定数は、エラーが発生した際に送出される ExpatError 例外オブジェクトのいくつかの属性を解釈する上で便利です。 後方互換性の理由で、定数値は数字のエラー コード ではなくエラー メッセージ です。 属性を解釈するには code 属性と errors.codes[errors.XML_ERROR_CONSTANT_NAME] を比較します。
+
+errors モジュールには以下の属性があります:
+
+xml.parsers.expat.errors.codes
+文字列の記述をエラーコードに対応させる辞書です。
+
+バージョン 3.2 で追加.
+
+xml.parsers.expat.errors.messages
+数値的なエラーコードを文字列の記述に対応させる辞書です。
+
+バージョン 3.2 で追加.
+
+xml.parsers.expat.errors.XML_ERROR_ASYNC_ENTITY
+xml.parsers.expat.errors.XML_ERROR_ATTRIBUTE_EXTERNAL_ENTITY_REF
+属性値中のエンティティ参照が、内部エンティティではなく外部エンティティを参照しました。
+
+xml.parsers.expat.errors.XML_ERROR_BAD_CHAR_REF
+文字参照が、XML では正しくない (illegal) 文字を参照しました (例えば 0 や '&#0;')。
+
+xml.parsers.expat.errors.XML_ERROR_BINARY_ENTITY_REF
+エンティティ参照が、記法 (notation) つきで宣言されているエンティティを参照したため、解析できません。
+
+xml.parsers.expat.errors.XML_ERROR_DUPLICATE_ATTRIBUTE
+一つの属性が一つの開始タグ内に一度より多く使われています。
+
+xml.parsers.expat.errors.XML_ERROR_INCORRECT_ENCODING
+xml.parsers.expat.errors.XML_ERROR_INVALID_TOKEN
+入力されたバイトが文字に適切に関連付けできない際に送出されます; 例えば、UTF-8 入力ストリームにおける NUL バイト (値 0) などです。
+
+xml.parsers.expat.errors.XML_ERROR_JUNK_AFTER_DOC_ELEMENT
+空白以外の何かがドキュメント要素の後にあります。
+
+xml.parsers.expat.errors.XML_ERROR_MISPLACED_XML_PI
+入力データの先頭以外の場所に XML 定義が見つかりました。
+
+xml.parsers.expat.errors.XML_ERROR_NO_ELEMENTS
+この文書には要素がありません (XML では全ての文書は確実に最上位の要素を正確に一つ持たなければなりません)。
+
+xml.parsers.expat.errors.XML_ERROR_NO_MEMORY
+Expat が内部メモリを確保できませんでした。
+
+xml.parsers.expat.errors.XML_ERROR_PARAM_ENTITY_REF
+パラメータエンティティが許可されていない場所で見つかりました。
+
+xml.parsers.expat.errors.XML_ERROR_PARTIAL_CHAR
+入力に不完全な文字が見つかりました。
+
+xml.parsers.expat.errors.XML_ERROR_RECURSIVE_ENTITY_REF
+エンティティ参照中に、同じエンティティへの別の参照が入っていました; おそらく違う名前で参照しているか、間接的に参照しています。
+
+xml.parsers.expat.errors.XML_ERROR_SYNTAX
+何らかの仕様化されていない構文エラーに遭遇しました。
+
+xml.parsers.expat.errors.XML_ERROR_TAG_MISMATCH
+終了タグが最も内側で開かれている開始タグに一致しません。
+
+xml.parsers.expat.errors.XML_ERROR_UNCLOSED_TOKEN
+何らかの (開始タグのような) トークンが閉じられないまま、ストリームの終端や次のトークンに遭遇しました。
+
+xml.parsers.expat.errors.XML_ERROR_UNDEFINED_ENTITY
+定義されていないエンティティへの参照が行われました。
+
+xml.parsers.expat.errors.XML_ERROR_UNKNOWN_ENCODING
+ドキュメントのエンコードが Expat でサポートされていません。
+
+xml.parsers.expat.errors.XML_ERROR_UNCLOSED_CDATA_SECTION
+CDATAセクションが閉じられていません。
+
+xml.parsers.expat.errors.XML_ERROR_EXTERNAL_ENTITY_HANDLING
+xml.parsers.expat.errors.XML_ERROR_NOT_STANDALONE
+XML文書が "standalone" だと宣言されており NotStandaloneHandler が設定され 0 が返されているにもかかわらず、パーサは "standalone" ではないと判別しました。
+
+xml.parsers.expat.errors.XML_ERROR_UNEXPECTED_STATE
+xml.parsers.expat.errors.XML_ERROR_ENTITY_DECLARED_IN_PE
+xml.parsers.expat.errors.XML_ERROR_FEATURE_REQUIRES_XML_DTD
+その操作を完了するにはDTDのサポートが必要ですが、ExpatがDTDのサポートをしない設定になっています。これは xml.parsers.expat モジュールの標準的なビルドでは報告されません。
+
+xml.parsers.expat.errors.XML_ERROR_CANT_CHANGE_FEATURE_ONCE_PARSING
+パースが始まったあとで動作の変更が要求されました。これはパースが開始される前にのみ変更可能です。（現在のところ） UseForeignDTD() によってのみ送出されます。
+
+xml.parsers.expat.errors.XML_ERROR_UNBOUND_PREFIX
+名前空間の処理を有効すると宣言されていないプレフィックスが見つかります。
+
+xml.parsers.expat.errors.XML_ERROR_UNDECLARING_PREFIX
+XML文書はプレフィックスに対応した名前空間宣言を削除しようとしました。
+
+xml.parsers.expat.errors.XML_ERROR_INCOMPLETE_PE
+パラメータエンティティは不完全なマークアップを含んでいます。
+
+xml.parsers.expat.errors.XML_ERROR_XML_DECL
+XML文書中に要素がありません。
+
+xml.parsers.expat.errors.XML_ERROR_TEXT_DECL
+外部エンティティ中のテキスト宣言にエラーがあります。
+
+xml.parsers.expat.errors.XML_ERROR_PUBLICID
+パブリックID中に許可されていない文字があります。
+
+xml.parsers.expat.errors.XML_ERROR_SUSPENDED
+要求された操作は一時停止されたパーサで行われていますが、許可されていない操作です。このエラーは追加の入力を行なおうとしている場合、もしくはパーサが停止しようとしている場合にも送出されます。
+
+xml.parsers.expat.errors.XML_ERROR_NOT_SUSPENDED
+パーサを一時停止しようとしましたが、停止されませんでした。
+
+xml.parsers.expat.errors.XML_ERROR_ABORTED
+Pythonアプリケーションには通知されません。
+
+xml.parsers.expat.errors.XML_ERROR_FINISHED
+要求された操作で、パース対象となる入力が完了したと判断しましたが、入力は受理されませんでした。このエラーは追加の入力を行なおうとしている場合、もしくはパーサが停止しようとしている場合に送出されます。
+
+xml.parsers.expat.errors.XML_ERROR_SUSPEND_PE
+脚注
+
+1
+XML 出力に含まれるエンコーディング文字列は適切な規格に従っていなければなりません。例えば、 "UTF-8" は有効ですが、 "UTF8" はそうではありません。

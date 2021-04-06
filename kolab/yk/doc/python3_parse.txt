@@ -1,0 +1,488 @@
+2. 字句解析¶
+Python で書かれたプログラムは パーザ (parser) に読み込まれます。パーザへの入力は、 字句解析器 (lexical analyzer) によって生成された一連の トークン (token) からなります。この章では、字句解析器がファイルをトークン列に分解する方法について解説します。
+
+Python はプログラムテキストを Unicode コードポイントとして読み込みます。ソースファイルのエンコーディングはエンコーディング宣言で与えられ、デフォルトは UTF-8 です。詳細は PEP 3120 を参照してください。ソースファイルがデコードできなければ、 SyntaxError が送出されます。
+
+2.1. 行構造
+Python プログラムは多数の 論理行 (logical lines) に分割されます。
+
+2.1.1. 論理行 (logical line)
+論理行の終端は、トークン NEWLINE で表されます。構文上許されている場合 (複合文: compound statement 中の実行文: statement) を除いて、実行文は論理行間にまたがることはできません。論理行は一行またはそれ以上の 物理行(physical line) からなり、物理行の末尾には明示的または非明示的な 行連結(line joining) 規則が続きます。
+
+2.1.2. 物理行 (physical line)
+物理行とは、行終端コードで区切られた文字列のことです。 ソースファイルやソース文字列では、各プラットフォームごとの標準の行終端コードを使用することができます。 Unix形式ではASCII LF (行送り: linefeed)文字、 Windows形式ではASCII 配列の CR LF (復帰: return に続いて行送り) 、 Macintosh形式ではASCII CR (復帰) 文字です。 これら全ての形式のコードは、違うプラットフォームでも等しく使用することができます。 入力の末尾も、最後の物理行の暗黙的な終端としての役割を果たします。
+
+Pythonに埋め込む場合には、標準のC言語の改行文字の変換規則 (ASCII LFを表現した文字コード \n が行終端となります) に従って、 Python APIにソースコードを渡す必要があります。
+
+2.1.3. コメント (Comments)
+コメントは文字列リテラル内に入っていないハッシュ文字 (#) から始まり、同じ物理行の末端で終わります。 非明示的な行継続規則が適用されていない限り、コメントは論理行を終端させます。 コメントは構文上無視されます。
+
+2.1.4. エンコード宣言 (encoding declaration)
+Python スクリプト中の一行目か二行目にあるコメントが正規表現 coding[=:]\s*([-\w.]+) にマッチする場合、コメントはエンコード宣言として処理されます; この表現の最初のグループがソースコードファイルのエンコードを指定します。エンコード宣言は自身の行になければなりません。二行目にある場合、一行目もコメントのみの行でなければなりません。エンコード宣言式として推奨する形式は
+
+# -*- coding: <encoding-name> -*-
+これは GNU Emacs で認識できます。または
+
+# vim:fileencoding=<encoding-name>
+これは、Bram Moolenar による VIM が認識できる形式です。
+
+エンコーディング宣言が見つからなければ、デフォルトのエンコーディングは UTF-8 です。さらに、ファイルの先頭のバイト列が UTF-8 バイトオーダ記号 (b'\xef\xbb\xbf') なら、ファイルのエンコーディングは UTF-8 と宣言されているものとします (この機能は Microsoft の notepad やその他のエディタでサポートされています)。
+
+エンコーディングが宣言される場合、そのエンコーディング名は Python によって認識できなければなりません。宣言されたエンコーディングは、例えば文字列リテラル、コメント、識別子などの、全ての字句解析に使われます。
+
+2.1.5. 明示的な行継続
+二つまたはそれ以上の物理行を論理行としてつなげるためには、バックスラッシュ文字 (\) を使って以下のようにします: 物理行が文字列リテラルやコメント中の文字でないバックスラッシュで終わっている場合、後続する行とつなげて一つの論理行を構成し、バックスラッシュおよびバックスラッシュの後ろにある行末文字を削除します。例えば:
+
+if 1900 < year < 2100 and 1 <= month <= 12 \
+   and 1 <= day <= 31 and 0 <= hour < 24 \
+   and 0 <= minute < 60 and 0 <= second < 60:   # Looks like a valid date
+        return 1
+バックスラッシュで終わる行にはコメントを入れることはできません。また、バックスラッシュを使ってコメントを継続することはできません。バックスラッシュが文字列リテラル中にある場合を除き、バックスラッシュの後ろにトークンを継続することはできません (すなわち、物理行内の文字列リテラル以外のトークンをバックスラッシュを使って分断することはできません)。上記以外の場所では、文字列リテラル外にあるバックスラッシュはどこにあっても不正となります。
+
+2.1.6. 非明示的な行継続
+丸括弧 (parentheses)、角括弧 (square bracket) 、および波括弧 (curly brace) 内の式は、バックスラッシュを使わずに一行以上の物理行に分割することができます。例えば:
+
+month_names = ['Januari', 'Februari', 'Maart',      # These are the
+               'April',   'Mei',      'Juni',       # Dutch names
+               'Juli',    'Augustus', 'September',  # for the months
+               'Oktober', 'November', 'December']   # of the year
+非明示的に継続された行にはコメントを含めることができます。継続行のインデントは重要ではありません。空の継続行を書くことができます。非明示的な継続行中には、NEWLINE トークンは存在しません。非明示的な行の継続は、三重クオートされた文字列 (下記参照) でも発生します; この場合には、コメントを含めることができません。
+
+2.1.7. 空行
+スペース、タブ、フォームフィード、およびコメントのみを含む論理行は無視されます (すなわち、NEWLINE トークンは生成されません)。文を対話的に入力している際には、空行の扱いは行読み込み-評価-出力 (read-eval-print) ループの実装によって異なることがあります。標準的な対話的インタプリタの実装では、完全な空行でできた論理行 (すなわち、空白文字もコメントも全く含まない空行) は、複数行からなる文の終端を示します。
+
+2.1.8. インデント
+論理行の行頭にある、先頭の空白 (スペースおよびタブ) の連なりは、その行のインデントレベルを計算するために使われます。インデントレベルは、実行文のグループ化方法を決定するために用いられます。
+
+タブは (左から右の方向に) 1 つにつき 8 つのスペースで置き換えられ、置き換え後の文字数は 8 の倍数になります (Unix で使われている規則と同じになるよう意図されています)。そして、最初の非空白文字までのスペースの総数が、その行のインデントを決定します。インデントは、バックスラッシュで複数の物理行に分割できません; 最初のバックスラッシュまでの空白がインデントを決定します。
+
+ソースファイルがタブとスペースを混在させ、その意味づけがタブのスペース換算数に依存するようなら、インデントは不合理なものとして却下されます。その場合は TabError が送出されます。
+
+プラットフォーム間の互換性に関する注意: 非 UNIX プラットフォームにおけるテキストエディタの性質上、一つのソースファイル内でタブとインデントを混在させて使うのは賢明ではありません。また、プラットフォームによっては、最大インデントレベルを明示的に制限しているかもしれません。
+
+フォームフィード文字が行の先頭にあっても構いません; フォームフィード文字は上のインデントレベル計算時には無視されます。フォームフィード文字が先頭の空白中の他の場所にある場合、その影響は未定義です (例えば、スペースの数を 0 にリセットするかもしれません)。
+
+連続する行における各々のインデントレベルは、 INDENT および DEDENT トークンを生成するために使われます。トークンの生成はスタックを用いて以下のように行われます。
+
+ファイル中の最初の行を読み出す前に、スタックにゼロが一つ積まれ (push され) ます; このゼロは決して除去 (pop) されることはありません。スタックの先頭に積まれてゆく数字は、常にスタックの末尾から先頭にかけて厳密に増加するようになっています。各論理行の開始位置において、その行のインデントレベル値がスタックの先頭の値と比較されます。値が等しければ何もしません。インデントレベル値がスタック上の値よりも大きければ、インデントレベル値はスタックに積まれ、INDENT トークンが一つ生成されます。インデントレベル値がスタック上の値よりも小さい場合、その値はスタック内のいずれかの値と 等しくなければなりません ; スタック上のインデントレベル値よりも大きい値はすべて除去され、値が一つ除去されるごとに DEDENT トークンが一つ生成されます。ファイルの末尾では、スタックに残っているゼロより大きい値は全て除去され、値が一つ除去されるごとに DEDENT トークンが一つ生成されます。
+
+以下の例に正しく (しかし当惑させるように) インデントされた Python コードの一部を示します:
+
+def perm(l):
+        # Compute the list of all permutations of l
+    if len(l) <= 1:
+                  return [l]
+    r = []
+    for i in range(len(l)):
+             s = l[:i] + l[i+1:]
+             p = perm(s)
+             for x in p:
+              r.append(l[i:i+1] + x)
+    return r
+以下の例は、様々なインデントエラーになります:
+
+ def perm(l):                       # error: first line indented
+for i in range(len(l)):             # error: not indented
+    s = l[:i] + l[i+1:]
+        p = perm(l[:i] + l[i+1:])   # error: unexpected indent
+        for x in p:
+                r.append(l[i:i+1] + x)
+            return r                # error: inconsistent dedent
+(実際は、最初の 3 つのエラーはパーザによって検出されます; 最後のエラーのみが字句解析器で見つかります --- return r のインデントは、スタックから逐次除去されていくどのインデントレベル値とも一致しません)
+
+2.1.9. トークン間の空白
+論理行の先頭や文字列の内部にある場合を除き、空白文字であるスペース、タブ、およびフォームフィードは、トークンを分割するために自由に利用することができます。二つのトークンを並べて書くと別のトークンとしてみなされてしまうような場合には、トークンの間に空白が必要となります (例えば、ab は一つのトークンですが、 a b は二つのトークンとなります)。
+
+2.2. その他のトークン
+NEWLINE、INDENT、および DEDENT の他、以下のトークンのカテゴリ: 識別子 (identifier), キーワード(keyword), リテラル, 演算子 (operator), デリミタ (delimiter) が存在します。空白文字 (上で述べた行終端文字以外) はトークンではありませんが、トークンを区切る働きがあります。トークンの解析にあいまいさが生じた場合、トークンは左から右に読んで不正でないトークンを構築できる最長の文字列を含むように構築されます。
+
+2.3. 識別子 (identifier) およびキーワード (keyword)
+識別子 (または 名前 (name)) は、以下の字句定義で記述されます。
+
+Python における識別子の構文は、Unicode 標準仕様添付書類 UAX-31 に基づき、詳細と変更点は以下で定義します。詳しくは PEP 3131 を参照してください。
+
+ASCII 範囲 (U+0001..U+007F) 内では、識別子として有効な文字は Python 2.x におけるものと同じです。大文字と小文字の A から Z、アンダースコア _、先頭の文字を除く数字 0 から 9 です。
+
+Python 3.0 は、さらに ASCII 範囲外から文字を導入します (PEP 3131 を参照してください。)。これらの文字については、分類は unicodedata モジュールに含まれる Unicode Character Database の版を使います。
+
+識別子の長さには制限がありません。大小文字は区別されます。
+
+identifier   ::=  xid_start xid_continue*
+id_start     ::=  <all characters in general categories Lu, Ll, Lt, Lm, Lo, Nl, the underscore, and characters with the Other_ID_Start property>
+id_continue  ::=  <all characters in id_start, plus characters in the categories Mn, Mc, Nd, Pc and others with the Other_ID_Continue property>
+xid_start    ::=  <all characters in id_start whose NFKC normalization is in "id_start xid_continue*">
+xid_continue ::=  <all characters in id_continue whose NFKC normalization is in "id_continue*">
+上で言及した Unicode カテゴリコードは以下を表します:
+
+Lu - 大文字 (uppercase letters)
+
+Ll - 小文字 (lowercase letters)
+
+Lt - 先頭が大文字 (titlecase letters)
+
+Lm - 修飾文字 (modifier letters)
+
+Lo - その他の文字 (other letters)
+
+Nl - 数値を表す文字 (letter numbers)
+
+Mn - 字幅のない記号 (nonspacing marks)
+
+Mc - 字幅のある結合記号 (spacing combining marks)
+
+Nd - 10 進数字 (decimal numbers)
+
+Pc - 連結用句読記号 (connector punctuations)
+
+Other_ID_Start - explicit list of characters in PropList.txt to support backwards compatibility
+
+Other_ID_Continue - 同様
+
+すべての識別子は、解析中は正規化形式 NFKC に変換されます。識別子間の比較は NFKC に基づきます。
+
+A non-normative HTML file listing all valid identifier characters for Unicode 4.1 can be found at https://www.unicode.org/Public/13.0.0/ucd/DerivedCoreProperties.txt
+
+2.3.1. キーワード (keyword)
+以下の識別子は、予約語、または Python 言語における キーワード (keyword) として使われ、通常の識別子として使うことはできません。キーワードは厳密に下記の通りに綴らなければなりません:
+
+False      await      else       import     pass
+None       break      except     in         raise
+True       class      finally    is         return
+and        continue   for        lambda     try
+as         def        from       nonlocal   while
+assert     del        global     not        with
+async      elif       if         or         yield
+2.3.2. 予約済みの識別子種 (reserved classes of identifiers)
+ある種の (キーワードを除く) 識別子には、特殊な意味があります。これらの識別子種は、先頭や末尾にあるアンダースコア文字のパターンで区別されます:
+
+_*
+from module import * で import されません。対話インタプリタでは、直前に行われた評価の結果を記憶するために特殊な識別子 _ が使われます; この識別子は builtins モジュール内に記憶されます。対話モードでないとき、 _ に特別な意味はなく、定義されていません。 import 文 を参照してください。
+
+注釈 名前 _ は、しばしば国際化 (internationalization) と共に用いられます; この慣習についての詳しい情報は、 gettext を参照してください。
+__*__
+システムで定義された (system-defined) 名前です。非公式には"dunder"な名前と呼ばれます(訳注: double underscoresの略)。これらの名前はインタープリタと (標準ライブラリを含む) 実装上で定義されています。 現行のシステムでの名前は 特殊メソッド名 などで話題に挙げられています。 Python の将来のバージョンではより多くの名前が定義されることになります。このドキュメントで明記されている用法に従わない、 あらゆる __*__ の名前は、いかなるコンテキストにおける利用でも、警告無く損害を引き起こすことがあります。
+
+__*
+クラスプライベート (class-private) な名前です。このカテゴリに属する名前は、クラス定義のコンテキスト上で用いられた場合、基底クラスと派生クラスの "プライベートな" 属性間で名前衝突が起こるのを防ぐために書き直されます。 識別子 (identifier、または名前 (name)) を参照してください。
+
+2.4. リテラル
+リテラル (literal) とは、いくつかの組み込み型の定数を表記したものです。
+
+2.4.1. 文字列およびバイト列リテラル
+文字列リテラルは以下の字句定義で記述されます:
+
+stringliteral   ::=  [stringprefix](shortstring | longstring)
+stringprefix    ::=  "r" | "u" | "R" | "U" | "f" | "F"
+                     | "fr" | "Fr" | "fR" | "FR" | "rf" | "rF" | "Rf" | "RF"
+shortstring     ::=  "'" shortstringitem* "'" | '"' shortstringitem* '"'
+longstring      ::=  "'''" longstringitem* "'''" | '"""' longstringitem* '"""'
+shortstringitem ::=  shortstringchar | stringescapeseq
+longstringitem  ::=  longstringchar | stringescapeseq
+shortstringchar ::=  <any source character except "\" or newline or the quote>
+longstringchar  ::=  <any source character except "\">
+stringescapeseq ::=  "\" <any source character>
+bytesliteral   ::=  bytesprefix(shortbytes | longbytes)
+bytesprefix    ::=  "b" | "B" | "br" | "Br" | "bR" | "BR" | "rb" | "rB" | "Rb" | "RB"
+shortbytes     ::=  "'" shortbytesitem* "'" | '"' shortbytesitem* '"'
+longbytes      ::=  "'''" longbytesitem* "'''" | '"""' longbytesitem* '"""'
+shortbytesitem ::=  shortbyteschar | bytesescapeseq
+longbytesitem  ::=  longbyteschar | bytesescapeseq
+shortbyteschar ::=  <any ASCII character except "\" or newline or the quote>
+longbyteschar  ::=  <any ASCII character except "\">
+bytesescapeseq ::=  "\" <any ASCII character>
+上記の生成規則で示されていない文法的な制限が一つあります。リテラルの stringprefix や bytesprefix と残りの部分の間に空白を入れてはならないことです。ソースコード文字セット (source character set) はエンコーディング宣言で定義されます。エンコーディング宣言がなければ UTF-8 です。節 エンコード宣言 (encoding declaration) を参照してください。
+
+より平易な説明: これらの型のリテラルは、対応する一重引用符 (') または二重引用符 (") で囲われます。また、対応する三連の一重引用符や二重引用符で囲うこともできます (通常、三重クオート文字列: triple-quoted string と呼ばれます)。バックスラッシュ (\) 文字で、本来特別な意味を持つ文字、例えば改行文字、バックスラッシュ自身、クオート文字などを、エスケープできます。
+
+バイト列リテラルには、常に 'b' や 'B' が接頭します。これらによって、 str 型ではなく bytes 型のインスタンスが作成されます。バイト列リテラルは ASCII 文字のみ含むことができます。 128 以上の数値を持つバイトはエスケープして表されなければなりません。
+
+文字列リテラルとバイト列リテラルの両方は、任意で文字 'r' または 'R' をプレフィックスに持つことができます; そのような文字列は raw strings と呼ばれ、バックスラッシュをリテラル文字として扱います。その結果、文字列リテラルでは raw 文字列中の '\U' と '\u' のエスケープは特別扱いされません。 Python 2.x の raw unicode リテラルが Python 3.x とは異なる振る舞いをするため、 'ur' 構文はサポートされません。
+
+バージョン 3.3 で追加: raw バイト列リテラルの 'rb' プレフィックスが 'br' の同義語として追加されました。
+
+バージョン 3.3 で追加: Python 2.x と 3.x 両対応のコードベースのメンテナンスを単純化するために、レガシー unicode リテラル (u'value') のサポートが再び導入されました。詳細は PEP 414 を参照してください。
+
+'f' または 'F' の接頭辞が付いた文字列リテラルはフォーマット済み文字列リテラル（ formatted string literal ）です。詳細については フォーマット済み文字列リテラル を参照してください。接頭辞の 'f' は 'r' と組み合わせられますが、 'b' や 'u' と組み合わせることはできません。つまりフォーマット済みの raw 文字列リテラルは可ですが、フォーマット済みのバイト列リテラルは不可です。
+
+三重クオートリテラル中には、三連のエスケープされないクオート文字でリテラルを終端してしまわないかぎり、エスケープされていない改行やクオートを書くことができます (さらに、それらはそのまま文字列中に残ります)。(ここでいう "クオート" とは、文字列の囲みを開始するときに使った文字を示し、' か " のいずれかです。)
+
+'r' または 'R' 接頭文字がつかないかぎり、文字列またはバイト列リテラル中のエスケープシーケンスは標準 C で使われているのと同様の法則にしたがって解釈されます。以下に Python で認識されるエスケープシーケンスを示します:
+
+エスケープシーケンス
+
+意味
+
+注釈
+
+\newline
+
+バックスラッシュと改行文字が無視されます
+
+\\
+
+バックスラッシュ (\)
+
+\'
+
+一重引用符 (')
+
+\"
+
+二重引用符 (")
+
+\a
+
+ASCII 端末ベル (BEL)
+
+\b
+
+ASCII バックスペース (BS)
+
+\f
+
+ASCII フォームフィード (FF)
+
+\n
+
+ASCII 行送り (LF)
+
+\r
+
+ASCII 復帰 (CR)
+
+\t
+
+ASCII 水平タブ (TAB)
+
+\v
+
+ASCII 垂直タブ (VT)
+
+\ooo
+
+8 進数値 ooo を持つ文字
+
+(1,3)
+
+\xhh
+
+16 進数値 hh を持つ文字
+
+(2,3)
+
+文字列でのみ認識されるエスケープシーケンスは以下のとおりです:
+
+エスケープシーケンス
+
+意味
+
+注釈
+
+\N{name}
+
+Unicode データベース中で name という名前の文字
+
+(4)
+
+\uxxxx
+
+16-bit の十六進値 xxxx を持つ文字
+
+(5)
+
+\Uxxxxxxxx
+
+32-bit の十六進値 xxxxxxxx を持つ文字
+
+(6)
+
+注釈:
+
+標準 C と同じく、最大で 3 桁の 8 進数まで受理します。
+
+標準 C とは違い、ちょうど 2 桁の 16 進数しか受理されません。
+
+バイト列リテラル中では、十六進および八進エスケープは与えられた値のバイトを表します。文字列リテラル中では、エスケープ文字は与えられた値を持つ Unicode 文字を表します。
+
+バージョン 3.3 で変更: name aliases 1 に対するサポートが追加されました。
+
+ちょうど 4 桁の 16 進数しか受理されません。
+
+あらゆるユニコード文字はこのようにしてエンコードすることができます。正確に8文字の16進数字が必要です。
+
+標準の C とは違い、認識されなかったエスケープシーケンスはすべて、そのまま文字列中に残ります。すなわち、バックスラッシュも結果中に残ります。(この挙動はデバッグの際に便利です: エスケープシーケンスが誤入力されたら、その出力結果が失敗しているのが分かりやすくなります。) 文字列中でのみ認識されるエスケープシーケンスは、バイト列リテラルには、認識されないエスケープシーケンスとして分類されるので注意してください。
+
+バージョン 3.6 で変更: Unrecognized escape sequences produce a DeprecationWarning. In a future Python version they will be a SyntaxWarning and eventually a SyntaxError.
+
+raw リテラルでも、引用符はバックスラッシュでエスケープできますが、バックスラッシュ自体も文字列に残ります; 例えば、r"\"" は有効な文字列リテラルで、バックスラッシュと二重引用符からなる文字列を表します; r"\" は無効な文字列リテラルです (raw リテラルを奇数個連なったバックスラッシュで終わらせることはできません)。具体的には、(バックスラッシュが直後のクオート文字をエスケープしてしまうので) raw文字列を単一のバックスラッシュで終わらせることはできません さらに、バックスラッシュの直後に改行がきても、行継続を意味する のではなく、リテラルの一部であるそれら二つの文字として解釈されます。
+
+2.4.2. 文字列リテラルの結合 (concatenation)
+文字列やバイト列リテラルは、互いに異なる引用符を使っていても (空白文字で区切っても) 複数隣接させることができます。これは各々の文字列を結合するのと同じ意味を持ちます。したがって、"hello" 'world' は "helloworld" と同じです。この機能を使うと、バックスラッシュを減らしたり、長い文字列を手軽に分離して複数行にまたがらせたり、あるいは部分文字列ごとにコメントを追加することさえできます。例えば:
+
+re.compile("[A-Za-z_]"       # letter or underscore
+           "[A-Za-z0-9_]*"   # letter, digit or underscore
+          )
+この機能は文法レベルで定義されていますが、スクリプトをコンパイルする際の処理として実現されることに注意してください。実行時に文字列表現を結合したければ、 '+' 演算子を使わなければなりません。また、リテラルの結合においては、結合する各要素に異なる引用符形式を使ったり (raw 文字列と三重引用符を混ぜることさえできます) 、フォーマット済み文字列リテラルと通常の文字列リテラルを結合したりすることもできますので注意してください。
+
+2.4.3. フォーマット済み文字列リテラル
+バージョン 3.6 で追加.
+
+フォーマット済み文字列リテラル（ formatted string literal ）または f-string は、接頭辞 'f' または 'F' の付いた文字列リテラルです。これらの文字列には、波括弧 {} で区切られた式である置換フィールドを含めることができます。他の文字列リテラルの場合は内容が常に一定で変わることが無いのに対して、フォーマット済み文字列リテラルは実行時に式として評価されます。
+
+エスケープシーケンスは通常の文字列リテラルと同様にデコードされます (ただしリテラルが raw 文字列でもある場合は除きます) 。エスケープシーケンスをデコードした後は、文字列の内容は次の文法で解釈されます:
+
+f_string          ::=  (literal_char | "{{" | "}}" | replacement_field)*
+replacement_field ::=  "{" f_expression ["="] ["!" conversion] [":" format_spec] "}"
+f_expression      ::=  (conditional_expression | "*" or_expr)
+                         ("," conditional_expression | "," "*" or_expr)* [","]
+                       | yield_expression
+conversion        ::=  "s" | "r" | "a"
+format_spec       ::=  (literal_char | NULL | replacement_field)*
+literal_char      ::=  <any code point except "{", "}" or NULL>
+The parts of the string outside curly braces are treated literally, except that any doubled curly braces '{{' or '}}' are replaced with the corresponding single curly brace. A single opening curly bracket '{' marks a replacement field, which starts with a Python expression. To display both the expression text and its value after evaluation, (useful in debugging), an equal sign '=' may be added after the expression. A conversion field, introduced by an exclamation point '!' may follow. A format specifier may also be appended, introduced by a colon ':'. A replacement field ends with a closing curly bracket '}'.
+
+Expressions in formatted string literals are treated like regular Python expressions surrounded by parentheses, with a few exceptions. An empty expression is not allowed, and both lambda and assignment expressions := must be surrounded by explicit parentheses. Replacement expressions can contain line breaks (e.g. in triple-quoted strings), but they cannot contain comments. Each expression is evaluated in the context where the formatted string literal appears, in order from left to right.
+
+バージョン 3.7 で変更: Prior to Python 3.7, an await expression and comprehensions containing an async for clause were illegal in the expressions in formatted string literals due to a problem with the implementation.
+
+When the equal sign '=' is provided, the output will have the expression text, the '=' and the evaluated value. Spaces after the opening brace '{', within the expression and after the '=' are all retained in the output. By default, the '=' causes the repr() of the expression to be provided, unless there is a format specified. When a format is specified it defaults to the str() of the expression unless a conversion '!r' is declared.
+
+バージョン 3.8 で追加: The equal sign '='.
+
+もし変換フィールドが指定されていた場合、式の評価結果はフォーマットの前に変換されます。変換 '!s' は str() を、 '!r' は repr() を、そして '!a' は ascii() を呼び出します。
+
+その結果は、続いて format() のプロトコルでフォーマットされます。書式指定子は式または変換結果の __format__() メソッドに渡されます。書式指定子が省略された場合は、空文字列が渡されます。そしてフォーマットされた結果は、文字列全体の最終的な値に挿入されます。
+
+Top-level format specifiers may include nested replacement fields. These nested fields may include their own conversion fields and format specifiers, but may not include more deeply-nested replacement fields. The format specifier mini-language is the same as that used by the str.format() method.
+
+フォーマット済み文字列リテラルは他の文字列リテラルと結合できますが、置換フィールドを複数のリテラルに分割して書くことはできません。
+
+フォーマット済み文字列リテラルの例をいくつか挙げます:
+
+>>>
+>>> name = "Fred"
+>>> f"He said his name is {name!r}."
+"He said his name is 'Fred'."
+>>> f"He said his name is {repr(name)}."  # repr() is equivalent to !r
+"He said his name is 'Fred'."
+>>> width = 10
+>>> precision = 4
+>>> value = decimal.Decimal("12.34567")
+>>> f"result: {value:{width}.{precision}}"  # nested fields
+'result:      12.35'
+>>> today = datetime(year=2017, month=1, day=27)
+>>> f"{today:%B %d, %Y}"  # using date format specifier
+'January 27, 2017'
+>>> f"{today=:%B %d, %Y}" # using date format specifier and debugging
+'today=January 27, 2017'
+>>> number = 1024
+>>> f"{number:#0x}"  # using integer format specifier
+'0x400'
+>>> foo = "bar"
+>>> f"{ foo = }" # preserves whitespace
+" foo = 'bar'"
+>>> line = "The mill's closed"
+>>> f"{line = }"
+'line = "The mill\'s closed"'
+>>> f"{line = :20}"
+"line = The mill's closed   "
+>>> f"{line = !r:20}"
+'line = "The mill\'s closed" '
+通常の文字列リテラルと構文が共通なので（訳註：通常の文字列リテラルにおける引用符の扱いと同様に）、置換フィールド中に、外側のフォーマット済み文字列リテラルで使われている引用符を含めることはできません:
+
+f"abc {a["x"]} def"    # error: outer string literal ended prematurely
+f"abc {a['x']} def"    # workaround: use different quoting
+式の中でバックスラッシュは使用できず、エラーを送出します:
+
+f"newline: {ord('\n')}"  # raises SyntaxError
+バックスラッシュでのエスケープが必要な値を含める必要がある場合は、一時変数を作成してください。
+
+>>>
+newline = ord('\n')
+f"newline: {newline}"
+'newline: 10'
+フォーマット済み文字列リテラルは、たとえ式を含んでいなかったとしても、 docstring としては使えません。
+
+>>>
+>>> def foo():
+...     f"Not a docstring"
+...
+>>> foo.__doc__ is None
+True
+フォーマット済み文字列リテラルを Python に追加した提案 PEP 498 も参照してください。また関連する文字列フォーマットの仕組みを使っている str.format() も参照してください。
+
+2.4.4. 数値リテラル
+数値リテラルには 3 種類あります。整数 (integer)、浮動小数点数 (floating point number)、虚数(imaginary numbers) です。複素数リテラルは存在しません。(複素数は実数と虚数の和として作れます)。
+
+数値リテラルには符号が含まれていないことに注意してください; -1 のような句は、実際には単項演算子 (unary operator) '-' とリテラル 1 を組み合わせたものです。
+
+2.4.5. 整数リテラル
+整数リテラルは以下の字句定義で記述されます:
+
+integer      ::=  decinteger | bininteger | octinteger | hexinteger
+decinteger   ::=  nonzerodigit (["_"] digit)* | "0"+ (["_"] "0")*
+bininteger   ::=  "0" ("b" | "B") (["_"] bindigit)+
+octinteger   ::=  "0" ("o" | "O") (["_"] octdigit)+
+hexinteger   ::=  "0" ("x" | "X") (["_"] hexdigit)+
+nonzerodigit ::=  "1"..."9"
+digit        ::=  "0"..."9"
+bindigit     ::=  "0" | "1"
+octdigit     ::=  "0"..."7"
+hexdigit     ::=  digit | "a"..."f" | "A"..."F"
+値がメモリ上に収まるかどうかという問題を除けば、整数リテラルには長さの制限がありません。
+
+アンダースコアはリテラルの値を判断するにあたって無視されます。そのためアンダースコアを使って数字をグループ化することで読みやすくできます。アンダースコアは数字と数字の間に 1 つだけ、あるいは 0x のような基数指定の直後に 1 つだけ挿入できます。
+
+なお、非 0 の十進数の先頭には 0 を付けられません。これは、Python がバージョン 3.0 以前に使っていた C 形式の八進リテラルとの曖昧さを回避するためです。
+
+整数リテラルの例をいくつか示します:
+
+7     2147483647                        0o177    0b100110111
+3     79228162514264337593543950336     0o377    0xdeadbeef
+      100_000_000_000                   0b_1110_0101
+バージョン 3.6 で変更: グループ化を目的としたリテラル中のアンダースコアが許されるようになりました。
+
+2.4.6. 浮動小数点数リテラル
+浮動小数点数リテラルは以下の字句定義で記述されます:
+
+floatnumber   ::=  pointfloat | exponentfloat
+pointfloat    ::=  [digitpart] fraction | digitpart "."
+exponentfloat ::=  (digitpart | pointfloat) exponent
+digitpart     ::=  digit (["_"] digit)*
+fraction      ::=  "." digitpart
+exponent      ::=  ("e" | "E") ["+" | "-"] digitpart
+なお、整数部と指数部は常に 10 を基数として解釈されます。例えば、077e010 は正しい表記であり、77e10 と同じ数を表します。浮動小数点数リテラルの取りうる値の範囲は実装に依存します。整数リテラルと同じように、アンダースコアで数字をグループ分けできます。
+
+浮動小数点数リテラルの例をいくつか示します:
+
+3.14    10.    .001    1e100    3.14e-10    0e0    3.14_15_93
+バージョン 3.6 で変更: グループ化を目的としたリテラル中のアンダースコアが許されるようになりました。
+
+2.4.7. 虚数 (imaginary) リテラル
+虚数リテラルは以下のような字句定義で記述されます:
+
+imagnumber ::=  (floatnumber | digitpart) ("j" | "J")
+虚数リテラルは、実数部が 0.0 の複素数を表します。複素数は二つ組の浮動小数点型の数値で表され、それぞれの数値は浮動小数点型と同じ定義域の範囲を持ちます。実数部がゼロでない浮動小数点を生成するには、 (3+4j) のように虚数リテラルに浮動小数点数を加算します。以下に虚数リテラルの例をいくつか示します:
+
+3.14j   10.j    10j     .001j   1e100j   3.14e-10j   3.14_15_93j
+2.5. 演算子
+以下のトークンは演算子です:
+
++       -       *       **      /       //      %      @
+<<      >>      &       |       ^       ~       :=
+<       >       <=      >=      ==      !=
+2.6. デリミタ (delimiter)
+以下のトークンは文法上のデリミタとして働きます:
+
+(       )       [       ]       {       }
+,       :       .       ;       @       =       ->
++=      -=      *=      /=      //=     %=      @=
+&=      |=      ^=      >>=     <<=     **=
+ピリオドは浮動小数点数や虚数リテラル中にも置けます。ピリオド三つの列はスライス表記における省略符号 (ellipsis) リテラルとして特別な意味を持ちます。リスト後半の累算代入演算子 (augmented assignment operator) は、字句的にはデリミタとして振舞いますが、演算も行います。
+
+以下の印字可能 ASCII 文字は、他のトークンの一部として特殊な意味を持っていたり、字句解析器にとって重要な意味を持っています:
+
+'       "       #       \
+以下の印字可能 ASCII 文字は、Python では使われていません。これらの文字が文字列リテラルやコメントの外にある場合、無条件にエラーとなります:
+
+$       ?       `

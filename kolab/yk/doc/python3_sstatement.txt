@@ -1,0 +1,405 @@
+7. 単純文 (simple statement)¶
+単純文とは、単一の論理行内に収められる文です。単一の行内には、複数の単純文をセミコロンで区切って入れることができます。単純文の構文は以下の通りです:
+
+simple_stmt ::=  expression_stmt
+                 | assert_stmt
+                 | assignment_stmt
+                 | augmented_assignment_stmt
+                 | annotated_assignment_stmt
+                 | pass_stmt
+                 | del_stmt
+                 | return_stmt
+                 | yield_stmt
+                 | raise_stmt
+                 | break_stmt
+                 | continue_stmt
+                 | import_stmt
+                 | future_stmt
+                 | global_stmt
+                 | nonlocal_stmt
+7.1. 式文 (expression statement)
+式文は、(主に対話的な使い方では) 値を計算して出力するために使ったり、(通常は) プロシジャ (procedure: 有意な結果を返さない関数のことです; Python では、プロシジャは値 None を返します) を呼び出すために使います。その他の使い方でも式文を使うことができますし、有用なこともあります。式文の構文は以下の通りです:
+
+expression_stmt ::=  starred_expression
+式文は式のリスト (単一の式のこともあります) を値評価します。
+
+対話モードでは、値が None でなければ、値を組み込み関数 repr() で文字列に変換して、その結果の文字列を標準出力に一行使って書き出します。 (None になる式文の値は書き出されないので、プロシジャの呼び出しを行っても出力は得られません。)
+
+7.2. 代入文 (assignment statement)
+代入文は、名前を値に (再) 束縛したり、変更可能なオブジェクトの属性や要素を変更したりするために使われます:
+
+assignment_stmt ::=  (target_list "=")+ (starred_expression | yield_expression)
+target_list     ::=  target ("," target)* [","]
+target          ::=  identifier
+                     | "(" [target_list] ")"
+                     | "[" [target_list] "]"
+                     | attributeref
+                     | subscription
+                     | slicing
+                     | "*" target
+(attributeref, subscription, slicing の構文については プライマリ 節を参照してください。)
+
+代入文は式のリスト (これは単一の式でも、カンマで区切られた式リストでもよく、後者はタプルになることを思い出してください) を評価し、得られた単一の結果オブジェクトをターゲット (target) のリストに対して左から右へと代入してゆきます。
+
+代入はターゲット (リスト) の形式に従って再帰的に行われます。ターゲットが変更可能なオブジェクト (属性参照、添字表記、またはスライス) の一部である場合、この変更可能なオブジェクトは最終的に代入を実行して、その代入が有効な操作であるか判断しなければなりません。代入が不可能な場合には例外を発行することもできます。型ごとにみられる規則や、送出される例外は、そのオブジェクト型定義で与えられています (標準型の階層 節を参照してください).
+
+ターゲットリストは、丸括弧や角括弧で囲まれていてもよく、それに対するオブジェクトの代入は、以下のように再帰的に定義されています。
+
+ターゲットリストのターゲットが1つだけでコンマが続いておらず、任意に丸括弧で囲われている場合、オブジェクトはそのターゲットに代入されます。
+
+そうでない場合: オブジェクトは、ターゲットリストのターゲットと同じ数の要素を持つイテラブルでなければならず、要素は左から右へ対応するターゲットに代入されます。
+
+"星付き"のターゲットと呼ばれる、頭にアスタリスクが一つ付いたターゲットがターゲットリストに一つだけ含まれている場合: オブジェクトはイテラブルで、少なくともターゲットリストのターゲットの数よりも一つ少ない要素を持たなければはなりません。 星付きのターゲットより前のターゲットに、イテラブルの先頭の要素が左から右へ代入されます。 星付きのターゲットより後ろのターゲットに、イテラブルの末尾の要素が代入されます。 星付きのターゲットに、イテラブルの残った要素のリストが代入されます (リスト空でもかまいません)。
+
+そうでない場合: オブジェクトは、ターゲットリストのターゲットと同じ数の要素を持つイテラブルでなければならず、要素は左から右へ対応するターゲットに代入されます。
+
+単一のターゲットへの単一のオブジェクトの代入は、以下のようにして再帰的に定義されています。
+
+ターゲットが識別子 (名前) の場合:
+
+名前が現在のコードブロック内の global や nonlocal 文に書かれていないければ: 名前は現在のローカル名前空間内のオブジェクトに束縛されます。
+
+そうでなければ: 名前はそれぞれグローバル名前空間内か、 nonlocal で決められた外側の名前空間内のオブジェクトに束縛されます。
+
+名前がすでに束縛済みの場合、再束縛 (rebind) がおこなわれます。再束縛によって、以前その名前に束縛されていたオブジェクトの参照カウント (reference count) がゼロになった場合、オブジェクトは解放 (deallocate) され、デストラクタ (destructor) が (存在すれば) 呼び出されます。
+
+ターゲットが属性参照の場合: 参照されている一次語の式が値評価されます。値は代入可能な属性を伴うオブジェクトでなければなりません; そうでなければ、 TypeError が送出されます。次に、このオブジェクトに対して、被代入オブジェクトを指定した属性に代入してよいか問い合わせます; 代入を実行できない場合、例外 (通常は AttributeError ですが、必然ではありません) を送出します。
+
+Note: If the object is a class instance and the attribute reference occurs on both sides of the assignment operator, the right-hand side expression, a.x can access either an instance attribute or (if no instance attribute exists) a class attribute. The left-hand side target a.x is always set as an instance attribute, creating it if necessary. Thus, the two occurrences of a.x do not necessarily refer to the same attribute: if the right-hand side expression refers to a class attribute, the left-hand side creates a new instance attribute as the target of the assignment:
+
+class Cls:
+    x = 3             # class variable
+inst = Cls()
+inst.x = inst.x + 1   # writes inst.x as 4 leaving Cls.x as 3
+このことは、 property() で作成されたプロパティのようなデスクリプタ属性に対しては、必ずしもあてはまるとは限りません。
+
+ターゲットが添字表記なら: 参照されている一次語式が評価されます。参照から (リストのような) ミュータブルなシーケンスオブジェクトか、(辞書のような) マッピングオブジェクトが得られなければなりません。次に、添字表記の表す式が評価されます。
+
+一次語が (リストのような) ミュータブルなシーケンスオブジェクトであれば、添字表記は整数を与えなければなりません。整数が負なら、シーケンスの長さが加算されます。整数は最終的に、シーケンスの長さよりも小さな非負の整数でなくてはならず、シーケンスは、そのインデクスに持つ要素に被代入オブジェクトを代入してよいか問い合わせられます。インデクスが範囲外なら、 IndexError が送出されます (添字指定されたシーケンスに代入を行っても、リスト要素の新たな追加はできません)。
+
+一次語が (辞書のような) マップオブジェクトの場合、まず添字はマップのキー型と互換性のある型でなくてはなりません。次に、添字を被代入オブジェクトに関連付けるようなキー/データの対を生成するようマップオブジェクトに問い合わせます。この操作では、既存のキー/値の対を同じキーと別の値で置き換えてもよく、(同じ値を持つキーが存在しない場合) 新たなキー/値の対を挿入してもかまいません。
+
+ユーザ定義のオブジェクトには、適切な引数で __setitem__() メソッドが呼び出されます。
+
+ターゲットがスライスなら: 参照されている一次語式が評価されます。一次語式は、(リストのような) ミュータブルなシーケンスオブジェクトを与えなければなりません。被代入オブジェクトは同じ型のシーケンスオブジェクトでなければなりません。次に、スライスの下限と上限を示す式があれば評価されます; デフォルト値はそれぞれ 0 とシーケンスの長さです。上限と下限の評価は整数でなければなりません。いずれかの境界が負数なら、シーケンスの長さが加算されます。最終的に、境界は 0 からシーケンスの長さまでに収まるように刈りこまれます。最後に、スライスを被代入オブジェクトで置き換えてよいかシーケンスオブジェクトに問い合わせます。ターゲットシーケンスで許されている限り、スライスの長さは被代入シーケンスの長さと異なっていてよく、この場合にはターゲットシーケンスの長さが変更されます。
+
+CPython implementation detail: 現在の実装では、ターゲットの構文は式の構文と同じであるとみなされており、無効な構文はコード生成フェーズ中に詳細なエラーメッセージを伴って拒否されます。
+
+代入の定義によれば、左辺と右辺のオーバーラップは '同時 (simultaneous)' です (例えば a, b = b, a は二つの変数を入れ替えます) が、代入対象となる変数群 どうし のオーバーラップは左から右へ起こり、混乱の元です。例えば、以下のプログラムは [0, 2] を出力してしまいます:
+
+x = [0, 1]
+i = 0
+i, x[i] = 1, 2         # i is updated, then x[i] is updated
+print(x)
+参考
+PEP 3132 - Extended Iterable Unpacking
+*target の指定機能。
+
+7.2.1. 累算代入文 (augmented assignment statement)
+累算代入文は、二項演算と代入文を組み合わせて一つの文にしたものです:
+
+augmented_assignment_stmt ::=  augtarget augop (expression_list | yield_expression)
+augtarget                 ::=  identifier | attributeref | subscription | slicing
+augop                     ::=  "+=" | "-=" | "*=" | "@=" | "/=" | "//=" | "%=" | "**="
+                               | ">>=" | "<<=" | "&=" | "^=" | "|="
+(最後の3つの構文定義については プライマリ を参照してください。)
+
+累算代入文は、ターゲット (通常の代入文と違って、アンパックは起こりません) と式リストを評価し、それら二つの被演算子間で特定の累算代入型の二項演算を行い、結果をもとのターゲットに代入します。ターゲットは一度しか評価されません。
+
+x += 1 のような累算代入式は、 x = x + 1 のように書き換えてほぼ同様の動作にできますが、厳密に等価にはなりません。累算代入の方では、 x は一度しか評価されません。また、実際の処理として、可能ならば インプレース (in-place) 演算が実行されます。これは、代入時に新たなオブジェクトを生成してターゲットに代入するのではなく、以前のオブジェクトの内容を変更するということです。
+
+通常の代入とは違い、累算代入文は右辺を評価する 前に 左辺を評価します。たとえば、a[i] += f(x) はまず a[i] を調べ、f(x) を評価して加算を行い、最後に結果を a[i] に割り当てます。
+
+累算代入文で行われる代入は、タプルへの代入や、一文中に複数のターゲットが存在する場合を除き、通常の代入と同じように扱われます。同様に、累算代入で行われる二項演算は、場合によって インプレース演算 が行われることを除き、通常の二項演算と同じです。
+
+属性参照のターゲットの場合、 クラス属性とインスタンス属性についての注意 と同様に通常の代入が適用されます。
+
+7.2.2. 注釈付き代入文 (annotated assignment statements)
+注釈 代入は、1 つの文の中で変数や属性のアノテーションとオプションの代入文を組み合わせたものです:
+
+annotated_assignment_stmt ::=  augtarget ":" expression
+                               ["=" (starred_expression | yield_expression)]
+The difference from normal 代入文 (assignment statement) is that only single target is allowed.
+
+代入先として単純名を使うと、クラススコープもしくはモジュールスコープの場合、注釈は評価され、クラスもしくはモジュールの特殊属性 __annotations__ に格納されます。 この属性は、変数名 (プライベート変数の場合はマングリングされた名前) から評価後の注釈への対応付けを持つ辞書です。 この属性は書き込み可能であり、注釈が静的に存在している場合、クラスもしくはモジュールの本体の実行の先頭で自動的に作成されます。
+
+代入先として式を使うと、クラススコープもしくはモジュールスコープの場合、注釈は評価されますが、格納されません。
+
+関数スコープで名前に注釈が付いていた場合は、その名前はその関数スコープでローカルなものになります。 注釈は絶対に評価されず、関数スコープにも格納されません。
+
+右辺がある場合、注釈代入はアノテーション (有効であれば) を評価する前に、実際に代入を行います。 対象となる式の右辺が無い場合は、インタプリタは最後の __setitem__() や __setattr__() 呼び出し以外の対象の式を評価します。
+
+参考
+PEP 526 - Syntax for Variable Annotations
+(クラス変数やインスタンス変数を含んだ) 変数の型注釈を付ける、コメントで表現するのではない文法の追加提案。
+
+PEP 484 - Type hints
+typing モジュールを追加し、静的解析ツールや IDE で使える型アノテーションの標準的な文法を提供する提案。
+
+バージョン 3.8 で変更: Now annotated assignments allow same expressions in the right hand side as the regular assignments. Previously, some expressions (like un-parenthesized tuple expressions) caused a syntax error.
+
+7.3. assert 文
+assert 文は、プログラム内にデバッグ用アサーション (debugging assertion) を仕掛けるための便利な方法です:
+
+assert_stmt ::=  "assert" expression ["," expression]
+単純な形式 assert expression は
+
+if __debug__:
+    if not expression: raise AssertionError
+と等価です。拡張形式 assert expression1, expression2 は、これと等価です
+
+if __debug__:
+    if not expression1: raise AssertionError(expression2)
+上記の等価関係は、 __debug__ と AssertionError が、同名の組み込み変数を参照しているという前提の上に成り立っています。現在の実装では、組み込み変数 __debug__ は通常の状況では True であり、最適化が要求された場合（コマンドラインオプション -O）は False です。現状のコード生成器は、コンパイル時に最適化が要求されていると assert 文のコードを一切出力しません。実行に失敗した式のソースコードをエラーメッセージ内に入れる必要はありません; コードはスタックトレース内で表示されます。
+
+__debug__ への代入は不正な操作です。組み込み変数の値は、インタプリタが開始するときに決定されます。
+
+7.4. pass 文
+pass_stmt ::=  "pass"
+pass はヌル操作 (null operation) です --- pass が実行されても、何も起きません。 pass は、構文法的には文が必要だが、コードとしては何も実行したくない場合のプレースホルダとして有用です。例えば:
+
+def f(arg): pass    # a function that does nothing (yet)
+
+class C: pass       # a class with no methods (yet)
+7.5. del 文
+del_stmt ::=  "del" target_list
+オブジェクトの削除 (deletion) は、代入の定義と非常に似た方法で再帰的に定義されています。ここでは完全な詳細は記述せず、いくつかのヒントを述べるにとどめます。
+
+ターゲットリストに対する削除は、各々のターゲットを左から右へと順に再帰的に削除します。
+
+名前の削除は、ローカルまたはグローバル名前空間からその名前の束縛を取り除きます。どちらの名前空間かは、名前が同じコードブロック内の global 文で宣言されているかどうかによります。名前が未束縛 (unbound) なら、 NameError 例外が送出されます。
+
+属性参照、添字表記、およびスライスの削除操作は、対象となる一次語オブジェクトに渡されます; スライスの削除は一般的には適切な型の空のスライスを代入するのと等価です (が、この仕様自体もスライスされるオブジェクトで決定されています)。
+
+バージョン 3.2 で変更: 以前は、ある名前がネストしたブロックの自由変数として表れる場合は、ローカル名前空間からその名前を削除することは不正な処理でした。
+
+7.6. return 文
+return_stmt ::=  "return" [expression_list]
+return は、関数定義内で構文法的にネストして現れますが、ネストしたクラス定義内には現れません。
+
+式リストがある場合、リストが値評価されます。それ以外の場合は None で置き換えられます。
+
+return を使うと、式リスト (または None) を戻り値として、現在の関数呼び出しから抜け出します。
+
+return によって、 finally 節をともなう try 文の外に処理が引き渡されると、実際に関数から抜ける前に finally 節が実行されます。
+
+ジェネレータ関数では、 return 文はジェネレータの終わりを示し、 StopIteration 例外を送出させます。返された値は (あれば)、 StopIteration を構成する引数に使われ、 StopIteration.value 属性になります。
+
+非同期ジェネレータ関数では、引数無しの return 文は非同期ジェネレータの終わりを示し、 StopAsyncIteration を送出させます。 引数ありの return 文は、非同期ジェネレータ関数では文法エラーです。
+
+7.7. yield 文
+yield_stmt ::=  yield_expression
+yield 文は意味的に yield 式 と同じです。yield 文を用いると yield 式文で必要な括弧を省略することが出来ます。例えば、yield 文
+
+yield <expr>
+yield from <expr>
+は以下の yield 式文と等価です
+
+(yield <expr>)
+(yield from <expr>)
+yield 式及び文は generator を定義するときに、その本体内でのみ使うことが出来ます。関数定義内で yield を使用することで、その定義は通常の関数でなくジェネレータ関数になります。
+
+yield の意味の完全な説明は、 Yield 式 節を参照してください。
+
+7.8. raise 文
+raise_stmt ::=  "raise" [expression ["from" expression]]
+式を伴わなければ、 raise は現在のスコープで最終的に有効になっている例外を再送出します。そのような例外が現在のスコープでアクティブでない場合、 RuntimeError 例外が送出されて、これがエラーであることを示します。
+
+そうでなければ、 raise は最初の式を、例外オブジェクトとして評価します。これは、 BaseException のサブクラスまたはインスタンスでなければなりません。クラスなら、例外インスタンスが必要なとき、クラスを無引数でインスタンス化することで得られます。
+
+例外の 型 は例外インスタンスのクラスで、 値 はインスタンスそのものです。
+
+トレースバックオブジェクトは通常、例外が送出される時に自動で作られ、その例外に書き込み可能の __traceback__ 属性として付与されます。 with_traceback() 例外メソッド (トレースバックを引数に設定した同じ例外を返します) を使い、例外を作って独自のトレースバックを設定するのを一度に出来ます。このように:
+
+raise Exception("foo occurred").with_traceback(tracebackobj)
+from 節は例外の連鎖に使われます: 第二の expression は、与えられるなら、別の例外クラスまたはインスタンスでなければならず、これが送出された例外に (書き込み可能の) __cause__ 属性として付与されます。送出された例外がハンドルされなければ、両方の例外が印字されます:
+
+>>>
+>>> try:
+...     print(1 / 0)
+... except Exception as exc:
+...     raise RuntimeError("Something bad happened") from exc
+...
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+ZeroDivisionError: division by zero
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+RuntimeError: Something bad happened
+例外ハンドラまたは finally 節の中で例外が送出された時も、同じような機構が暗黙に働きます。このとき、先に起こった例外が、新しい例外の __context__ 属性に付与されます:
+
+>>>
+>>> try:
+...     print(1 / 0)
+... except:
+...     raise RuntimeError("Something bad happened")
+...
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+ZeroDivisionError: division by zero
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+RuntimeError: Something bad happened
+from 節に None を指定することで、例外の連鎖を明示的に非表示にできます:
+
+>>>
+>>> try:
+...     print(1 / 0)
+... except:
+...     raise RuntimeError("Something bad happened") from None
+...
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+RuntimeError: Something bad happened
+例外に関する追加情報は 例外 節にあります。また、例外処理に関する情報は try 文 節にあります。
+
+バージョン 3.3 で変更: None が raise X from Y の Y として使えるようになりました。
+
+バージョン 3.3 で追加: __suppress_context__ 属性の設定で、例外のコンテキストが自動的に非表示になります。
+
+7.9. break 文
+break_stmt ::=  "break"
+break 文は、構文としては for ループや while ループの内側でのみ出現することができますが、ループ内の関数定義やクラス定義の内側には出現できません。
+
+break 文は、文を囲う最も内側のループを終了させ、ループにオプションの else 節がある場合にはそれをスキップします。
+
+for ループを break によって終了すると、ループ制御ターゲットはその時の値を保持します。
+
+break が finally 節を伴う try 文の外側に処理を渡す際には、ループを実際に抜ける前にその finally 節が実行されます。
+
+7.10. continue 文
+continue_stmt ::=  "continue"
+continue may only occur syntactically nested in a for or while loop, but not nested in a function or class definition within that loop. It continues with the next cycle of the nearest enclosing loop.
+
+continue が finally 句を持った try 文を抜けるとき、その finally 句が次のループサイクルを始める前に実行されます。
+
+7.11. import 文
+import_stmt     ::=  "import" module ["as" identifier] ("," module ["as" identifier])*
+                     | "from" relative_module "import" identifier ["as" identifier]
+                     ("," identifier ["as" identifier])*
+                     | "from" relative_module "import" "(" identifier ["as" identifier]
+                     ("," identifier ["as" identifier])* [","] ")"
+                     | "from" module "import" "*"
+module          ::=  (identifier ".")* identifier
+relative_module ::=  "."* module | "."+
+(from 節が無い) 基本の import 文は 2 つのステップで実行されます:
+
+モジュールを見付け出し、必要であればロードし初期化する
+
+import 文が表れるスコープのローカル名前空間で名前を定義する。
+
+文が (カンマで区切られた) 複数の節を含んでいるときは、ちょうどその節が個別の import 文に分割されたかのように、2つのステップが節ごとに個別に実行されます。
+
+モジュールを見付け、ロードする 1 つ目のステップの詳細については、 インポートシステム の節により詳しく書かれています。そこでは、インポートシステムの動作をカスタマイズするのに使える全てのフックの仕組みだけでなく、様々な種類のインポートできるパッケージとモジュールについても解説されています。このステップが失敗するということは、おそらくモジュールが見付からないか、 あるいは モジュールにあるコードの実行を含め、モジュールの初期化の途中でエラーが起きるかのどちらかが起きていることに注意してください。
+
+要求したモジュールが無事に取得できた場合、次の 3 つのうちの 1 つの方法でローカル名前空間で使えるようになります:
+
+モジュール名の後に as が続いていた場合は、 as の後ろの名前を直接、インポートされたモジュールが束縛します。
+
+他の名前が指定されておらず、インポートされているモジュールが最上位のモジュールだった場合、そのモジュール名がインポートされたモジュールへの参照として、ローカル名前空間で束縛されます
+
+インポートされているモジュールが最上位のモジュール でない 場合、モジュールを含む最上位のパッケージ名が、そのパッケージへの参照として、ローカル名前空間で束縛されます。インポートされたモジュールには、直接ではなく完全修飾名を使ってアクセスしなければなりません
+
+from 形式ではもう少し複雑な手順を踏みます:
+
+from 節で指定されたモジュールを見付け出し、必要であればロードし初期化する;
+
+import 節で指定されたそれぞれの識別子に対し以下の処理を行う:
+
+インポートされたモジュールがその識別子名の属性を持っているかを確認する
+
+その識別子名の属性を持っていなかった場合は、その識別子名でサブモジュールのインポートを試み、インポートされたモジュールにその属性があるか再度確認する
+
+属性が見付からない場合は、 ImportError を送出する。
+
+属性が見付かった場合は、 as 節があるならそこの名前、そうでないなら属性名を使って、その値への参照がローカル名前空間に保存される
+
+例:
+
+import foo                 # foo imported and bound locally
+import foo.bar.baz         # foo.bar.baz imported, foo bound locally
+import foo.bar.baz as fbb  # foo.bar.baz imported and bound as fbb
+from foo.bar import baz    # foo.bar.baz imported and bound as baz
+from foo import attr       # foo imported and foo.attr bound as attr
+識別子のリストが星 ('*') に置き換わっている場合は、モジュールで定義されている公開された全ての名前が、 import 文がいるスコープのローカル名前空間に束縛されます。
+
+モジュールで定義される 公開された名前 は、モジュールの名前空間にある __all__ という名前の変数を調べることで決定されます; その変数が定義されている場合は、それはモジュールで定義されたかインポートされた名前からなる、文字列のシーケンスでなければいけません。__all__ で列挙された名前は、全て公開されていると見なされ、存在することが要求されます。__all__ が定義されていない場合、公開された名前とは、モジュールの名前空間で見付かった、アンダースコア文字 ('_') で始まらない全ての名前のことです。__all__ は全ての公開 API を含むべきです。これは API の一部でないもの (そのモジュールでインポートされ使われているライブラリモジュールなど) をうっかり外部に公開してしまわないための仕組みです。
+
+インポートのワイルドカード形式 --- from module import * --- は、モジュールレベルでのみ許されます。クラスや関数定義でこの形式を使おうとすると、 SyntaxError が送出されます。
+
+インポートするモジュールを指定するとき、そのモジュールの絶対名 (absolute name) を指定する必要はありません。モジュールやパッケージが他のパッケージに含まれている場合、共通のトップパッケージからそのパッケージ名を記述することなく相対インポートすることができます。 from の後に指定されるモジュールやパッケージの先頭に複数個のドットを付けることで、正確な名前を指定することなしに現在のパッケージ階層からいくつ上の階層へ行くかを指定することができます。先頭のドットが 1 つの場合、 import をおこなっているモジュールが存在する現在のパッケージを示します。 3 つのドットは 2 つ上のレベルを示します。なので、 pkg パッケージの中のモジュールで from . import mod を実行すると、 pkg.mod をインポートすることになります。 pkg.subpkg1 の中から from ..subpkg2 import mod を実行すると、 pkg.subpkg2.mod をインポートします。相対インポートの仕様は Package Relative Imports の節に含まれています。
+
+どのモジュールがロードされるべきかを動的に決めたいアプリケーションのために、組み込み関数 importlib.import_module() が提供されています。
+
+Raises an auditing event import with arguments module, filename, sys.path, sys.meta_path, sys.path_hooks.
+
+7.11.1. future 文 (future statement)
+future 文 は、将来の特定の新たな機能が標準化された Python のリリースで利用可能になるような構文や意味付けを使って、特定のモジュールをコンパイルさせるための、コンパイラに対する指示句 (directive) です。
+
+future 文は互換性のない変更がされた将来の Python のバージョンに容易に移行するためのものです。future 文によって新機能が標準となるリリースの前にそれをモジュール単位で使用することが出来ます。
+
+future_stmt ::=  "from" "__future__" "import" feature ["as" identifier]
+                 ("," feature ["as" identifier])*
+                 | "from" "__future__" "import" "(" feature ["as" identifier]
+                 ("," feature ["as" identifier])* [","] ")"
+feature     ::=  identifier
+future 文は、モジュールの先頭周辺に書かなければなりません。 future 文の前に書いてよい内容は以下です :
+
+モジュールのドキュメンテーション文字列 ( あれば )
+
+コメント ,
+
+空行 ,
+
+その他の future 文。
+
+The only feature that requires using the future statement is annotations (see PEP 563).
+
+future 文で有効にできる歴史的な機能は、今でも Python 3 が認識します。 そのリストは absolute_import, division, generator_stop, generators, unicode_literals, print_function, nested_scopes, with_statement です。 これらは既に全てが有効になっていて、後方互換性のためだけに残されているため、冗長なだけです。
+
+future 文は、コンパイル時に特別なやり方で認識され、扱われます: 言語の中核をなす構文構成 (construct) に対する意味付けが変更されている場合、変更部分はしばしば異なるコードを生成することで実現されています。新たな機能によって、(新たな予約語のような) 互換性のない新たな構文が取り入れられることさえあります。この場合、コンパイラはモジュールを別のやりかたで解析する必要があるかもしれません。こうしたコード生成に関する決定は、実行時まで先延ばしすることはできません。
+
+これまでの全てのリリースにおいて、コンパイラはどの機能が定義済みかを知っており、 future 文に未知の機能が含まれている場合にはコンパイル時エラーを送出します。
+
+future 文の実行時における直接的な意味付けは、 import 文と同じです。標準モジュール __future__ があり、これについては後で述べます。 __future__ は、 future 文が実行される際に通常の方法で import されます。
+
+future 文の実行時における特別な意味付けは、 future 文で有効化される特定の機能によって変わります。
+
+以下の文には、何ら特殊な意味はないので注意してください:
+
+import __future__ [as name]
+これは future 文ではありません; この文は通常の import 文であり、その他の特殊な意味付けや構文的な制限はありません。
+
+future 文の入ったモジュール M 内で使われている組み込み関数 exec() や compile() によってコンパイルされるコードは、デフォルトの設定では、 future 文に関係する新たな構文や意味付けを使うようになっています。この仕様は compile() のオプション引数で制御できます --- 詳細はこの関数に関するドキュメントを参照してください。
+
+対話的インタプリタのプロンプトでタイプ入力した future 文は、その後のインタプリタセッション中で有効になります。インタプリタを -i オプションで起動して実行すべきスクリプト名を渡し、スクリプト中に future 文を入れておくと、新たな機能はスクリプトが実行された後に開始する対話セッションで有効になります。
+
+参考
+PEP 236 - Back to the __future__
+__future__ 機構の原案
+
+7.12. global 文
+global_stmt ::=  "global" identifier ("," identifier)*
+global 文は、現在のコードブロック全体で維持される宣言文です。 global 文は、列挙した識別子をグローバル変数として解釈するよう指定することを意味します。 global を使わずにグローバル変数に代入を行うことは不可能ですが、自由変数を使えばその変数をグローバルであると宣言せずにグローバル変数を参照することができます。
+
+global 文で列挙する名前は、同じコードブロック中で、プログラムテキスト上 global 文より前に使ってはなりません。
+
+global 文で列挙する名前は、 for ループのループ制御ターゲットや、 class 定義、関数定義、 import 文、変数アノテーションで仮引数として使ってはなりません。
+
+CPython implementation detail: 現在の実装では、これらの制限のうち幾つかについては強制していませんが、プログラムでこの緩和された仕様を乱用すべきではありません。将来の実装では、この制限を強制したり、暗黙のうちにプログラムの意味付けを変更したりする可能性があります。
+
+プログラマのための注意点: global はパーザに対する指示句 (directive) です。この指示句は、 global 文と同時に読み込まれたコードに対してのみ適用されます。特に、組み込みの exec() 関数内に入っている global 文は、関数の呼び出しを 含んでいる コードブロック内に効果を及ぼすことはなく、そのような文字列に含まれているコードは、関数の呼び出しを含むコード内の global 文に影響を受けません。同様のことが、関数 eval() および compile() にも当てはまります。
+
+7.13. nonlocal 文
+nonlocal_stmt ::=  "nonlocal" identifier ("," identifier)*
+nonlocal 文は、列挙された識別子がグローバルを除く一つ外側のスコープで先に束縛された変数を参照するようにします。これは、束縛のデフォルトの動作がまずローカル名前空間を探索するので重要です。この文は、中にあるコードが、グローバル (モジュール) スコープ以外のローカルスコープの外側の変数を再束縛できるようにします。
+
+nonlocal 文で列挙された名前は、 global 文で列挙された名前と違い、外側のスコープですでに存在する束縛を参照しなければなりません (新しい束縛が作られるべきスコープの選択が曖昧さを排除できません)。
+
+nonlocal 文で列挙された名前は、ローカルスコープですでに存在する束縛と衝突してはなりません。

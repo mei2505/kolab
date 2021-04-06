@@ -1,0 +1,989 @@
+audioop --- 生の音声データを操作する¶
+audioop モジュールは音声データの便利な操作を含んでいます。このモジュールは、 bytes-like オブジェクト に保存された、符号付き整数の、ビット幅が 8, 16, 24, あるいは 32 ビットの音声データを対象として操作します。特に指定されていない限り、すべての波形データ（スカラー要素）は整数です。
+
+バージョン 3.4 で変更: 24 bit サンプルのサポートが追加されました。すべての関数はどんな bytes-like object でも使用できます。文字列の入力は即座にエラーになります。
+
+このモジュールはa-LAW、u-LAWそしてIntel/DVI ADPCMエンコードをサポートしています。
+
+複雑な操作のうちいくつかはサンプル幅が 16 ビットのデータに対してのみ働きますが、それ以外は常にサンプル幅を操作のパラメタとして (バイト単位で) 渡します。
+
+このモジュールでは以下の変数と関数を定義しています:
+
+exception audioop.error
+この例外は、未知のサンプル当たりのバイト数を指定した時など、全般的なエラーに対して送出されます。
+
+audioop.add(fragment1, fragment2, width)
+パラメータとして渡された2つのサンプルの和のデータを返します。width はバイト単位のサンプル幅で、1, 2, 3, 4 のいずれかです。両方のデータは同じ長さでなければなりません。オーバーフローした場合は、切り捨てされます。
+
+audioop.adpcm2lin(adpcmfragment, width, state)
+Intel/DVI ADPCM 形式のデータをリニア (linear) 形式にデコードします。 ADPCM 符号化方式の詳細については lin2adpcm() の説明を参照して下さい。 (sample, newstate) からなるタプルを返し、サンプルは width に指定した幅になります。
+
+audioop.alaw2lin(fragment, width)
+a-LAW形式のデータをリニア (linear) 形式に変換します。a-LAW形式は常に 8 ビットのサンプルを使用するので、ここでは width は単に出力データのサンプル幅となります。
+
+audioop.avg(fragment, width)
+データ中の全サンプルの平均値を返します。
+
+audioop.avgpp(fragment, width)
+データ中の全サンプルの平均 peak-peak 振幅を返します。フィルタリングを行っていない場合、このルーチンの有用性は疑問です。
+
+audioop.bias(fragment, width, bias)
+元の音声データの各サンプルにバイアスを加算した音声データを返します。オーバーフローした場合はラップアラウンドされます。
+
+audioop.byteswap(fragment, width)
+fragment のすべてのサンプルを "byteswap" して、修正された fragment を返します。ビッグエンディアンのサンプルをリトルエンディアンに、またはその逆に変換します。
+
+バージョン 3.4 で追加.
+
+audioop.cross(fragment, width)
+引数に渡したデータ中のゼロ交差回数を返します。
+
+audioop.findfactor(fragment, reference)
+rms(add(fragment, mul(reference, -F))) を最小にするような係数 F、すなわち、reference に乗算したときにもっとも fragment に近くなるような値を返します。fragment と reference のサンプル幅はいずれも 2バイトでなければなりません。
+
+このルーチンの実行に要する時間は len(fragment) に比例します。
+
+audioop.findfit(fragment, reference)
+reference を可能な限り fragment に一致させようとします (fragment は reference より長くなければなりません)。この処理は (概念的には) fragment からスライスをいくつか取り出し、それぞれについて findfactor() を使って最良な一致を計算し、誤差が最小の結果を選ぶことで実現します。 fragment と reference のサンプル幅は両方とも2バイトでなければなりません。 (offset, factor) からなるタプルを返します。 offset は最適な一致箇所が始まる fragment のオフセット値（整数）で、 factor は findfactor() の返す係数 (浮動小数点数) です。
+
+audioop.findmax(fragment, length)
+fragment から、長さが length サンプル (バイトではありません!) で最大のエネルギーを持つスライス、すなわち、rms(fragment[i*2:(i+length)* 2]) を最大にするようなスライスを探し、i を返します。データのはサンプル幅は 2バイトでなければなりません。
+
+このルーチンの実行に要する時間は len(fragment) に比例します。
+
+audioop.getsample(fragment, width, index)
+データ中の index サンプル目の値を返します。
+
+audioop.lin2adpcm(fragment, width, state)
+データを 4 ビットの Intel/DVI ADPCM 符号化方式に変換します。ADPCM 符号化方式とは適応符号化方式の一つで、あるサンプルと (可変の) ステップだけ離れたその次のサンプルとの差を 4 ビットの整数で表現する方式です。Intel/DVI ADPCMアルゴリズムは IMA (国際MIDI協会) に採用されているので、おそらく標準になるはずです。
+
+state はエンコーダの内部状態が入ったタプルです。エンコーダは (adpcmfrag, newstate) のタプルを返し、次に lin2adpcm() を呼び出す時に newstate を渡さねばなりません。最初に呼び出す時には state に None を渡してもかまいません。 adpcmfrag は ADPCMで符号化されたデータで、バイト当たり 2 つの4ビット値がパックされています。
+
+audioop.lin2alaw(fragment, width)
+音声データのサンプルを a-LAW エンコーディングに変換し、バイトオブジェクトとして返します。a-LAW とは 13ビットのダイナミックレンジを 8bit だけで表現できる音声エンコーディングです。Sun の音声ハードウェアなどで使われています。
+
+audioop.lin2lin(fragment, width, newwidth)
+サンプル幅を 1、2、3、4 バイト形式の間で変換します。
+
+注釈 .WAV ファイルのような幾つかのオーディオフォーマットでは、16、24 と 32 bit のサンプルは符号付きですが、8 bit のサンプルは符号なしです。そのため、そのようなフォーマットで 8 bit に変換する場合は、変換結果に128を足さなければなりません:
+new_frames = audioop.lin2lin(frames, old_width, 1)
+new_frames = audioop.bias(new_frames, 1, 128)
+逆に、8 bit から 16、24、32 bit に変換する場合も、同じことが言えます。
+
+audioop.lin2ulaw(fragment, width)
+音声データのサンプルを u-LAW エンコーディングに変換し、バイトオブジェクトとして返します。u-LAW とは 14ビットのダイナミックレンジを 8bit だけで表現できる音声エンコーディングです。Sun の音声ハードウェアなどで使われています。
+
+audioop.max(fragment, width)
+音声データ全サンプルの 絶対値 の最大値を返します。
+
+audioop.maxpp(fragment, width)
+音声データの最大 peak-peak 振幅を返します。
+
+audioop.minmax(fragment, width)
+音声データ全サンプル中における最小値と最大値からなるタプルを返します。
+
+audioop.mul(fragment, width, factor)
+元の音声データの各サンプルに浮動小数点数 factor を乗算した音声データを返します。オーバーフローした場合は切り捨てられます。
+
+audioop.ratecv(fragment, width, nchannels, inrate, outrate, state[, weightA[, weightB]])
+入力したデータのフレームレートを変換します。
+
+state は変換ルーチンの内部状態を入れたタプルです。変換ルーチンは (newfragment, newstate) を返し、次に ratecv() を呼び出す時には newstate を渡さなねばなりません。最初の呼び出しでは None を渡します。
+
+引数 weightA と weightB は単純なデジタルフィルタのパラメタで、デフォルト値はそれぞれ 1 と 0 です。
+
+audioop.reverse(fragment, width)
+データ内のサンプルの順序を逆転し、変更されたデータを返します。
+
+audioop.rms(fragment, width)
+データの自乗平均根(root-mean-square)、すなわち sqrt(sum(S_i^2)/n) を返します。
+
+これはオーディオ信号の強度 (power) を測る一つの目安です。
+
+audioop.tomono(fragment, width, lfactor, rfactor)
+ステレオ音声データをモノラル音声データに変換します。左チャネルのデータに lfactor、右チャネルのデータに rfactor を掛けた後、二つのチャネルの値を加算して単一チャネルの信号を生成します。
+
+audioop.tostereo(fragment, width, lfactor, rfactor)
+モノラル音声データをステレオ音声データに変換します。ステレオ音声データの各サンプル対は、モノラル音声データの各サンプルをそれぞれ左チャネルは lfactor 倍、右チャネルは rfactor 倍して生成します。
+
+audioop.ulaw2lin(fragment, width)
+u-LAW で符号化されている音声データを線形に符号化された音声データに変換します。u-LAW 符号化は常にサンプル当たり 8 ビットを使うため、width は出力音声データのサンプル幅にしか使われません。
+
+mul() や max() といった操作はモノラルとステレオを区別しない、すなわち全てのデータを平等に扱うということに注意してください。この仕様が問題になるようなら、あらかじめステレオ音声データを二つのモノラル音声データに分割しておき、操作後に再度統合してください。そのような例を以下に示します:
+
+def mul_stereo(sample, width, lfactor, rfactor):
+    lsample = audioop.tomono(sample, width, 1, 0)
+    rsample = audioop.tomono(sample, width, 0, 1)
+    lsample = audioop.mul(lsample, width, lfactor)
+    rsample = audioop.mul(rsample, width, rfactor)
+    lsample = audioop.tostereo(lsample, width, 1, 0)
+    rsample = audioop.tostereo(rsample, width, 0, 1)
+    return audioop.add(lsample, rsample, width)
+もし ADPCM 符号をネットワークパケットの構築に使って独自のプロトコルをステートレスにしたい場合 (つまり、パケットロスを許容したい場合)は、データだけを送信して、ステートを送信すべきではありません。デコーダに従って initial ステート (lin2adpcm() に渡される値) を送るべきで、最終状態 (符号化器が返す値) を送るべきではないことに注意してください。 もし、struct.Struct をバイナリでの状態保存に使いたい場合は、最初の要素 (予測値) を 16bit で符号化し、２番目の要素 (デルタインデックス) を 8bit で符号化できます。
+
+このモジュールの ADPCM 符号のテストは自分自身に対してのみ行っており、他の ADPCM 符号との間では行っていません。作者が仕様を誤解している部分もあるかもしれず、それぞれの標準との間で相互運用できない場合もあり得ます。
+
+find*() ルーチンは一見滑稽に見えるかもしれません。これらの関数の主な目的はエコー除去 (echo cancellation) にあります。エコー除去を十分高速に行うには、出力サンプル中から最も大きなエネルギーを持った部分を取り出し、この部分が入力サンプル中のどこにあるかを調べ、入力サンプルから出力サンプル自体を減算します:
+
+def echocancel(outputdata, inputdata):
+    pos = audioop.findmax(outputdata, 800)    # one tenth second
+    out_test = outputdata[pos*2:]
+    in_test = inputdata[pos*2:]
+    ipos, factor = audioop.findfit(in_test, out_test)
+    # Optional (for better cancellation):
+    # factor = audioop.findfactor(in_test[ipos*2:ipos*2+len(out_test)],
+    #              out_test)
+    prefill = '\0'*(pos+ipos)*2
+    postfill = '\0'*(len(inputdata)-len(prefill)-len(outputdata))
+    outputdata = prefill + audioop.mul(outputdata, 2, -factor) + postfill
+    return audioop.add(inputdata, outputdata, 2)
+
+aifc --- AIFFおよびAIFCファイルの読み書き
+ソースコード: Lib/aifc.py
+
+このモジュールはAIFFとAIFF-Cファイルの読み書きをサポートします。AIFF（Audio Interchange File Format）はデジタルオーディオサンプルをファイルに保存するためのフォーマットです。AIFF-CはAIFFの新しいバージョンで、オーディオデータの圧縮に対応しています。
+
+オーディオファイルには、オーディオデータについて記述したパラメータがたくさん含まれています。サンプリングレートあるいはフレームレートは、1秒あたりのオーディオサンプル数です。チャンネル数は、モノラル、ステレオ、4チャンネルかどうかを示します。フレームはそれぞれ、チャンネルごとに一つのサンプルからなります。サンプルサイズは、一つのサンプルの大きさをバイト数で示したものです。したがって、一つのフレームは nchannels * samplesize バイト からなり、1秒間では nchannels * samplesize * framerate バイトで構成されます。
+
+例えば、CD品質のオーディオは2バイト（16ビット）のサンプルサイズを持っていて、2チャンネル（ステレオ）であり、44,100フレーム／秒のフレームレートを持っています。そのため、フレームサイズは4バイト（2*2）で、1秒間では2*2*44100バイト（176,400バイト）になります。
+
+aifc モジュールは以下の関数を定義しています:
+
+aifc.open(file, mode=None)
+AIFFあるいはAIFF-Cファイルを開き、後述するメソッドを持つインスタンスを返します。引数 file はファイルを示す文字列か、 file object のいずれかです。 mode は、読み込み用に開くときには 'r' か 'rb' のどちらかでなければならず、書き込み用に開くときには 'w' か 'wb' のどちらかでなければなりません。もし省略されたら、 file.mode が存在すればそれが使用され、なければ 'rb' が使われます。書き込み用にこのメソッドを使用するときには、これから全部でどれだけのサンプル数を書き込むのか分からなかったり、 writeframesraw() と setnframes() を使わないなら、ファイルオブジェクトはシーク可能でなければなりません。open() 関数は with 文の中で使われるかもしれません。with ブロックの実行が終了したら、close() メソッドが呼び出されます。
+
+バージョン 3.4 で変更: with 構文のサポートが追加されました。
+
+ファイルが open() によって読み込み用に開かれたときに返されるオブジェクトには、以下のメソッドがあります:
+
+aifc.getnchannels()
+オーディオチャンネル数（モノラルなら1、ステレオなら2）を返します。
+
+aifc.getsampwidth()
+サンプルサイズをバイト数で返します。
+
+aifc.getframerate()
+サンプリングレート（1秒あたりのオーディオフレーム数）を返します。
+
+aifc.getnframes()
+ファイルの中のオーディオフレーム数を返します。
+
+aifc.getcomptype()
+オーディオファイルで使用されている圧縮形式を示す4バイトの bytes を返します。AIFFファイルでは b'NONE' が返されます。
+
+aifc.getcompname()
+オーディオファイルの圧縮形式を人に判読可能な形に変換できる bytes で返します。AIFFファイルでは b'not compressed' が返されます。
+
+aifc.getparams()
+get*() メソッドが返すのと同じ (nchannels, sampwidth, framerate, nframes, comptype, compname) の namedtuple() を返します。
+
+aifc.getmarkers()
+オーディオファイルのマーカーのリストを返します。一つのマーカーは三つの要素のタプルです。要素の1番目はマークID（整数）、2番目はマーク位置のフレーム数をデータの始めから数えた値（整数）、3番目はマークの名称（文字列）です。
+
+aifc.getmark(id)
+与えられた id のマークの要素を getmarkers() で述べたタプルで返します。
+
+aifc.readframes(nframes)
+オーディオファイルの次の nframes 個のフレームを読み込んで返します。返されるデータは、全チャンネルの圧縮されていないサンプルをフレームごとに文字列にしたものです。
+
+aifc.rewind()
+読み込むポインタをデータの始めに巻き戻します。次に readframes() を使用すると、データの始めから読み込みます。
+
+aifc.setpos(pos)
+指定したフレーム数の位置にポインタを設定します。
+
+aifc.tell()
+現在のポインタのフレーム位置を返します。
+
+aifc.close()
+AIFFファイルを閉じます。このメソッドを呼び出したあとでは、オブジェクトはもう使用できません。
+
+ファイルが open() によって書き込み用に開かれたときに返されるオブジェクトには、 readframes() と setpos() を除く上述の全てのメソッドがあります。さらに以下のメソッドが定義されています。 get*() メソッドは、対応する set*() を呼び出したあとでのみ呼び出し可能です。最初に writeframes() あるいは writeframesraw() を呼び出す前に、フレーム数を除く全てのパラメータが設定されていなければなりません。
+
+aifc.aiff()
+AIFFファイルを作ります。デフォルトではAIFF-Cファイルが作られますが、ファイル名が '.aiff' で終わっていればAIFFファイルが作られます。
+
+aifc.aifc()
+AIFF-Cファイルを作ります。デフォルトではAIFF-Cファイルが作られますが、ファイル名が '.aiff' で終わっていればAIFFファイルが作られます。
+
+aifc.setnchannels(nchannels)
+オーディオファイルのチャンネル数を設定します。
+
+aifc.setsampwidth(width)
+オーディオのサンプルサイズをバイト数で設定します。
+
+aifc.setframerate(rate)
+サンプリングレートを1秒あたりのフレーム数で設定します。
+
+aifc.setnframes(nframes)
+オーディオファイルに書き込まれるフレーム数を設定します。もしこのパラメータが設定されていなかったり正しくなかったら、ファイルはシークに対応していなければなりません。
+
+aifc.setcomptype(type, name)
+圧縮形式を設定します。もし設定しなければ、オーディオデータは圧縮されません。AIFFファイルは圧縮できません。name 引数は人間が読める圧縮形式の説明を bytes にしたもので、type 引数は4バイトの bytes でなければなりません。現在のところ、以下の圧縮形式がサポートされています： b'NONE', b'ULAW', b'ALAW', b'G722'。
+
+aifc.setparams(nchannels, sampwidth, framerate, comptype, compname)
+上の全パラメータを一度に設定します。引数はそれぞれのパラメータからなるタプルです。つまり、 setparams() の引数として、 getparams() を呼び出した結果を使うことができます。
+
+aifc.setmark(id, pos, name)
+指定したID（1以上）、位置、名称でマークを加えます。このメソッドは、 close() の前ならいつでも呼び出すことができます。
+
+aifc.tell()
+出力ファイルの現在の書き込み位置を返します。 setmark() との組み合わせで使うと便利です。
+
+aifc.writeframes(data)
+出力ファイルにデータを書き込みます。このメソッドは、オーディオファイルのパラメータを設定したあとでのみ呼び出し可能です。
+
+バージョン 3.4 で変更: どのような bytes-like object も使用できるようになりました。
+
+aifc.writeframesraw(data)
+オーディオファイルのヘッダ情報が更新されないことを除いて、 writeframes() と同じです。
+
+バージョン 3.4 で変更: どのような bytes-like object も使用できるようになりました。
+
+aifc.close()
+AIFFファイルを閉じます。ファイルのヘッダ情報は、オーディオデータの実際のサイズを反映して更新されます。このメソッドを呼び出したあとでは、オブジェクトはもう使用できません。
+
+sunau --- Sun AUファイルの読み書き¶
+ソースコード: Lib/sunau.py
+
+sunau モジュールは、Sun AUサウンドフォーマットへの便利なインターフェースを提供します。このモジュールは、 aifc モジュールや wave モジュールと互換性のあるインターフェースを備えています。
+
+オーディオファイルはヘッダとそれに続くデータから構成されます。ヘッダのフィールドは以下の通りです:
+
+フィールド
+
+内容
+
+magic word
+
+4バイト文字列 .snd。
+
+header size
+
+infoを含むヘッダのサイズをバイト数で示したもの。
+
+data size
+
+データの物理サイズをバイト数で示したもの。
+
+encoding
+
+オーディオサンプルのエンコード形式。
+
+sample rate
+
+サンプリングレート。
+
+# of channels
+
+サンプルのチャンネル数。
+
+info
+
+オーディオファイルについての説明をASCII文字列で示したもの（null バイトで埋められます）。
+
+infoフィールド以外の全てのヘッダフィールドは4バイトの大きさです。ヘッダフィールドはbig-endianでエンコードされた、計32ビットの符合なし整数です。
+
+sunau モジュールは以下の関数を定義しています:
+
+sunau.open(file, mode)
+file が文字列ならその名前のファイルを開き、そうでないならファイルのようにシーク可能なオブジェクトとして扱います。mode は以下のうちのいずれかです
+
+'r'
+読み出しのみのモード。
+
+'w'
+書き込みのみのモード。
+
+読み込み／書き込み両方のモードで開くことはできないことに注意して下さい。
+
+'r' の mode は AU_read オブジェクトを返し、 'w' と 'wb' の mode は AU_write オブジェクトを返します。
+
+sunau モジュールは以下の例外を定義しています:
+
+exception sunau.Error
+Sun AUの仕様や実装に対する不適切な操作により何か実行不可能となった時に発生するエラー。
+
+sunau モジュールは以下のデータアイテムを定義しています:
+
+sunau.AUDIO_FILE_MAGIC
+big-endianで保存された正規のSun AUファイルは全てこの整数で始まります。これは文字列 .snd を整数に変換したものです。
+
+sunau.AUDIO_FILE_ENCODING_MULAW_8
+sunau.AUDIO_FILE_ENCODING_LINEAR_8
+sunau.AUDIO_FILE_ENCODING_LINEAR_16
+sunau.AUDIO_FILE_ENCODING_LINEAR_24
+sunau.AUDIO_FILE_ENCODING_LINEAR_32
+sunau.AUDIO_FILE_ENCODING_ALAW_8
+AUヘッダのencodingフィールドの値で、このモジュールでサポートしているものです。
+
+sunau.AUDIO_FILE_ENCODING_FLOAT
+sunau.AUDIO_FILE_ENCODING_DOUBLE
+sunau.AUDIO_FILE_ENCODING_ADPCM_G721
+sunau.AUDIO_FILE_ENCODING_ADPCM_G722
+sunau.AUDIO_FILE_ENCODING_ADPCM_G723_3
+sunau.AUDIO_FILE_ENCODING_ADPCM_G723_5
+AUヘッダのencodingフィールドの値のうち既知のものとして追加されているものですが、このモジュールではサポートされていません。
+
+AU_read オブジェクト
+上述の open() によって返されるAU_readオブジェクトには、以下のメソッドがあります:
+
+AU_read.close()
+ストリームを閉じ、このオブジェクトのインスタンスを使用できなくします。（これはオブジェクトのガベージコレクション時に自動的に呼び出されます。）
+
+AU_read.getnchannels()
+オーディオチャンネル数（モノラルなら1、ステレオなら2）を返します。
+
+AU_read.getsampwidth()
+サンプルサイズをバイト数で返します。
+
+AU_read.getframerate()
+サンプリングレートを返します。
+
+AU_read.getnframes()
+オーディオフレーム数を返します。
+
+AU_read.getcomptype()
+圧縮形式を返します。'ULAW', 'ALAW', 'NONE' がサポートされている形式です。
+
+AU_read.getcompname()
+getcomptype() を人に判読可能な形にしたものです。上述の形式に対して、それぞれ 'CCITT G.711 u-law', 'CCITT G.711 A-law', 'not compressed' がサポートされています。
+
+AU_read.getparams()
+get*() メソッドが返すのと同じ (nchannels, sampwidth, framerate, nframes, comptype, compname) の namedtuple() を返します。
+
+AU_read.readframes(n)
+n 個のオーディオフレームの値を読み込んで、 bytes オブジェクトを返します。データはlinear形式で返されます。もし元のデータがu-LAW形式なら、変換されます。
+
+AU_read.rewind()
+ファイルのポインタをオーディオストリームの先頭に戻します。
+
+以下の2つのメソッドは共通の"位置"を定義しています。"位置"は他の関数とは独立して実装されています。
+
+AU_read.setpos(pos)
+ファイルのポインタを指定した位置に設定します。 tell() で返される値を pos として使用しなければなりません。
+
+AU_read.tell()
+ファイルの現在のポインタ位置を返します。返される値はファイルの実際の位置に対して何も操作はしません。
+
+以下の2つのメソッドは aifc モジュールとの互換性のために定義されていますが、何も面白いことはしません。
+
+AU_read.getmarkers()
+None を返します。
+
+AU_read.getmark(id)
+エラーを発生します。
+
+AU_write オブジェクト
+上述の open() によって返されるWave_writeオブジェクトには、以下のメソッドがあります:
+
+AU_write.setnchannels(n)
+チャンネル数を設定します。
+
+AU_write.setsampwidth(n)
+サンプルサイズを（バイト数で）設定します。
+
+バージョン 3.4 で変更: 24-bit サンプルのサポートが追加されました。
+
+AU_write.setframerate(n)
+フレームレートを設定します。
+
+AU_write.setnframes(n)
+フレーム数を設定します。あとからフレームが書き込まれるとフレーム数は変更されます。
+
+AU_write.setcomptype(type, name)
+圧縮形式とその記述を設定します。'NONE' と 'ULAW' だけが、出力時にサポートされている形式です。
+
+AU_write.setparams(tuple)
+tuple は (nchannels, sampwidth, framerate, nframes, comptype, compname) で、それぞれ set*() のメソッドの値にふさわしいものでなければなりません。全ての変数を設定します。
+
+AU_write.tell()
+ファイルの中の現在位置を返します。 AU_read.tell() と AU_read.setpos() メソッドでお断りしたことがこのメソッドにも当てはまります。
+
+AU_write.writeframesraw(data)
+nframes の修正なしにオーディオフレームを書き込みます。
+
+バージョン 3.4 で変更: どのような bytes-like object も使用できるようになりました。
+
+AU_write.writeframes(data)
+オーディオフレームを書き込んで nframes を修正します。
+
+バージョン 3.4 で変更: どのような bytes-like object も使用できるようになりました。
+
+AU_write.close()
+nframes が正しいか確認して、ファイルを閉じます。
+
+このメソッドはオブジェクトの削除時に呼び出されます。
+
+writeframes() や writeframesraw() メソッドを呼び出したあとで、どんなパラメータを設定しようとしても不正となることに注意して下さい。
+
+wave --- WAVファイルの読み書き¶
+ソースコード: Lib/wave.py
+
+wave モジュールは、WAVサウンドフォーマットへの便利なインターフェイスを提供するモジュールです。このモジュールは圧縮／展開をサポートしていませんが、モノラル／ステレオには対応しています。
+
+wave モジュールは、以下の関数と例外を定義しています:
+
+wave.open(file, mode=None)
+file が文字列ならその名前のファイルを開き、そうでないなら file like オブジェクトとして扱います。 mode は以下のうちのいずれかです:
+
+'rb'
+読み出しのみのモード。
+
+'wb'
+書き込みのみのモード。
+
+WAVファイルに対して読み込み／書き込み両方のモードで開くことはできないことに注意して下さい。
+
+mode が 'rb' の場合 Wave_read オブジェクトを返し、 'wb' の場合 Wave_write オブジェクトを返します。 mode が省略されていて、 file-like オブジェクトが file として渡されると、 file.mode が mode のデフォルト値として使われます。
+
+file like オブジェクトを渡した場合、 wave オブジェクトの close() メソッドを呼び出してもその file like オブジェクトを close しません。 file like オブジェクトの close は呼び出し側の責任になります。
+
+open() 関数は with 文とともに使うことができます。 with ブロックが終わるときに、 Wave_read.close() メソッドまたは Wave_write.close() メソッドが呼ばれます。
+
+バージョン 3.4 で変更: シーク不能なファイルのサポートが追加されました。
+
+exception wave.Error
+WAVの仕様を犯したり、実装の欠陥に遭遇して何か実行不可能となった時に発生するエラー。
+
+Wave_read オブジェクト
+open() によって返される Wave_read オブジェクトには、以下のメソッドがあります:
+
+Wave_read.close()
+wave によって開かれていた場合はストリームを閉じ、このオブジェクトのインスタンスを使用できなくします。これはオブジェクトのガベージコレクション時に自動的に呼び出されます。
+
+Wave_read.getnchannels()
+オーディオチャンネル数（モノラルなら 1 、ステレオなら 2 ）を返します。
+
+Wave_read.getsampwidth()
+サンプルサイズをバイト数で返します。
+
+Wave_read.getframerate()
+サンプリングレートを返します。
+
+Wave_read.getnframes()
+オーディオフレーム数を返します。
+
+Wave_read.getcomptype()
+圧縮形式を返します（ 'NONE' だけがサポートされている形式です）。
+
+Wave_read.getcompname()
+getcomptype() を人に判読可能な形にしたものです。通常、 'NONE' に対して 'not compressed' が返されます。
+
+Wave_read.getparams()
+get*() メソッドが返すのと同じ (nchannels, sampwidth, framerate, nframes, comptype, compname) の namedtuple() を返します。
+
+Wave_read.readframes(n)
+最大 n 個のオーディオフレームを読み込んで、 bytes オブジェクトとして返します。
+
+Wave_read.rewind()
+ファイルのポインタをオーディオストリームの先頭に戻します。
+
+以下の2つのメソッドは aifc モジュールとの互換性のために定義されており、何も面白いことはしません。
+
+Wave_read.getmarkers()
+None を返します。
+
+Wave_read.getmark(id)
+エラーを発生します。
+
+以下の2つのメソッドは共通の"位置"を定義しています。"位置"は他の関数とは独立して実装されています。
+
+Wave_read.setpos(pos)
+ファイルのポインタを指定した位置に設定します。
+
+Wave_read.tell()
+ファイルの現在のポインタ位置を返します。
+
+Wave_write オブジェクト
+seek 可能な出力ストリームでは、実際に書き込まれたフレーム数を反映するように wave ヘッダーは自動的にアップデートされます。 seek 不能なストリームでは、最初のフレームデータが書き込まれる時には nframes の値は正確でなければなりません。 nframes の正確な値は、 close() が呼ばれる前に書き込まれるフレーム数とともに setnframes() または setparams() を呼んで、その後 writeframesraw() を利用してフレームデータを書くか、もしくはすべての書き込むべきフレームデータとともに writeframes() を呼び出すことによって達成できます。後者のケースでは、 writeframes() はフレームデータを書く前に、データ中のフレームの数を計算して、それに応じて nframes を設定します。
+
+open() によって返される Wave_write オブジェクトには、以下のメソッドがあります:
+
+バージョン 3.4 で変更: シーク不能なファイルのサポートが追加されました。
+
+Wave_write.close()
+nframes が正しいか確認して、ファイルが wave によって開かれていた場合は閉じます。このメソッドはオブジェクトがガベージコレクションされるときに呼び出されます。もし出力ストリームがシーク不能で、 nframes が実際に書き込まれたフレームの数と一致しなければ、例外が起きます。
+
+Wave_write.setnchannels(n)
+チャンネル数を設定します。
+
+Wave_write.setsampwidth(n)
+サンプルサイズを n バイトに設定します。
+
+Wave_write.setframerate(n)
+サンプリングレートを n に設定します。
+
+バージョン 3.2 で変更: 整数ではない値がこのメソッドに入力された場合は、直近の整数に丸められます。
+
+Wave_write.setnframes(n)
+フレーム数を n に設定します。もし実際に書き込まれたフレームの数と異なるなら、これは後で変更されます (出力ストリームがシーク不能なら、更新しようとした時にエラーが起きます)。
+
+Wave_write.setcomptype(type, name)
+圧縮形式とその記述を設定します。現在のところ、非圧縮を示す圧縮形式 NONE だけがサポートされています。
+
+Wave_write.setparams(tuple)
+この tuple は (nchannels, sampwidth, framerate, nframes, comptype, compname) でなければならず、その値はそれぞれの set*() メソッドで有効でなければなりません。すべてのパラメータを設定します。
+
+Wave_write.tell()
+ファイルの中の現在位置を返します。 Wave_read.tell() と Wave_read.setpos() メソッドでお断りしたことがこのメソッドにも当てはまります。
+
+Wave_write.writeframesraw(data)
+nframes の修正なしにオーディオフレームを書き込みます。
+
+バージョン 3.4 で変更: どのような bytes-like object も使用できるようになりました。
+
+Wave_write.writeframes(data)
+出力ストリームが seek 不可能で、 data が書き込まれた後でそれ以前に nframes に設定された値と書き込まれた全フレーム数が一致しなければ、エラーを送出します。
+
+バージョン 3.4 で変更: どのような bytes-like object も使用できるようになりました。
+
+writeframes() や writeframesraw() メソッドを呼び出したあとで、どんなパラメータを設定しようとしても不正となることに注意して下さい。そうすると wave.Error を発生します。
+
+chunk --- IFFチャンクデータの読み込み¶
+ソースコード: Lib/chunk.py
+
+このモジュールはEA IFF 85チャンクを使用しているファイルの読み込みのためのインターフェースを提供します。1 このフォーマットは少なくとも、Audio Interchange File Format (AIFF/AIFF-C) とReal Media File Format (RMFF)で使われています。WAVEオーディオファイルフォーマットも厳密に対応しているので、このモジュールで読み込みできます。
+
+チャンクは以下の構造を持っています:
+
+Offset値
+
+長さ
+
+内容
+
+0
+
+4
+
+チャンクID
+
+4
+
+4
+
+big- endianで示したチャンクのサイズで、ヘッダは含みません
+
+8
+
+n
+
+バイトデータで、n はこれより先のフィールドのサイズ
+
+8 + n
+
+0 or 1
+
+n が奇数ならチャンクの整頓のために埋められるバイト
+
+IDはチャンクの種類を識別する4バイトの文字列です。
+
+サイズフィールド（big-endianでエンコードされた32ビット値）は、8バイトのヘッダを含まないチャンクデータのサイズを示します。
+
+普通、IFFタイプのファイルは1個かそれ以上のチャンクからなります。このモジュールで定義される Chunk クラスの使い方として提案しているのは、それぞれのチャンクの始めにインスタンスを作り、終わりに達するまでそのインスタンスから読み取り、その後で新しいインスタンスを作るということです。ファイルの終わりで新しいインスタンスを作ろうとすると、 EOFError の例外が発生して失敗します。
+
+class chunk.Chunk(file, align=True, bigendian=True, inclheader=False)
+チャンクを表わすクラス。 file 引数はファイル風オブジェクトであると期待されます。このクラスのインスタンスは特別に許可されます。唯一の必要なメソッドは read() です。メソッド seek() および tell() が存在し、例外を上げない場合、それらも使用されます。これらのメソッドが存在し、例外を上げる場合、それらのメソッドはオブジェクトを変更しないことが想定されます。オプションの引数 align が true の場合、チャンクは2バイト境界上で整列されていると仮定されます。 align が false の場合、整列は仮定されません。デフォルト値は true です。オプションの引数 bigendian が false の場合、チャンクサイズはリトルエンディアン順になっていると仮定されます。これは WAVE オーディオファイルに必要とされます。デフォルト値は true です。オプションの引数 inclheader が true の場合、チャンクヘッダ中で与えられたサイズはヘッダのサイズを含んでいます。デフォルト値は false です。
+
+Chunk オブジェクトには以下のメソッドが定義されています:
+
+getname()
+チャンクの名前（ID）を返します。これはチャンクの始めの4バイトです。
+
+getsize()
+チャンクのサイズを返します。
+
+close()
+オブジェクトを閉じて、チャンクの終わりまで飛びます。これは元のファイル自体は閉じません。
+
+close() メソッドが呼ばれた後で他のメソッドを呼ぶと OSError が送出されます。 Python 3.3 以前は IOError (現在は OSError の別名) が送出されていました。
+
+isatty()
+False を返します。
+
+seek(pos, whence=0)
+チャンクの現在位置を設定します。引数 whence は省略可能で、デフォルト値は 0 （ファイルの絶対位置）です; 他に 1 （現在位置から相対的にシークします）と 2 （ファイルの末尾から相対的にシークします）の値を取ります。何も値は返しません。もし元のファイルがシークに対応していなければ、前方へのシークのみが可能です。
+
+tell()
+チャンク内の現在位置を返します。
+
+read(size=-1)
+チャンクから最大で size バイト読み込みます ( size バイトを読み込むより前にチャンクの最後に行き着いたら、それより少なくなります) 。もし引数 size が負か省略されたら、チャンクの最後まで全てのデータを読み込みます。チャンクの最後に行き着いたら、空の bytes オブジェクトを返します。
+
+skip()
+チャンクの最後まで飛びます。さらにチャンクの read() を呼び出すと、 b'' が返されます。もしチャンクの内容に興味がないなら、このメソッドを呼び出してファイルポインタを次のチャンクの始めに設定します。
+
+colorsys --- 色体系間の変換¶
+ソースコード: Lib/colorsys.py
+
+colorsys モジュールは、計算機のディスプレイモニタで使われている RGB (Red Green Blue) 色空間で表された色と、他の 3 種類の色座標系: YIQ, HLS (Hue Lightness Saturation: 色相、彩度、飽和) および HSV (Hue Saturation Value: 色相、彩度、明度) との間の双方向の色値変換を定義します。これらの色空間における色座標系は全て浮動小数点数で表されます。 YIQ 空間では、Y 軸は 0 から 1 ですが、 I および Q 軸は正の値も負の値もとり得ます。他の色空間では、各軸は全て 0 から 1 の値をとります。
+
+参考 色空間に関するより詳細な情報は https://poynton.ca/ColorFAQ.html と https://www.cambridgeincolour.com/tutorials/color-spaces.htm にあります。
+colorsys モジュールでは、以下の関数が定義されています:
+
+colorsys.rgb_to_yiq(r, g, b)
+RGB から YIQ に変換します。
+
+colorsys.yiq_to_rgb(y, i, q)
+YIQ から RGB に変換します。
+
+colorsys.rgb_to_hls(r, g, b)
+RGB から HLS に変換します。
+
+colorsys.hls_to_rgb(h, l, s)
+HLS から RGB に変換します。
+
+colorsys.rgb_to_hsv(r, g, b)
+RGB から HSV に変換します。
+
+colorsys.hsv_to_rgb(h, s, v)
+HSV から RGB に変換します。
+
+以下はプログラム例です:
+
+>>>
+>>> import colorsys
+>>> colorsys.rgb_to_hsv(0.2, 0.4, 0.4)
+(0.5, 0.5, 0.4)
+>>> colorsys.hsv_to_rgb(0.5, 0.5, 0.4)
+(0.2, 0.4, 0.4)
+
+imghdr --- 画像の形式を決定する
+ソースコード: Lib/imghdr.py
+
+imghdr モジュールはファイルやバイトストリームに含まれる画像の形式を決定します。
+
+imghdr モジュールは次の関数を定義しています:
+
+imghdr.what(filename, h=None)
+filename という名前のファイル内の画像データをテストし、画像形式を表す文字列を返します。オプションの h が与えられた場合は、filename は無視され、テストするバイトストリームを含んでいると h は仮定されます。
+
+バージョン 3.6 で変更: path-like object を受け入れるようになりました。
+
+以下に what() からの戻り値とともにリストするように、次の画像形式が認識されます:
+
+値
+
+Image format
+
+'rgb'
+
+SGI ImgLib Files
+
+'gif'
+
+GIF 87a and 89a Files
+
+'pbm'
+
+Portable Bitmap Files
+
+'pgm'
+
+Portable Graymap Files
+
+'ppm'
+
+Portable Pixmap Files
+
+'tiff'
+
+TIFF Files
+
+'rast'
+
+Sun Raster Files
+
+'xbm'
+
+X Bitmap Files
+
+'jpeg'
+
+JPEG data in JFIF or Exif formats
+
+'bmp'
+
+BMP files
+
+'png'
+
+Portable Network Graphics
+
+'webp'
+
+WebP files
+
+'exr'
+
+OpenEXR Files
+
+バージョン 3.5 で追加: フォーマット*exr*と*webp*が追加されました.
+
+この変数に追加することで、あなたは imghdr が認識できるファイル形式のリストを拡張できます:
+
+imghdr.tests
+個別のテストを行う関数のリスト。それぞれの関数は二つの引数をとります: バイトストリームとオープンされたファイルのようにふるまうオブジェクト。 what() がバイトストリームとともに呼び出されたときは、ファイルのようにふるまうオブジェクトは None でしょう。
+
+テストが成功した場合は、テスト関数は画像形式を表す文字列を返すべきです。あるいは、失敗した場合は None を返すべきです。
+
+以下はプログラム例です:
+
+>>>
+>>> import imghdr
+>>> imghdr.what('bass.gif')
+'gif'
+
+sndhdr --- サウンドファイルの識別¶
+ソースコード: Lib/sndhdr.py
+
+sndhdr モジュールには、ファイルに保存されたサウンドデータの形式を識別するのに便利な関数が定義されています。どんな形式のサウンドデータがファイルに保存されているのか識別可能な場合、これらの関数は5つの属性、つまり(filetype, framerate, nchannels, nframes, sampwidth)で構成される namedtuple() を返します。 type はデータの形式を示す文字列で、 'aifc', 'aiff', 'au', 'hcom', 'sndr', 'sndt', 'voc', 'wav', '8svx', 'sb', 'ub', 'ul' のうちの一つです。 sampling_rate は実際のサンプリングレート値で、未知の場合や読み取ることが出来なかった場合は 0 です。同様に、 channels はチャンネル数で、識別できない場合や読み取ることが出来なかった場合は 0 です。 frames はフレーム数で、識別できない場合は -1 です。タプルの最後の要素 bits_per_sample はサンプルサイズを示すビット数ですが、A-LAWなら 'A', u-LAWなら 'U' です。
+
+sndhdr.what(filename)
+whathdr() を使って、ファイル filename に保存されたサウンドデータの形式を識別します。識別可能なら上記のnamedtupleを返し、識別できない場合は None を返します。
+
+バージョン 3.5 で変更: 結果が tuple から namedtuple に変更されました。
+
+sndhdr.whathdr(filename)
+ファイルのヘッダ情報をもとに、保存されたサウンドデータの形式を識別します。ファイル名は filename で渡されます。識別可能なら上記の namedtuple を返し、識別できない場合は None を返します。
+
+バージョン 3.5 で変更: 結果が tuple から namedtuple に変更されました。
+
+ossaudiodev --- OSS互換オーディオデバイスへのアクセス
+このモジュールを使うとOSS (Open Sound System) オーディオインターフェースにアクセスできます。OSSはオープンソースあるいは商用のUnixで広く利用でき、Linux (カーネル 2.4まで) とFreeBSDで標準のオーディオインターフェースです。
+
+バージョン 3.3 で変更: このモジュールの操作で以前は IOError が送出されていたところで OSError が送出されるようになりました。
+
+参考
+Open Sound System Programmer's Guide
+OSS C API の公式ドキュメント
+
+このモジュールでは、OSS デバイスドライバが提供している大量の定数が定義されています; 一覧は Linux や FreeBSD 上の <sys/soundcard.h> を参照してください。
+
+ossaudiodev では以下の変数と関数を定義しています:
+
+exception ossaudiodev.OSSAudioError
+何らかのエラーのときに送出される例外です。引数は何が誤っているかを示す文字列です。
+
+(ossaudiodev が open()、 write() 、ioctl() などのシステムコールからエラーを受け取った場合、 OSError を送出します。 ossaudiodev によって直接検知されたエラーでは OSSAudioError になります。)
+
+(以前のバージョンとの互換性のため、この例外クラスは ossaudiodev.error としても利用できます。)
+
+ossaudiodev.open(mode)
+ossaudiodev.open(device, mode)
+オーディオデバイスを開き、OSSオーディオデバイスオブジェクトを返します。このオブジェクトは read() 、 write() 、 fileno() といったファイル類似オブジェクトのメソッドを数多くサポートしています。 (とはいえ、伝統的な Unix の read/write における意味づけと OSS デバイスの read/write との間には微妙な違いがあります)。また、オーディオ特有の多くのメソッドがあります;メソッドの完全なリストについては下記を参照してください。
+
+device は使用するオーディオデバイスファイルネームです。もしこれが指定されないなら、このモジュールは使うデバイスとして最初に環境変数 AUDIODEV を参照します。見つからなければ /dev/dsp を参照します。
+
+mode は読み出し専用アクセスの場合には 'r'、書き込み専用 (プレイバック) アクセスの場合には 'w'、読み書きアクセスの場合には 'rw' にします。多くのサウンドカードは一つのプロセスが一度にレコーダとプレーヤのどちらかしか開けないようにしているため、必要な操作に応じたデバイスだけを開くようにするのがよいでしょう。また、サウンドカードには半二重 (half- duplex) 方式のものがあります: こうしたカードでは、デバイスを読み出しまたは書き込み用に開くことはできますが、両方同時には開けません。
+
+呼び出しの文法が普通と異なることに注意してください: 最初の 引数は省略可能で、2番目が必須です。これは ossaudiodev にとってかわられた古い linuxaudiodev との互換性のためという歴史的な産物です。
+
+ossaudiodev.openmixer([device])
+ミキサデバイスを開き、OSSミキサデバイスオブジェクトを返します。 device は使用するミキサデバイスのファイル名です。 device を指定しない場合、モジュールはまず環境変数 MIXERDEV を参照して使用するデバイスを探します。見つからなければ、 /dev/mixer を参照します。
+
+オーディオデバイスオブジェクト
+オーディオデバイスに読み書きできるようになるには、まず 3 つのメソッドを正しい順序で呼び出さねばなりません:
+
+setfmt() で出力形式を設定し
+
+channels() でチャンネル数を設定し
+
+speed() でサンプリングレートを設定します
+
+この代わりに setparameters() メソッドを呼び出せば、三つのオーディオパラメタを一度で設定できます。 setparameters() は便利ですが、多くの状況で柔軟性に欠けるでしょう。
+
+open() の返すオーディオデバイスオブジェクトには以下のメソッドおよび(読み出し専用の)属性があります:
+
+oss_audio_device.close()
+オーディオデバイスを明示的に閉じます。オーディオデバイスは、読み出しや書き込みが終了したら必ず閉じねばなりません。閉じたオブジェクトを再度開くことはできません。
+
+oss_audio_device.fileno()
+デバイスに関連付けられているファイル記述子を返します。
+
+oss_audio_device.read(size)
+オーディオ入力から size バイトを読みだし、 Python 文字列型にして返します。多くの Unix デバイスドライバと違い、ブロックデバイスモード (デフォルト) の OSS オーディオデバイスでは、要求した量のデータ全体を取り込むまで read() がブロックします。
+
+oss_audio_device.write(data)
+bytes-like object data の内容をオーディオデバイスに書き込み、書き込まれたバイト数を返します。オーディオデバイスがブロックモード (デフォルト) の場合、常にデータ全体を書き込みます (前述のように、これは通常のUnix デバイスの振舞いとは異なります)。デバイスが非ブロックモードの場合、データの一部が書き込まれないことがあります --- writeall() を参照してください。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+oss_audio_device.writeall(data)
+bytes-like object data をオーディオデバイスに書き込みます。オーディオデバイスがデータを受け取れるようになるまで待機し、書き込めるだけのデータを書き込むという操作を、 data を全て書き込み終わるまで繰り返します。デバイスがブロックモード (デフォルト) の場合には、このメソッドは write() と同じです。 writeall() が有用なのは非ブロックモードだけです。実際に書き込まれたデータの量と渡したデータの量は必ず同じになるので、戻り値はありません。
+
+バージョン 3.5 で変更: 書き込み可能な bytes-like object を使用できるようになりました。
+
+バージョン 3.2 で変更: オーディオデバイスオブジェクトはコンテキストマネージメントプロトコルをサポートしています。つまり with 文で使うことができます。
+
+以下の各メソッドは、厳密に 1 つの ioctl() システムコールに対応しています。対応関係は明らかです: 例えば、 setfmt() は ioctl の SNDCTL_DSP_SETFMT に対応し、 sync() は SNDCTL_DSP_SYNC に対応します (これは OSS のドキュメントを調べるときに便利です) 。中で呼んでいる ioctl() が失敗した場合は、 OSError が送出されます。
+
+oss_audio_device.nonblock()
+デバイスを非ブロックモードにします。いったん非ブロックモードにしたら、ブロックモードは戻せません。
+
+oss_audio_device.getfmts()
+サウンドカードがサポートしているオーディオ出力形式をビットマスクで返します。以下はOSSでサポートされているフォーマットの一部です:
+
+フォーマット
+
+説明
+
+AFMT_MU_LAW
+
+対数符号化 (Sun の .au 形式や /dev/audio で使われている形式)
+
+AFMT_A_LAW
+
+対数符号化
+
+AFMT_IMA_ADPCM
+
+Interactive Multimedia Association で定義されている 4:1 圧縮形式
+
+AFMT_U8
+
+符号なし 8 ビットオーディオ
+
+AFMT_S16_LE
+
+符号つき 16 ビットオーディオ、リトルエンディアンバイトオーダ (Intelプロセッサで使われている形式)
+
+AFMT_S16_BE
+
+符号つき 16 ビットオーディオ、ビッグエンディアンバイトオーダ (68k、PowerPC、Sparcで使われている形式)
+
+AFMT_S8
+
+符号つき 8 ビットオーディオ
+
+AFMT_U16_LE
+
+符号なし 16 ビットリトルエンディアンオーディオ
+
+AFMT_U16_BE
+
+符号なし 16 ビットビッグエンディアンオーディオ
+
+オーディオ形式の完全なリストは OSS の文書をひもといてください。ただ、ほとんどのシステムは、こうした形式のサブセットしかサポートしていません。古めのデバイスの中には AFMT_U8 だけしかサポートしていないものがあります。現在使われている最も一般的な形式は AFMT_S16_LE です。
+
+oss_audio_device.setfmt(format)
+現在のオーディオ形式を format に設定しようと試みます --- format については getfmts() のリストを参照してください。実際にデバイスに設定されたオーディオ形式を返します。要求通りの形式でないこともあります。 AFMT_QUERY を渡すと現在デバイスに設定されているオーディオ形式を返します。
+
+oss_audio_device.channels(nchannels)
+出力チャネル数を nchannels に設定します。1 はモノラル、2 はステレオです。いくつかのデバイスでは2つより多いチャンネルを持つものもありますし、ハイエンドなデバイスではモノラルをサポートしないものもあります。デバイスに設定されたチャンネル数を返します。
+
+oss_audio_device.speed(samplerate)
+サンプリングレートを1秒あたり samplerate に設定しようと試み、実際に設定されたレートを返します。たいていのサウンドデバイスでは任意のサンプリングレートをサポートしていません。一般的なレートは以下の通りです:
+
+レート
+
+説明
+
+8000
+
+/dev/audio のデフォルト
+
+11025
+
+会話音声の録音に使われるレート
+
+22050
+
+44100
+
+(サンプルあたり 16 ビットで 2 チャネルの場合) CD 品質のオーディオ
+
+96000
+
+(サンプル当たり 24 ビットの場合) DVD 品質のオーディオ
+
+oss_audio_device.sync()
+サウンドデバイスがバッファ内の全てのデータを再生し終えるまで待機します。 (デバイスを閉じると暗黙のうちに sync() が起こります) OSS のドキュメント上では、 sync() を使うよりデバイスを一度閉じて開き直すよう勧めています。
+
+oss_audio_device.reset()
+再生あるいは録音を即座に中止して、デバイスをコマンドを受け取れる状態に戻します。OSSのドキュメントでは、 reset() を呼び出した後に一度デバイスを閉じ、開き直すよう勧めています。
+
+oss_audio_device.post()
+ドライバに出力の一時停止 (pause) が起きそうであることを伝え、ドライバが一時停止をより賢く扱えるようにします。短いサウンドエフェクトを再生した直後やユーザ入力待ちの前、またディスク I/O 前などに使うことになるでしょう。
+
+以下のメソッドは、複数の ioctl() を組み合わせたり、ioctl() と単純な計算を組み合わせたりした便宜用メソッドです。
+
+oss_audio_device.setparameters(format, nchannels, samplerate[, strict=False])
+主要なオーディオパラメタ、サンプル形式、チャネル数、サンプルレートを一つのメソッド呼び出しで設定します。 format 、 nchannels および samplerate には、それぞれ setfmt() 、 channels() および speed() と同じやり方で値を設定します。 strict の値が真の場合、 setparameters() は値が実際に要求通りにデバイスに設定されたかどうか調べ、違っていれば OSSAudioError を送出します。実際にデバイスドライバが設定したパラメタ値を表す (format, nchannels, samplerate) からなるタプルを返します (setfmt() 、 channels() および speed() の返す値と同じです)。
+
+例えば、
+
+(fmt, channels, rate) = dsp.setparameters(fmt, channels, rate)
+は以下と同等です
+
+fmt = dsp.setfmt(fmt)
+channels = dsp.channels(channels)
+rate = dsp.rate(rate)
+oss_audio_device.bufsize()
+ハードウェアのバッファサイズをサンプル数で返します。
+
+oss_audio_device.obufcount()
+ハードウェアバッファ上に残っていてまだ再生されていないサンプル数を返します。
+
+oss_audio_device.obuffree()
+ブロックを起こさずにハードウェアの再生キューに書き込めるサンプル数を返します。
+
+オーディオデバイスオブジェクトは読み出し専用の属性もサポートしています:
+
+oss_audio_device.closed
+デバイスが閉じられたかどうかを示す真偽値です。
+
+oss_audio_device.name
+デバイスファイルの名前を含む文字列です。
+
+oss_audio_device.mode
+ファイルの I/O モードで、"r", "rw", "w" のどれかです。
+
+ミキサデバイスオブジェクト
+ミキサオブジェクトには、2つのファイル類似メソッドがあります:
+
+oss_mixer_device.close()
+このメソッドは開いているミキサデバイスオブジェクトを閉じます。このファイルを閉じた後もミキサを使おうとすると、 OSError が送出されます。
+
+oss_mixer_device.fileno()
+開かれているミキサデバイスファイルのファイルハンドルナンバを返します。
+
+バージョン 3.2 で変更: ミキサオブジェクトはコンテキストマネージメントプロトコルもサポートします。
+
+以下はオーディオミキシング固有のメソッドです:
+
+oss_mixer_device.controls()
+このメソッドは、利用可能なミキサコントロール (SOUND_MIXER_PCM や SOUND_MIXER_SYNTH のように、ミキシングを行えるチャネル) を指定するビットマスクを返します。このビットマスクは利用可能な全てのミキサコントロールのサブセットです --- 定数 SOUND_MIXER_* はモジュールレベルで定義されています。例えば、もし現在のミキサオブジェクトがPCM ミキサをサポートしているか調べるには、以下のPythonコードを実行します:
+
+mixer=ossaudiodev.openmixer()
+if mixer.controls() & (1 << ossaudiodev.SOUND_MIXER_PCM):
+    # PCM is supported
+    ... code ...
+ほとんどの用途には、 SOUND_MIXER_VOLUME (マスタボリューム) と SOUND_MIXER_PCM コントロールがあれば十分でしょう --- とはいえ、ミキサを使うコードを書くときには、コントロールを選ぶ時に柔軟性を持たせるべきです。例えば Gravis Ultrasound には SOUND_MIXER_VOLUME がありません。
+
+oss_mixer_device.stereocontrols()
+ステレオミキサコントロールを示すビットマスクを返します。ビットが立っているコントロールはステレオであることを示し、立っていないコントロールはモノラルか、ミキサがサポートしていないコントロールである (どちらの理由かは controls() と組み合わせて使うことで判別できます) ことを示します。
+
+ビットマスクから情報を得る例は関数 controls() のコード例を参照してください。
+
+oss_mixer_device.reccontrols()
+録音に使用できるミキサコントロールを特定するビットマスクを返します。ビットマスクから情報を得る例は関数 controls() のコード例を参照してください。
+
+oss_mixer_device.get(control)
+指定したミキサコントロールのボリュームを返します。2 要素のタプル (left_volume,right_volume) を返します。ボリュームの値は 0 (無音) から100 (最大) で示されます。コントロールがモノラルでも2要素のタプルが返されますが、2つの要素の値は同じになります。
+
+不正なコントロールを指定した場合は OSSAudioError を、サポートされていないコントロールを指定した場合は OSError を送出します。
+
+oss_mixer_device.set(control, (left, right))
+指定したミキサコントロールのボリュームを (left,right) に設定します。left と right は整数で、0 (無音) から100 (最大) の間で指定せねばなりません。呼び出しに成功すると新しいボリューム値を 2 要素のタプルで返します。サウンドカードによっては、ミキサの分解能上の制限から、指定したボリュームと厳密に同じにはならない場合があります。
+
+不正なコントロールを指定した場合や、指定したボリューム値が範囲外であった場合、 OSSAudioError を送出します。
+
+oss_mixer_device.get_recsrc()
+現在録音のソースに使われているコントロールを示すビットマスクを返します。
+
+oss_mixer_device.set_recsrc(bitmask)
+録音のソースを指定するために、この関数を呼び出します。成功した場合は、新しい録音のソース (1 つもしくは複数) を示すビットマスクを返します; 不正なソースを指定した場合は、 OSError を送出します。現在の録音のソースをマイク入力に設定するには以下のように呼び出します:
+
+mixer.setrecsrc (1 << ossaudiodev.SOUND_MIXER_MIC)

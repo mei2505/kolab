@@ -6,7 +6,6 @@ from collections import Counter
 from pegtree import ParseTree
 
 #from tqdm import tqdm
-
 from kolab.kotonoha.visitor import TransCompiler
 from kolab.kotonoha.pycode_yk import VocabMap, PythonCode
 
@@ -14,9 +13,7 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 # 文字列操作
-
 hiragana = "ぁあぃいぅうぇえぉおかがきぎくぐけげこごさざしじすずせぜそぞただちぢっつづてでとどなにぬねのはばぱひびぴふぶぷへべぺほぼぽまみむめもゃやゅゆょよらりるれろゎわゐゑをん"
-
 
 def containsHira(s):
     for c in s:
@@ -849,6 +846,18 @@ def make_corpus(filename):
             p = transpiler.pycode.compile(line)
             print(p, j, sep='\t')
 
+def make_line_corpus(filename):
+    transpiler = Kotonoha()
+    transpiler.load('python3:builtin:random')
+    with open(filename) as f:
+        for line in f.readlines():
+            line = line.strip()
+            tree = transpiler.parse(line)
+            if tree.isSyntaxError():
+                continue
+            j = transpiler.compile(line)
+            p = transpiler.pycode.compile(line)
+            print(p, j, sep='\t')
 
 def make_tsv(line):
     transpiler = Kotonoha()
@@ -870,9 +879,12 @@ def make_tsv(line):
 # ''')
 
 if __name__ == '__main__':
-    # for filename in tqdm(sys.argv[1:]):
+    linemode = False
     for filename in sys.argv[1:]:
-        make_corpus(filename)
-    # with open('unk.csv', 'w') as f:
-    #     for term, cnt in Counter(UNK).most_common(1000):
-    #         f.write(f'{term},{term},{cnt}\n')
+        if filename.endswith('-line'):
+            linemode=True
+            continue
+        if linemode:
+            make_line_corpus(filename)
+        else:
+            make_corpus(filename)

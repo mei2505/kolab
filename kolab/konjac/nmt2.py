@@ -55,11 +55,11 @@ def from_tsv(in_path, outdir_path, drop=True):
     df_valid, df_test = train_test_split(df_test, test_size=0.5, random_state=42)
 
     df_train.to_csv(outdir_path + '/train.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
-    df_train.to_csv(outdir_path + 'train.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
-    df_valid.to_csv(outdir_path + 'valid.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
-    df_valid.to_csv(outdir_path + 'valid.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
-    df_test.to_csv(outdir_path + 'test.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
-    df_test.to_csv(outdir_path + 'test.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_train.to_csv(outdir_path + '/train.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_valid.to_csv(outdir_path + '/valid.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_valid.to_csv(outdir_path + '/valid.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_test.to_csv(outdir_path + '/test.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_test.to_csv(outdir_path + '/test.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
 
 class Encoder(nn.Module):
     def __init__(self, 

@@ -520,12 +520,12 @@ def initialize_weights(m):
     if hasattr(m, 'weight') and m.weight.dim() > 1:
         nn.init.xavier_uniform_(m.weight.data)
 
-model.apply(initialize_weights)
+# model.apply(initialize_weights)
 
 
 LEARNING_RATE = 0.0005
 
-optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
+# optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
 criterion = nn.CrossEntropyLoss(ignore_index = TRG_PAD_IDX)
 

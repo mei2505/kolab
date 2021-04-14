@@ -523,11 +523,11 @@ def initialize_weights(m):
 # model.apply(initialize_weights)
 
 
-LEARNING_RATE = 0.0005
+# LEARNING_RATE = 0.0005
 
-# optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
+# # optimizer = torch.optim.Adam(model.parameters(), lr = LEARNING_RATE)
 
-criterion = nn.CrossEntropyLoss(ignore_index = TRG_PAD_IDX)
+# criterion = nn.CrossEntropyLoss(ignore_index = TRG_PAD_IDX)
 
 
 # def train(model, iterator, optimizer, criterion, clip):

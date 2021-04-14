@@ -475,38 +475,38 @@ class Seq2Seq(nn.Module):
         
         return output, attention
 
-INPUT_DIM = len(SRC.vocab)
-OUTPUT_DIM = len(TRG.vocab)
-HID_DIM = 256
-ENC_LAYERS = 3
-DEC_LAYERS = 3
-ENC_HEADS = 8
-DEC_HEADS = 8
-ENC_PF_DIM = 512
-DEC_PF_DIM = 512
-ENC_DROPOUT = 0.1
-DEC_DROPOUT = 0.1
+# INPUT_DIM = len(SRC.vocab)
+# OUTPUT_DIM = len(TRG.vocab)
+# HID_DIM = 256
+# ENC_LAYERS = 3
+# DEC_LAYERS = 3
+# ENC_HEADS = 8
+# DEC_HEADS = 8
+# ENC_PF_DIM = 512
+# DEC_PF_DIM = 512
+# ENC_DROPOUT = 0.1
+# DEC_DROPOUT = 0.1
 
-enc = Encoder(INPUT_DIM, 
-              HID_DIM, 
-              ENC_LAYERS, 
-              ENC_HEADS, 
-              ENC_PF_DIM, 
-              ENC_DROPOUT, 
-              device)
+# enc = Encoder(INPUT_DIM, 
+#               HID_DIM, 
+#               ENC_LAYERS, 
+#               ENC_HEADS, 
+#               ENC_PF_DIM, 
+#               ENC_DROPOUT, 
+#               device)
 
-dec = Decoder(OUTPUT_DIM, 
-              HID_DIM, 
-              DEC_LAYERS, 
-              DEC_HEADS, 
-              DEC_PF_DIM, 
-              DEC_DROPOUT, 
-              device)
+# dec = Decoder(OUTPUT_DIM, 
+#               HID_DIM, 
+#               DEC_LAYERS, 
+#               DEC_HEADS, 
+#               DEC_PF_DIM, 
+#               DEC_DROPOUT, 
+#               device)
 
-SRC_PAD_IDX = SRC.vocab.stoi[SRC.pad_token]
-TRG_PAD_IDX = TRG.vocab.stoi[TRG.pad_token]
+# SRC_PAD_IDX = SRC.vocab.stoi[SRC.pad_token]
+# TRG_PAD_IDX = TRG.vocab.stoi[TRG.pad_token]
 
-model = Seq2Seq(enc, dec, SRC_PAD_IDX, TRG_PAD_IDX, device).to(device)
+# model = Seq2Seq(enc, dec, SRC_PAD_IDX, TRG_PAD_IDX, device).to(device)
 
 
 

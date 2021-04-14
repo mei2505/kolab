@@ -23,6 +23,43 @@ from sklearn.model_selection import train_test_split
 
 import sentencepiece as spm
 
+specials = ['<blk>', '</blk>', '<sep>', '<A>', '<B>', '<C>', '<D>', '<E>', '<F>', '<G>', '<H>', '<I>', '<J>', '<K>', '<L>', '<M>', '<N>', '<O>', '<P>', '<Q>', '<R>', '<S>', '<T>', '<U>', '<V>', '<W>', '<X>', '<Y>', '<Z>', '<a>', '<b>', '<c>', '<d>', '<e>', '<f>', '<g>', '<h>', '<i>', '<j>', '<k>', '<l>', '<m>', '<n>', '<o>', '<p>', '<q>', '<r>', '<s>', '<t>', '<u>', '<v>', '<w>', '<x>', '<y>', '<z>']
+
+def make_SRC_TRG(tokenize_src, tokenize_trg, lower=False, batch_first=True):
+    SRC = Field(tokenize = tokenize_src, 
+              init_token = '<sos>', 
+              eos_token = '<eos>', 
+              lower = lower, 
+              batch_first = batch_first)
+
+    TRG = Field(tokenize = tokenize_trg, 
+                init_token = '<sos>', 
+                eos_token = '<eos>', 
+                lower = lower, 
+                batch_first = batch_first)
+    
+    return SRC, TRG
+
+def from_tsv(in_path, outdir_path, drop=True):
+    df = pd.read_table(in_path, header=None)
+    df = df.dropna()
+
+    if drop:
+      print('BEFORE_shape', df.shape)
+      df.drop_duplicates(inplace=True)
+      print('AFTER_shape', df.shape)
+    else:
+      print('shape', df.shape)
+
+    df_train, df_test = train_test_split(df, test_size=0.3, random_state=42)
+    df_valid, df_test = train_test_split(df_test, test_size=0.5, random_state=42)
+
+    df_train.to_csv(outdir_path + '/train.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_train.to_csv(outdir_path + 'train.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_valid.to_csv(outdir_path + 'valid.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_valid.to_csv(outdir_path + 'valid.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_test.to_csv(outdir_path + 'test.py', columns=[0], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
+    df_test.to_csv(outdir_path + 'test.jpn', columns=[1], header=False, index=False, sep='\t', quoting=csv.QUOTE_NONE, doublequote=False, escapechar='\\')
 
 class Encoder(nn.Module):
     def __init__(self, 

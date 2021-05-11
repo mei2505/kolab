@@ -12,7 +12,8 @@ Token =
     / CToken
 
 Name = 
-    { '@'? [A-Za-z_] [A-Za-z0-9_]* #Name } _
+    / { '@'? '.'? [A-Za-z_] [A-Za-z0-9_]* #Name } _
+    / '`' { (!'`' .)* #Raw } '`'
 
 Int = 
     / { '0x' [0-9A-Fa-f_]+ #Value } _  // １６進数

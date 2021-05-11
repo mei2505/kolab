@@ -4,7 +4,7 @@ import csv
 peg = pg.grammar('yk.tpeg')
 parse = pg.generate(peg)
 
-VAR = 'ABCDEFEGHIJKLMNOPQRSTUVWXYZ'
+VAR = 'ABCDEFEGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
 def replace_as_special_parameter(s, mapped):
     if s in mapped:
@@ -52,16 +52,16 @@ make('if a> 0: <blk>print(a)</blk>', 'もしaが正の数ならばaを表示す�
 make('if a> 0: <blk>print(a)</blk>', 'もしaが正の数ならばaを表示する', convert_nothing)
 
 
-def read_csv(filename):
+def read_tsv(filename):
     with open(filename) as f:
         with open('result.tsv', 'a') as f2:
             reader = csv.reader(f, delimiter='\t')
-            writer = csv.writer(f2, delimiter='\t', quotechar='\\')
+            writer = csv.writer(f2, delimiter='\t')
 
             for row in reader:
                 code, doc = make(row[0], row[1])
                 writer.writerow([code, doc])
 
 if __name__ == '__main__':
-    f_name = './block/euler_before.tsv'
-    read_csv(f_name)
+    f_name = './line-by-line/AOJ_before.tsv'
+    read_tsv(f_name)

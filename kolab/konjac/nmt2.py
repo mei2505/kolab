@@ -27,11 +27,13 @@ specials = ['<blk>', '</blk>', '<sep>', '<A>', '<B>', '<C>', '<D>', '<E>', '<F>'
 
 MAX_LEN=80
 
-sp = spm.SentencePieceProcessor(model_file='p3.model')
+def load_spm(model_path):
+    sp = spm.SentencePieceProcessor(model_file=model_path)
+    return sp
 
 def tokenize_jpn(text):
-  ss = [tok.replace('▁', '') for tok in sp.encode(text, out_type=str)][:MAX_LEN]
-  return [s for s in ss if len(s) != 0]
+    ss = [tok.replace('▁', '') for tok in sp.encode(text, out_type=str)][:MAX_LEN]
+    return [s for s in ss if len(s) != 0]
 
 def tokenize_py(text):
     return [tok for tok in text.split()][:MAX_LEN]

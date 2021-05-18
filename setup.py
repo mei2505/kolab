@@ -13,12 +13,12 @@ twine upload --repository pypi dist/*
 
 setup(
     name='kolab',
-    version='0.0.5',
+    version='0.0.6',
     url='https://github.com/KuramitsuLab/kolab.git',
     license='MIT',
     author='Kimio Kuramitsu',
     description='Sharable in Google Colab',
-    install_requires=['setuptools', 'pegtree', 'apng'],
+    install_requires=['setuptools', 'pegtree', 'apng', 'japanize_matplotlib', 'sentencepiece'],
     packages=['kolab'],
     package_data={'kolab': [
         '*/*', '*/*/*', '*/*.tpeg', '*/*.csv', '*/*.txt']},

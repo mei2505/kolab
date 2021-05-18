@@ -25,6 +25,17 @@ import sentencepiece as spm
 
 specials = ['<blk>', '</blk>', '<sep>', '<A>', '<B>', '<C>', '<D>', '<E>', '<F>', '<G>', '<H>', '<I>', '<J>', '<K>', '<L>', '<M>', '<N>', '<O>', '<P>', '<Q>', '<R>', '<S>', '<T>', '<U>', '<V>', '<W>', '<X>', '<Y>', '<Z>', '<a>', '<b>', '<c>', '<d>', '<e>', '<f>', '<g>', '<h>', '<i>', '<j>', '<k>', '<l>', '<m>', '<n>', '<o>', '<p>', '<q>', '<r>', '<s>', '<t>', '<u>', '<v>', '<w>', '<x>', '<y>', '<z>']
 
+MAX_LEN=80
+
+sp = spm.SentencePieceProcessor(model_file='corpus_Python-JPN/p3/p3.model')
+
+def tokenize_jpn(text):
+  ss = [tok.replace('▁', '') for tok in sp.encode(text, out_type=str)][:MAX_LEN]
+  return [s for s in ss if len(s) != 0]
+
+def tokenize_py(text):
+    return [tok for tok in text.split()][:MAX_LEN]
+
 def make_SRC_TRG(tokenize_src, tokenize_trg, lower=False, batch_first=True):
     SRC = Field(tokenize = tokenize_src, 
               init_token = '<sos>', 

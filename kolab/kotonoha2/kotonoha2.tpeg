@@ -1,0 +1,318 @@
+/* File */
+
+File = __ { (Rule __)* #Source} EOF
+
+/* Rule */
+
+Rule =
+    / { Option Document #OptionRule}
+    / { Expression Document #Rule }
+
+Option = {
+    NSName "=" (Constant / Name) 
+    #Option
+}
+
+/* Document */
+
+Document = __ '#' _ {
+  ( VerbList / NLPart / ReturnType / _ )* LF
+  #Document
+}
+
+NLPart = 
+  / {'"' (ESC / !'"' .)* '"' #String }
+  / {'\'' (ESC / !'\'' .)* '\'' #String }
+  / {'-'? [0-9]+ ('.' [0-9]+)* #Number}
+  / { [A-Za-z] W* #Symbol } _Parameterized? _
+  / { (![{<@'" A-Za-z0-9\-\n] .)+  #Piece } _
+
+_Parameterized = '(' {^ { (!')' .)+ #Kind } #Param } ')'
+
+ESC = '\\' .
+
+VerbList = {
+    '{' Verb ( '|' Verb )* '}'
+    #Verb
+}
+
+Verb =  { (![|}] .)+ #Verb }               
+
+ReturnType = "->" { (!LF .)* #Return }
+
+/* Programming */
+
+Expression = Operator {
+    then:^  
+    "if" cond: Expression 
+    "else" else: Expression 
+    #IfExpr 
+}?
+
+Operator =
+	AndExpr (left:^ { OR _ right: AndExpr #Or })*
+
+OR = 'or' !W / '||' / '｜｜'
+
+AndExpr =
+	NotExpr (left:^ { AND _ right: NotExpr #And })*
+
+AND = 'and' !W / '&&' / '＆＆'
+
+NotExpr =
+	{ NOT _ NotExpr #Not } / EqExpr
+
+NOT = 'not' !W / '!' / '！'
+
+EqExpr =
+	SumExpr (left:^ { name: { EQ #Name } _ right: SumExpr #Infix })*
+
+EQ =
+	/ '==' '='? / '＝＝' 
+	/ '!=' '='? / '！＝' / '≠'
+	/ '<=' !'=' / '＜＝' / '≦'
+	/ '>=' !'=' / '＞＝' / '≧'
+	/ '<'  !'<' / '＜' !'＜'
+	/ '>'  !'>' / '＞' !'＞'
+    / '=' !'='  / '＝' !'＝'
+    / ':=' !'='
+    / ('not' !W _)? 'in' !W
+    / 'is' !W (_ 'not' !W)?
+
+SumExpr =
+	ProdExpr (left:^ { name: { SUM #Name } _ right: ProdExpr #Infix })*
+
+SUM = [+\-|＋ー｜]
+
+ProdExpr =
+	PowExpr (left:^ { name: { PROD #Name } _ right: PowExpr #Infix })*
+
+PROD =
+    / '//' / '<<' / '>>' / '／／' / '＜＜' / '＞＞'
+	/ [*/%^&＊・／％＾＆×÷]
+
+PowExpr = UnaryExpr (left:^ { name: { '**' #Name } _ right: UnaryExpr #Infix })*
+
+UnaryExpr
+	= { name: {PRE #Name } _ expr: UnaryExpr #Unary }
+    / SuffixExpr
+
+PRE = [+\-~＋ー〜]
+
+SuffixExpr =
+	Primary (
+	    recv:^ { "." name: Name "(" params: Arguments __ ")" #MethodExpr }
+	    / recv:^ { "." name: Name #GetExpr }
+	    / name:^ { "(" params: Arguments __ ")"  #ApplyExpr }
+        / recv:^ { "[" (left: Expression)? ":" (right: Expression)? "]" #Slice }
+	    / recv:^ { "[" index: Expression "]" #IndexExpr }
+	)*
+
+Arguments = { 
+    Argument? ("," __ Argument )*
+    #Arguments
+}
+
+Argument = 
+    / Name {^ "=" Expression #Option }?
+    / ListArgument
+    / Expression
+
+ListArgument = {
+    { '*' '*'? #Prefix } _ 
+    Expression
+    #ListArgument
+}
+
+/* Primary */
+
+Primary =
+    / GroupExpr
+    / DataExpr
+    / Constant
+    / Name
+
+GroupExpr = 
+    { "(" Expression ")" #Group }
+
+TupleExpr =
+    { "(" Expression ( ("," __ Expression)+  __ / ",")  ")" #Tuple }
+
+ListExpr = { "[" (Expression ("," __ Expression)* )? ","?  __ "]" #List }
+
+DataExpr = { "{" (KeyValue ("," __ KeyValue)*)? ","? __ "}" #Data }
+
+KeyValue = {
+	name: (Name/StringExpr/CharExpr)
+	":"
+	value: Expression
+	#KeyValue
+}
+
+/* Name, Identifier */
+
+Name = Identifier 
+
+Identifier = {
+    NAME
+    #Name
+} _
+
+NAME = [A-Za-z_] W*
+W = [A-Za-z0-9_]
+
+NSName = {
+    NAME ('.' W)*
+    #NSName
+} _ 
+
+/* Literal */
+
+Constant =
+  / FormatString
+  / LongString
+	/ StringExpr {^ "*" Expression #Mul}?
+	/ CharExpr
+	/ Number
+	/ TrueExpr
+	/ FalseExpr
+	/ NullExpr
+
+FormatString = [Ff] (
+    '\'\'\'' { FormatContent3* #Format } '\'\'\''
+    / '\'' { FormatContent1* #Format } '\''
+    / '"""' { FormatContent3D* #Format } '"""'
+    / '"' { FormatContent1D* #Format } '"' ) _
+
+FormatContent3 =
+    '{' Expression '}' / { (!'\'\'\'' !'{' .)* #StringPart }
+
+FormatContent1 =
+    '{' Expression '}' / { (!'\'' !'{' .)* #StringPart }
+
+FormatContent3D =
+    '{' Expression '}' / { (!'"""' !'{' .)* #StringPart }
+
+FormatContent1D =
+    '{' Expression '}' / { (!'"' !'{' .)* #StringPart }
+
+LongString = 
+    '\'\'' { '\'' ( ESCAPE / ![\\'] . / !'\'\'\'' '\'' )* '\'' #MultiString } '\'\'' _
+    / '""' { '"' ( ESCAPE / ![\\"] . / !'"""' '"' )* '"' #MultiString } '""' _
+
+StringExpr = 
+    / { '"' STRING* '"' #String } _
+    / DQ { ZSTRING* #ZString } DQ _
+
+CharExpr = 
+    / { '\'' CHAR* '\'' #String } _
+    / SQ {  ZCHAR* #ZChar } SQ _
+
+SQ = ['’‘＇]
+DQ = ["”“＂]
+STRING = ESCAPE / ![\"\n\\] .
+CHAR   = ESCAPE / !['\n\\] .
+ZSTRING = ESCAPE / !DQ ![\n\\] .
+ZCHAR   = ESCAPE / !SQ ![\n\\] .
+
+ESCAPE =
+	'\\' ['\"\\bfnrt]
+	/ '\\' [0-3] [0-7] [0-7]
+    / '\\' [0-7] [0-7]
+    / '\\' [0-7]
+	/ '\\' [uU] HEX HEX HEX HEX
+
+/* Number,Unit */
+
+Number = FloatExpr / IntExpr
+
+IntExpr = {
+	(HEXADECIMAL / BINARY / DECIMAL )
+	#Int
+} _
+
+DECIMAL = !'_' DIGIT ( DIGIT )*
+HEXADECIMAL = '0' [xX] HEX ( '_'* HEX )*
+BINARY = '0' [bB] [01] ( '_'* [01] )*
+DIGIT = [0-9０-９_]
+HEX = [a-fA-F0-9]
+LONG_SUFFIX = [lL]
+
+FloatExpr = {
+	FLOAT #Double
+} _
+
+FLOAT = !'_' (
+	FRACTION EXPONENT? / DIGIT+ EXPONENT
+)
+
+FRACTION =
+	/ DIGIT* "." !'_' DIGIT+
+    / DIGIT DIGIT* "." !'.'
+
+EXPONENT =
+	[eE] [+\-]? !'_' DIGIT+
+
+/* Const */
+
+TrueExpr  = { [Tt] 'rue' !W #TrueExpr } _
+FalseExpr = { [Ff] 'alse' !W #FalseExpr } _
+NullExpr  = { ('None' / 'null') !W #Null } _
+
+//W     = [ァ-ヶ㐀-䶵一-龠々〇〻Ａ-Ｚー]
+//DIGIT = [０-９]
+
+"{" = [{｛] __
+"}" = [}｝] _
+"[" = [[［] __
+"]" = [\]］] _
+"(" = [(（] __
+")" = [)）] _
+"=" = [=＝] ![=＝] _
+"." = [.．。] _
+"," = [,，、] _
+";" = ([;；] _)+
+":" = [:：] _
+"_" = [_＿]
+
+/* Code Layout */
+
+EOF          = !.
+LF           = '\n' / EOF
+S            = [ \t\u200B\v\r　]
+
+_            = ( S / BLOCKCOMMENT )*
+__           = ( S / '\n' / BLOCKCOMMENT )*
+SPC          = ( S / BLOCKCOMMENT )+
+
+BLOCKCOMMENT = '/*' ( !'*/' . )* '*/'
+
+example File '''
+print() 　#空行を{出力する|表示する}
+print(a) #aを空行を{出力する|表示する}
+'''
+
+example File '''
+open(file) 　#file(ファイル名)を開く -> ファイル
+open(file, 'w') 　#file(ファイル名)を書き込みモードで開く -> ファイル
+'''
+
+example File '''
+a%2==0   # a(整数)が偶数かどうか
+a%2!=0   # a(整数)が奇数かどうか
+a%2==0   # a(整数)が奇数かどうか
+a%n==0   # a(整数)がnの倍数かどうか
+'''
+
+example File '''
+str.center(width)　# strをwidthの幅で{中央寄せする}　-> 文字列
+fillchar # パディング文字
+'''
+
+example File '''
+f(1,1.0,a,"\n", '\\') # 1と1.0とaと"\n"と'\\'
+'''
+
+example Document '''
+# 1 と1.0とaと"\n"と'\\'
+'''

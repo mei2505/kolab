@@ -1,161 +1,183 @@
 
-ALPHA = [ chr(c) for c in range(ord('A'), ord('Z')+1) ] + ['?']
+from pegtree.visitor import ParseTreeVisitor
+from pegtree import ParseTree
+import pegtree as pg
+
+from logging import getLogger
+logger = getLogger(__name__)
+
+ALPHA = [chr(c) for c in range(ord('A'), ord('Z')+1)] + ['?']
 EMPTY = tuple()
 
-class CExpr(object):  #Code Expression
 
-    def key(self):
+def toCExpr(value):
+    return value if isinstance(value, CExpr) else CValue(value)
+
+
+class CExpr(object):  # Code Expression
+    name: str
+    params: tuple
+
+    def __init__(self, name='', params=EMPTY):
+        self.name = name
+        self.params = params
+        self.options = EMPTY
+
+    def format(self, option=True):
+        return f'undefined({self.__class__.__name__})'
+
+    def __repr__(self):
+        return self.format().format(*(self.params+self.options))
+
+    def __len__(self):
+        return len(self.params)
+
+    def __getitem__(self, index):
+        return self.params[index]
+
+    def getoption(self, name):
+        for option in self.options:
+            if name == option.name:
+                return option
         return None
 
-    def get_format(self):
-        return 'undefined'
+    def match(self, code, mapped: dict):
+        if self.__class__ is not code.__class__:
+            return False
+        if self.name != code.name or len(self.params) != len(code.params):
+            return False
+        for e, e2 in zip(self.params, code.params):
+            if not e.match(e2, mapped):
+                return False
+        for opat in self.options:
+            option = code.getoption(opat.name)
+            if option is None:
+                return False
+            if not opat.match(option, mapped):
+                return False
+        if len(code.options) > 0:
+            os = []
+            for option in code.options:
+                opat = self.getoption(option.name)
+                if opat is None:
+                    os.append(option)
+            mapped['options'] = os
+        return True
 
-    def get_params(self):
-        return EMPTY
-    
+
+class CIndex(CExpr):
+    index: object
+
+    def __init__(self, index):
+        CExpr.__init__(self)
+        self.index = index
+
+    def format(self, option=True):
+        return repr(self)
+
     def __repr__(self):
-        return self.get_format()(*[repr(e) for e in self.get_params()])
+        return ALPHA[self.index]
+
+    def match(self, code: CExpr, mapped: dict):
+        mapped[self.index] = code
+        return True
+
 
 class CValue(CExpr):
     value: object
 
     def __init__(self, value):
+        CExpr.__init__(self)
         self.value = value
-    
+
     def __repr__(self):
+        if isinstance(self.value, str):
+            return repr(self.value)  # FIXME
         return str(self.value)
 
-def toCExpr(value):
-    return value if isinstance(value, CExpr) else CValue(value)
+    def format(self, option=True):
+        return repr(self)
+
+    def match(self, code: CExpr, mapped: dict):
+        return isinstance(code, CValue) and self.value == code.value
+
 
 class CVar(CExpr):
-    name: object
-
-    def key(self):
-        return self.name
 
     def __init__(self, name):
-        self.name = name
-    
+        CExpr.__init__(self, name)
+
+    def format(self, option=True):
+        return self.name
+
     def __repr__(self):
         return self.name
 
-
-class CIndex(CExpr):
-    index: int
-
-    def key(self):
-        return None
-
-    def __init__(self, index):
-        self.index = index
-    
-    def __repr__(self):
-        return ALPHA[self.index]
 
 class CBinary(CExpr):
-    left: CExpr
-    right: CExpr
-    op: str
 
     def __init__(self, left, op, right):
-        self.left = toCExpr(left)
-        self.op = op
-        self.right = toCExpr(right)
+        CExpr.__init__(self, op, (toCExpr(left), toCExpr(right)))
 
-    def __repr__(self):
-        return f'{repr(self.left)} {self.op} {repr(self.right)}'
+    def format(self, option=True):
+        return f'{{}} {self.name} {{}}'
 
-    def key(self):
-        return self.op
-
-    def get_format(self):
-        return ' '.join(['{}', self.op, '{}'])
-
-    def get_params(self):
-        return (self.left, self.right)
 
 class COption(CExpr):
-    name: str
-    value: CExpr
 
-    def __init__(self, name: str, value):
-        self.name = name
-        self.value = toCExpr(value)
+    def __init__(self, name: str, value: CExpr):
+        CExpr.__init__(self, name, (toCExpr(value),))
 
-    def __repr__(self):
-        return f'{self.name} = {self.value}'
+    def format(self, option=True):
+        return f'{self.name} = {{}}'
 
-    def key(self):
-        return self.name
-
-    def get_format(self):
-        return ' '.join([self.name, '=', '{}'])
-
-    def get_params(self):
-        return (self.value,)
 
 class CApp(CExpr):
-    name: str
-    es: list[CExpr]
 
     def __init__(self, name: str, *es):
-        self.name = name
-        self.es = tuple(toCExpr(e) for e in es)
+        CExpr.__init__(self, name, tuple(toCExpr(e)
+                                         for e in es if not isinstance(e, COption)))
+        if len(es) != len(self.params):
+            self.options = tuple(toCExpr(e)
+                                 for e in es if isinstance(e, COption))
 
-    def __repr__(self):
+    def format(self, option=True):
         ss = []
         ss.append(self.name)
         ss.append('(')
-        for i, e in enumerate(self.es):
-            if i > 0:
-                ss.append(',')
-            ss.append(str(e))
-        ss.append(')')
-        return ' '.join(ss)
-    
-    def key(self):
-        return self.name
-
-    def get_format(self):
-        ss = []
-        ss.append(self.name)
-        ss.append('(')
-        for i, e in enumerate(self.es):
-            if isinstance(e, COption):
-                break
-            if i > 0:
-                ss.append(',')
-            ss.append(repr(e))
+        if option:
+            ps = [',', '{}'] * (len(self.params)+len(self.options))
+        else:
+            ps = [',', '{}'] * len(self.params)
+        if len(ps) > 0:
+            ss.extend(ps[1:])
         ss.append(')')
         return ' '.join(ss)
 
-    def get_params(self):
-        ss = []
-        for e in self.es:
-            if isinstance(e, COption):
-                break
-            ss.append(e)
-        return ss
 
-
-e = CApp('print', 1, COption('end', ''))
-print(e)
+# e = CApp('print', 1, COption('end', ''))
+# print(e)
 
 ####################################################
 
 RESULT = '結果'
+EOS = '。'
 
-class NExpr(CExpr):
+
+class NExpr(object):
 
     def append(self, e):
         return NChoice(self, e)
 
-    def asType(self, ret):
+    def asType(self, typefix):
         return self
 
     def apply(self, mapped):
         return self
+
+    def __repr__(self):
+        return str(self)
+
 
 class NChoice(NExpr):
     choices: tuple[NExpr]
@@ -166,8 +188,8 @@ class NChoice(NExpr):
     def append(self, e: NExpr):
         return NChoice(*(self.choices + (e,)))
 
-    def asType(self, ret):
-        return NChoice(*[c.asType(ret) for c in self.choices])
+    def asType(self, typefix):
+        return NChoice(*[c.asType(typefix) for c in self.choices])
 
     def apply(self, mapped):
         return NChoice(*[c.apply(mapped) for c in self.choices])
@@ -175,56 +197,71 @@ class NChoice(NExpr):
     def __str__(self):
         return '{' + '|'.join(map(str, self.choices)) + '}'
 
-    def emit(self, suffix):
-        return self.choices[0].emit(suffix)
+    def emit(self, typefix):
+        return self.choices[0].emit(typefix)
+
 
 class NPiece(NExpr):
     piece: str
+
     def __init__(self, piece):
         self.piece = piece
 
     def __str__(self):
         return self.piece
 
-    def emit(self, suffix):
+    def emit(self, typefix):
         return self.piece
+
 
 class NVerb(NExpr):
     verb: str
-    ret: str
+    typefix: str
 
-    def __init__(self, verb, ret = ''):
+    def __init__(self, verb, typefix=''):
         assert isinstance(verb, str), type(verb)
         self.verb = str(verb)
-        self.ret = ret
+        self.typefix = typefix
 
-    def asType(self, ret):
-        return NVerb(self.verb, ret)
+    def asType(self, typefix):
+        return NVerb(self.verb, typefix) if typefix != self.typefix else self
 
     def __str__(self):
-        if self.ret == '':
+        if self.typefix == '':
             return self.verb
-        return f'{self.verb}# {self.ret}'
+        return f'{self.verb} #{self.typefix}'
 
-    def emit(self, suffix):
-        if suffix == RESULT and self.ret != '':
-            suffix = self.ret
-        return self.verb + f'# {suffix}'
+    def emit(self, typefix):
+        if typefix == RESULT and self.typefix != '':
+            typefix = self.typefix
+        return self.verb + f' #{typefix}'
 
-class NValue(NPiece):
-    def emit(self, suffix):
-        return f'{suffix} {self.piece}'
+
+class NLiteral(NExpr):
+    value: str
+
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return self.value
+
+    def emit(self, typefix):
+        if typefix == RESULT:
+            return self.value
+        return f'{typefix} {self.value}'
+
 
 class NParam(NExpr):
     symbol: str
     index: int
-    kind: str
+    typefix: str
     bound: NExpr
 
-    def __init__(self, symbol, index, kind='', bound = None):
+    def __init__(self, symbol, index, typefix='', bound=None):
         self.symbol = symbol
         self.index = index
-        self.kind = kind
+        self.typefix = typefix
         self.bound = bound
 
     def apply(self, mapped):
@@ -236,29 +273,35 @@ class NParam(NExpr):
     def __str__(self):
         return ALPHA[self.index]
 
-    def emit(self, suffix):
+    def emit(self, typefix):
         if self.bound is None:
             return self.symbol
-        return self.bound.emit(RESULT if self.kind == '' else self.kind)
+        return self.bound.emit(RESULT if self.typefix == '' else self.typefix)
+
 
 def toNExpr(e):
     if isinstance(e, NExpr):
         return e
     if isinstance(e, CValue):
-        return NValue(e.value)
+        return NLiteral(e.value)
     return NPiece(str(e))
+
 
 class NPredicate(NExpr):
     pieces: tuple[NExpr]
+    options: tuple
 
     def __init__(self, *pieces):
         self.pieces = [toNExpr(p) for p in pieces]
- 
+        self.options = EMPTY
+
     def asType(self, ret):
         return NPredicate(*[e.asType(ret) for e in self.pieces])
 
     def apply(self, mapped):
-        return NPredicate(*[e.apply(mapped) for e in self.pieces])
+        pred = NPredicate(*[e.apply(mapped) for e in self.pieces])
+        pred.options = mapped.get('options', EMPTY)
+        return pred
 
     def __str__(self):
         ss = []
@@ -266,148 +309,112 @@ class NPredicate(NExpr):
             ss.append(str(p))
         return ' '.join(ss)
 
-    def emit(self, suffix):
+    def emit(self, typefix):
         ss = []
         for i, p in enumerate(self.pieces):
-            ss.append(p.emit(suffix))
+            ss.append(p.emit(typefix))
+        if len(self.options) > 0:
+            for p in self.options:
+                ss.append(p.emit(''))
         return ' '.join(ss)
 
-e = NPredicate('A', 'を', 'B', 'で', NVerb('置き換える')).asType('文字列')
-print(e.emit('ファイル名'))
+
+#e = NPredicate('A', 'を', 'B', 'で', NVerb('置き換える')).asType('文字列')
+# print(e.emit('ファイル名'))
 
 
-### Matcher
-
-import itertools
-def combi(clist):
-    ss = [EMPTY]
-    for i in range(1, min(len(clist)+1, 3)):
-        for v in itertools.combinations(clist, i):
-            ss.append(v)
-    return ss[::-1]
-
-def make_pattern(ce: CExpr, masked, mapped):
-    ss = []
-    for p in ce.get_params():
-        if isinstance(p, CValue) and p.value in masked:
-            ss.append(p.value)
-        # elif ce.has_masked(masked):
-        #     ss.append(make_pattern(ce, masked, mapped))
-        else:
-            index = len(mapped)
-            mapped[index] = p
-            ss.append(ALPHA[index])
-    return ce.get_format().format(*ss)
+# Matcher
 
 class Matcher(object):
+    rules: dict
 
     def __init__(self):
-        self.keys = {}
-        self.patterns = {}
-    
+        self.rules = {}
+
+    def add_rule(self, cpat: CExpr, pred: NExpr):
+        name = cpat.name
+        if name != '':
+            if name not in self.rules:
+                self.rules[name] = []
+            self.rules[name].append((cpat, pred))
+        else:
+            print('@fixme', cpat, pred)
+
     def match(self, ce: CExpr) -> NExpr:
-        key = ce.key()
-        for mask in combi(self.keys.get(key, EMPTY)):
-            mapped = {}
-            pat = make_pattern(ce, mask, mapped)
-            print(mask, pat)
-            if pat in self.patterns:
-                for key in mapped:
-                    print('@', mapped)
-                    mapped[key] = self.match(mapped[key])
-                return self.patterns[pat].apply(mapped)
+        name = ce.name
+        if name in self.rules:
+            for pat, pred in self.rules[name]:
+                mapped = {}
+                if pat.match(ce, mapped):
+                    for key in mapped.keys():
+                        if key == 'options':
+                            mapped[key] = [self.match(e) for e in mapped[key]]
+                        else:
+                            mapped[key] = self.match(mapped[key])
+                    return pred.apply(mapped)
+            logger.warning('unmatched: ' + str(ce))
         return NPiece(str(ce))
+
 
 m = Matcher()
 
 ##
 
-import pegtree as pg
-from pegtree import ParseTree
-from pegtree.visitor import ParseTreeVisitor
-peg = pg.grammar('kotonoha2.tpeg')
+peg = pg.grammar('kotoha.tpeg')
 parser = pg.generate(peg)
+eparser = pg.generate(peg, start='Expression')
 
-def expression_key(tree):
-    if tree.has('name'):
-        return tree.getToken('name')
-    return None
 
-def expression_value(tree):
-    tag = tree.getTag()
-    if tag == 'Name' or tag == 'Symbol':
-        return str(tree)
-    # if tag == 'Int':
-    #     s = str(tree).replace('_', '')
-    #     if s.startswith('0b') or s.startswith('0B'):
-    #         return str(int(s[2:], 2))
-    #     return str(int(s))
-    # if tag == 'String':
-    #     s = str(tree)
-    #     if s.startswith('"') and s.endswith('"'):
-    #         s = s[1:-1]
-    #     if s.startswith('\'') and s.endswith('\''):
-    #         s = s[1:-1]
-    #     return '"'+s.encode().decode('unicode-escape')+"'"
-    return None
-
-def find_values(tree: ParseTree, values: dict):
-    if len(tree) == 0:
-        v = expression_value(tree)
-        if v is not None:
-            values[v] = len(values)
-    else:
-        for label, child in tree.subs():
-            find_values(child, values)
+def symbols(tree):
+    ss = []
+    print(tree)
+    for _, child in tree.subs():
+        tag = child.getTag()
+        if tag == 'Name' or tag == 'Symbol':
+            ss.append(str(child))
+        if tag == 'Param':
+            ss.append(str(child[0]))
+    return ss
 
 
 class Reader(ParseTreeVisitor):
-    key_consts: dict
-    patterns: dict
-
+    rules: dict
     indexes: dict
-    consts: dict
-    mapped: dict
 
     def __init__(self):
         ParseTreeVisitor.__init__(self)
-        self.key_consts = m.keys
-        self.patterns = m.patterns
+        self.rules = m.rules
+        self.symbols = EMPTY
 
-    def load(self, file):
+    def load_rule(self, file):
         with open(file) as f:
             source = f.read()
             tree = parser(source, urn=file)
             self.visit(tree)
 
+    def translate(self, expression, suffix=''):
+        tree = eparser(expression)
+        code = self.visit(tree)
+        pred = m.match(code)
+        return code, pred.emit(suffix)
+
     def acceptSource(self, tree):
         for t in tree:
             self.visit(t)
-        
+
     def acceptRule(self, tree):
-        expr = tree[0]
+        code = tree[0]
         doc = tree[1]
-        key = expression_key(expr)
+        self.symbols = set(symbols(doc))
         self.indexes = {}
-        find_values(tree[1], self.indexes)
-        #print(doc, self.indexes)
-        #print(repr(expr))
-        if key in self.key_consts:
-            self.consts = set(self.key_consts[key])
-        else:
-            self.consts = set()
-        self.mapped = {}
-        code = self.visit(expr)
-        if len(self.consts) > 0:
-            #print('const', key, tuple(self.consts))
-            self.key_consts[key] = tuple(self.consts)
-        self.indexes = self.mapped
+        cpat = self.visit(code)
         pred = self.visit(doc)
-        self.patterns[str(code)] = pred
-        print(str(code), '##', pred)
-    
+        m.add_rule(cpat, pred)
+        self.symbos = EMPTY
+        logger.debug(str(cpat), '##', pred, '@', self.symbols, self.indexes)
+
     def acceptInfix(self, tree):
-        name = tree.name
+        name = str(tree.name)
         left = self.visit(tree.left)
         right = self.visit(tree.right)
         return CBinary(left, name, right)
@@ -420,26 +427,54 @@ class Reader(ParseTreeVisitor):
     def acceptArguments(self, tree):
         return [self.visit(e) for e in tree]
 
+    def acceptOption(self, tree):
+        value = self.visit(tree[1])
+        return COption(str(tree[0]), value)
+
+    def acceptMethodExpr(self, tree):
+        recv = self.visit(tree.recv)
+        name = str(tree.name)
+        params = self.visit(tree.params)
+        if isinstance(recv, CVar):
+            return CApp(recv.name + '.' + name, *params)
+        return CMethod(name, *((recv,)+params))  # Fixme
+
+    def acceptGetExpr(self, tree):
+        recv = self.visit(tree.recv)
+        if isinstance(recv, CVar):
+            recv.name += '.' + str(tree.name)
+            return recv
+        return CField(recv, str(tree.name))  # Fixme
+
     def acceptName(self, tree):
         s = str(tree)
-        if s in self.indexes:
-            if s not in self.mapped:
-                self.mapped[s] = len(self.mapped)
-            return CIndex(self.mapped[s])
+        if s in self.symbols:
+            if s not in self.indexes:
+                self.indexes[s] = len(self.indexes)
+            return CIndex(self.indexes[s])
         return CVar(s)
 
     def acceptString(self, tree):
         s = str(tree)
         if s.startswith("'") and s.endswith("'"):
-            s = '"' + s[1:-1].replace("'", "\\'") + '"'
-        self.consts.add(s)
+            s = s[1:-1].encode().decode('unicode-escape')
+        if s.startswith('"') and s.endswith('"'):
+            s = s[1:-1].encode().decode('unicode-escape')
         return CValue(s)
 
-    def acceptUndefined(self, tree):
+    def acceptInt(self, tree):
         s = str(tree)
-        self.consts.add(s)
+        return CValue(int(s))
+
+    def acceptDouble(self, tree):
+        s = str(tree)
+        return CValue(float(s))
+
+    def acceptUndefined(self, tree):
+        print('@undefined', repr(tree))
+        s = str(tree)
         return CValue(s)
-    
+
     def acceptDocument(self, tree):
         ret = ''
         ss = []
@@ -452,7 +487,7 @@ class Reader(ParseTreeVisitor):
         if ret != '':
             return e.asType(ret)
         return e
-    
+
     def acceptSymbol(self, tree):
         s = str(tree)
         if s in self.indexes:
@@ -473,9 +508,16 @@ class Reader(ParseTreeVisitor):
             e = e.append(NVerb(str(t)))
         return e
 
-Reader().load('rule.py')
+    def acceptPiece(self, tree):
+        return NPiece(str(tree))
 
-e = CBinary(CBinary(CVar('x'), '%', CValue('3')), '==', CValue('0'))
-print('HERE@', e)
-pred = m.match(e)
-print(pred)
+
+Kotoha = Reader()
+
+Kotoha.load_rule('rule.py')
+pair = Kotoha.translate('x % 2 != 0')
+print(*pair)
+
+pair = Kotoha.translate('open("file.txt", encoding="sjis")')
+#pair = Kotoha.translate('open("file.txt")', "ファイル")
+print(*pair)

@@ -5,11 +5,11 @@ File = __ { (Rule __)* #Source} EOF
 /* Rule */
 
 Rule =
-    / { Option Document #OptionRule}
+    / { Option Document #Rule}
     / { Expression Document #Rule }
 
 Option = {
-    NSName "=" (Constant / Name) 
+    NSName "=" (Name / Constant) 
     #Option
 }
 
@@ -163,7 +163,7 @@ W = [A-Za-z0-9_]
 
 NSName = {
     NAME ('.' W)*
-    #NSName
+    #Name
 } _ 
 
 /* Literal */

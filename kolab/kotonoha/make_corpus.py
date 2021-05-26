@@ -1,7 +1,6 @@
 import sys
 import random
 import kolab.pj.piece as piece
-import collections
 
 #tokenize_pj = piece.load_tokenizer('aoj8k.model')
 tokenize_pj = piece.load_tokenizer()

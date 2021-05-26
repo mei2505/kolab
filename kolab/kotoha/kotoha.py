@@ -1,5 +1,3 @@
-from os import get_exec_path
-import string
 
 ALPHA = [ chr(c) for c in range(ord('A'), ord('Z')+1) ] + ['?']
 EMPTY = tuple()
@@ -175,7 +173,7 @@ class NChoice(NExpr):
         return NChoice(*[c.apply(mapped) for c in self.choices])
 
     def __str__(self):
-        return '{' + '|'.join(self.choices) + '}'
+        return '{' + '|'.join(map(str, self.choices)) + '}'
 
     def emit(self, suffix):
         return self.choices[0].emit(suffix)
@@ -478,6 +476,6 @@ class Reader(ParseTreeVisitor):
 Reader().load('rule.py')
 
 e = CBinary(CBinary(CVar('x'), '%', CValue('3')), '==', CValue('0'))
-print(e)
+print('HERE@', e)
 pred = m.match(e)
 print(pred)

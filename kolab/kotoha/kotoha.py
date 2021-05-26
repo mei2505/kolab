@@ -41,29 +41,6 @@ class CExpr(object):  # Code Expression
                 return option
         return None
 
-    def match(self, code, mapped: dict):
-        if self.__class__ is not code.__class__:
-            return False
-        if self.name != code.name or len(self.params) != len(code.params):
-            return False
-        for e, e2 in zip(self.params, code.params):
-            if not e.match(e2, mapped):
-                return False
-        for opat in self.options:
-            option = code.getoption(opat.name)
-            if option is None:
-                return False
-            if not opat.match(option, mapped):
-                return False
-        if len(code.options) > 0:
-            os = []
-            for option in code.options:
-                opat = self.getoption(option.name)
-                if opat is None:
-                    os.append(option)
-            mapped['options'] = os
-        return True
-
 
 class CIndex(CExpr):
     index: object
@@ -77,10 +54,6 @@ class CIndex(CExpr):
 
     def __repr__(self):
         return ALPHA[self.index]
-
-    def match(self, code: CExpr, mapped: dict):
-        mapped[self.index] = code
-        return True
 
 
 class CValue(CExpr):
@@ -97,9 +70,6 @@ class CValue(CExpr):
 
     def format(self, option=True):
         return repr(self)
-
-    def match(self, code: CExpr, mapped: dict):
-        return isinstance(code, CValue) and self.value == code.value
 
 
 class CVar(CExpr):
@@ -164,6 +134,15 @@ RESULT = '結果'
 EOS = '。'
 
 
+def emitVerbalSentence(sentence, typefix):
+    if typefix.endswith(EOS):
+        if len(typefix) > 1:
+            return f'{sentence}、そして {typefix[:-1]} とする。'
+        else:
+            return sentence + EOS
+    return sentence
+
+
 class NExpr(object):
 
     def append(self, e):
@@ -214,9 +193,9 @@ class NPiece(NExpr):
         return self.piece
 
 
-class NVerb(NExpr):
+class NPred(NExpr):
     verb: str
-    typefix: str
+    typefix: str   # '' のときは、名詞
 
     def __init__(self, verb, typefix=''):
         assert isinstance(verb, str), type(verb)
@@ -224,7 +203,7 @@ class NVerb(NExpr):
         self.typefix = typefix
 
     def asType(self, typefix):
-        return NVerb(self.verb, typefix) if typefix != self.typefix else self
+        return NPred(self.verb, typefix) if typefix != self.typefix else self
 
     def __str__(self):
         if self.typefix == '':
@@ -267,7 +246,7 @@ class NParam(NExpr):
     def apply(self, mapped):
         if self.index in mapped:
             bound = mapped[self.index]
-            return NParam(self.symbol, self.index, self.kind, bound)
+            return NParam(self.symbol, self.index, self.typefix, bound)
         return self
 
     def __str__(self):
@@ -287,7 +266,7 @@ def toNExpr(e):
     return NPiece(str(e))
 
 
-class NPredicate(NExpr):
+class NPhrase(NExpr):
     pieces: tuple[NExpr]
     options: tuple
 
@@ -296,10 +275,10 @@ class NPredicate(NExpr):
         self.options = EMPTY
 
     def asType(self, ret):
-        return NPredicate(*[e.asType(ret) for e in self.pieces])
+        return NPhrase(*[e.asType(ret) for e in self.pieces])
 
     def apply(self, mapped):
-        pred = NPredicate(*[e.apply(mapped) for e in self.pieces])
+        pred = NPhrase(*[e.apply(mapped) for e in self.pieces])
         pred.options = mapped.get('options', EMPTY)
         return pred
 
@@ -311,19 +290,50 @@ class NPredicate(NExpr):
 
     def emit(self, typefix):
         ss = []
-        for i, p in enumerate(self.pieces):
-            ss.append(p.emit(typefix))
         if len(self.options) > 0:
             for p in self.options:
                 ss.append(p.emit(''))
+        for p in self.pieces:
+            ss.append(p.emit(typefix))
         return ' '.join(ss)
 
 
-#e = NPredicate('A', 'を', 'B', 'で', NVerb('置き換える')).asType('文字列')
+#e = NPhrase('A', 'を', 'B', 'で', NPred('置き換える')).asType('文字列')
 # print(e.emit('ファイル名'))
 
 
 # Matcher
+def cmatch(cpat, code, mapped: dict):
+    if cpat.__class__ is not code.__class__:
+        return False
+    if cpat.name != code.name or len(cpat.params) != len(code.params):
+        return False
+    for e, e2 in zip(cpat.params, code.params):
+        #print(':: ', type(e), e, type(e2), e2)
+        if isinstance(e, CIndex):
+            mapped[e.index] = e2
+            continue
+        if isinstance(e, CValue) and isinstance(e2, CValue):
+            if e.value != e2.value:
+                return False
+            continue
+        if not cmatch(e, e2, mapped):
+            return False
+    for opat in cpat.options:
+        option = code.getoption(opat.name)
+        if option is None:
+            return False
+        if not opat.match(option, mapped):
+            return False
+    if len(code.options) > 0:
+        os = []
+        for option in code.options:
+            opat = cpat.getoption(option.name)
+            if opat is None:
+                os.append(option)
+        mapped['options'] = os
+    return True
+
 
 class Matcher(object):
     rules: dict
@@ -338,14 +348,18 @@ class Matcher(object):
                 self.rules[name] = []
             self.rules[name].append((cpat, pred))
         else:
-            print('@fixme', cpat, pred)
+            logger.warning('@fixme', cpat, pred)
 
     def match(self, ce: CExpr) -> NExpr:
         name = ce.name
+        if name not in self.rules and '.' in name:
+            loc = name.find('.')
+            name = name[loc+1:]
         if name in self.rules:
             for pat, pred in self.rules[name]:
                 mapped = {}
-                if pat.match(ce, mapped):
+                #print('trying .. ', pat, type(ce), ce)
+                if cmatch(pat, ce, mapped):
                     for key in mapped.keys():
                         if key == 'options':
                             mapped[key] = [self.match(e) for e in mapped[key]]
@@ -353,7 +367,7 @@ class Matcher(object):
                             mapped[key] = self.match(mapped[key])
                     return pred.apply(mapped)
             logger.warning('unmatched: ' + str(ce))
-        return NPiece(str(ce))
+        return NLiteral(str(ce))
 
 
 m = Matcher()
@@ -395,8 +409,12 @@ class Reader(ParseTreeVisitor):
     def translate(self, expression, suffix=''):
         tree = eparser(expression)
         code = self.visit(tree)
+        #print(type(code), code)
         pred = m.match(code)
         return code, pred.emit(suffix)
+
+    def isRuleMode(self):
+        return self.symbols is not EMPTY
 
     def acceptSource(self, tree):
         for t in tree:
@@ -410,8 +428,7 @@ class Reader(ParseTreeVisitor):
         cpat = self.visit(code)
         pred = self.visit(doc)
         m.add_rule(cpat, pred)
-        self.symbos = EMPTY
-        logger.debug(str(cpat), '##', pred, '@', self.symbols, self.indexes)
+        # print(">>> ", str(cpat), '##', str(pred), '@', repr(self.symbols), repr(self.indexes))
 
     def acceptInfix(self, tree):
         name = str(tree.name)
@@ -483,7 +500,7 @@ class Reader(ParseTreeVisitor):
                 ret = str(t).strip()
             else:
                 ss.append(self.visit(t))
-        e = NPredicate(*ss)
+        e = NPhrase(*ss)
         if ret != '':
             return e.asType(ret)
         return e
@@ -496,17 +513,20 @@ class Reader(ParseTreeVisitor):
 
     def acceptParam(self, tree):
         piece = self.visit(tree[0])
-        kind = str(tree[1])
+        typefix = str(tree[1])
         if isinstance(piece, NParam):
-            piece.kind = kind
+            piece.typefix = typefix
             return piece
-        return kind
+        return piece
 
     def acceptVerb(self, tree):
-        e = NVerb(str(tree[0]))
+        e = NPred(str(tree[0]))
         for t in tree[1:]:
-            e = e.append(NVerb(str(t)))
+            e = e.append(NPred(str(t)))
         return e
+
+    def acceptLiteral(self, tree):
+        return NLiteral(str(tree))
 
     def acceptPiece(self, tree):
         return NPiece(str(tree))
@@ -518,6 +538,12 @@ Kotoha.load_rule('rule.py')
 pair = Kotoha.translate('x % 2 != 0')
 print(*pair)
 
-pair = Kotoha.translate('open("file.txt", encoding="sjis")')
+pair = Kotoha.translate('open("file.txt", encoding="sjis")', "ファイル" + EOS)
 #pair = Kotoha.translate('open("file.txt")', "ファイル")
+print(*pair)
+
+pair = Kotoha.translate('print(x, end="")')
+print(*pair)
+
+pair = Kotoha.translate('print(x+1, end="")')
 print(*pair)

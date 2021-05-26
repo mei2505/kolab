@@ -21,9 +21,9 @@ Document = __ '#' _ {
 }
 
 NLPart = 
-  / {'"' (ESC / !'"' .)* '"' #String }
-  / {'\'' (ESC / !'\'' .)* '\'' #String }
-  / {'-'? [0-9]+ ('.' [0-9]+)* #Number}
+  / {'"' (ESC / !'"' .)* '"' #Literal }
+  / {'\'' (ESC / !'\'' .)* '\'' #Literal }
+  / {'-'? [0-9]+ ('.' [0-9]+)* #Literal }
   / { [A-Za-z] W* #Symbol } _Parameterized? _
   / { (![{<@'" A-Za-z0-9\-\n] .)+  #Piece } _
 
@@ -114,7 +114,7 @@ Arguments = {
 }
 
 Argument = 
-    / Name {^ "=" Expression #Option }?
+    / { Name "=" Expression #Option }
     / ListArgument
     / Expression
 

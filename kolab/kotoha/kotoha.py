@@ -197,6 +197,9 @@ class NPhrase(NExpr):
 
 ALPHA = [chr(c) for c in range(ord('A'), ord('Z')+1)] + ['?']
 
+STATIC_MODULE = {
+    'math', 'pd'
+}
 
 def toCExpr(value):
     return value if isinstance(value, CExpr) else CValue(value)
@@ -385,8 +388,9 @@ class Reader(ParseTreeVisitor):
         cpat = self.visit(code)
         pred = self.visit(doc)
         self.add_rule(cpat, len(self.indexes), pred)
-        print(">>> ", str(cpat), '##', str(pred), '@',
-              repr(self.symbols), repr(self.indexes))
+        self.symbols = EMPTY
+            # print(">>> ", str(cpat), '##', str(pred), '@',
+            #       repr(self.symbols), repr(self.indexes))
 
     def add_rule(self, cpat: CExpr, size, pred: NExpr):
         name = cpat.name
@@ -420,22 +424,25 @@ class Reader(ParseTreeVisitor):
         name = str(tree.name)
         params = self.visit(tree.params)
         if isinstance(recv, CVar):
-            return CApp(recv.name + '.' + name, *params)
-        return CMethod(name, *([recv]+params))  # Fixme
+            if self.isRuleMode() or recv.name in STATIC_MODULE:
+                return CApp(recv.name + '.' + name, *params)
+        return CMethod(name, *([recv]+params))
 
     def acceptGetExpr(self, tree):
         recv = self.visit(tree.recv)
         if isinstance(recv, CVar):
-            recv.name += '.' + str(tree.name)
-            return recv
+            if self.isRuleMode() or recv.name in STATIC_MODULE:
+                recv.name += '.' + str(tree.name)
+                return recv
         return CField(recv, str(tree.name))  # Fixme
 
     def acceptName(self, tree):
         s = str(tree)
-        if s in self.symbols:
-            if s not in self.indexes:
-                self.indexes[s] = len(self.indexes)
-            return CIndex(self.indexes[s])
+        if self.isRuleMode():
+            if s in self.symbols:
+                if s not in self.indexes:
+                    self.indexes[s] = len(self.indexes)
+                return CIndex(self.indexes[s])
         return CVar(s)
 
     def acceptString(self, tree):
@@ -569,7 +576,7 @@ class KotohaModel(object):
         if name in self.rules:
             for _, pat, pred in self.rules[name]:
                 mapped = {}
-                #print('trying .. ', pat, type(ce), ce)
+                # print('trying .. ', pat, type(ce), ce)
                 if cmatch(pat, ce, mapped):
                     for key in mapped.keys():
                         if key == 'options':
@@ -592,7 +599,7 @@ class KotohaModel(object):
             with open(file) as f:
                 for line in f.readlines():
                     line = line.strip()
-                    if line == '':
+                    if line == '' or line.startswith('#'):
                         continue
                     code, doc = self.translate(line, suffix=EOS)
                     print(code, '\t#', doc)

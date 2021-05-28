@@ -51,6 +51,37 @@ ReturnType = "->" { (!LF .)* #Return }
 
 /* Programming */
 
+Statement =
+    / Assignment
+    / SelfAssignment
+    / Expression
+
+Assignment = {
+    left: LeftHand
+    ":"? "=" 
+    right: Expression
+    #Assignment
+}
+
+LeftHand = Name (
+        { recv:^ "." name: Name #GetExpr }
+        / { recv:^ "[" index: Expression "]" #IndexExpr }
+    )*
+
+SelfAssignment = {
+    left: LeftHand
+    name: SelfAssignOp
+    right: Expression
+    #SelfAssignment
+}
+
+SelfAssignOp = {
+    ('<<' / '>>' / '**' / '//' / '-' / [+=*/%&|^＋＝＊／％＆｜＾×÷]) ('='/'＝')
+} _
+
+
+/* Expression */
+
 Expression = Operator {
     then:^  
     "if" cond: Expression 
@@ -58,7 +89,9 @@ Expression = Operator {
     #IfExpr 
 }?
 
-Operator =
+Operator = OrExpr
+
+OrExpr =
 	AndExpr (left:^ { OR _ right: AndExpr #Or })*
 
 OR = 'or' !W / '||' / '｜｜'

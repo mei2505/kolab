@@ -217,6 +217,9 @@ class CExpr(object):  # Code Expression
     def __repr__(self):
         return self.format().format(*(self.params+self.options))
 
+    def __lt__(self, a):
+        return id(self) < id(a)
+
     def __len__(self):
         return len(self.params)
 
@@ -303,11 +306,30 @@ class CApp(CExpr):
         ss = []
         ss.append(self.name)
         ss.append('(')
-        if option:
-            ps = [',', '{}'] * (len(self.params)+len(self.options))
-        else:
-            ps = [',', '{}'] * len(self.params)
-        if len(ps) > 0:
+        n = len(self.params)+len(self.options)
+        if n > 0:
+            ps = [',', '{}'] * (n)
+            ss.extend(ps[1:])
+        ss.append(')')
+        return ' '.join(ss)
+
+
+class CMethod(CExpr):
+
+    def __init__(self, name: str, *es):
+        CExpr.__init__(self, name, tuple(toCExpr(e)
+                                         for e in es if not isinstance(e, COption)))
+        if len(es) != len(self.params):
+            self.options = tuple(toCExpr(e)
+                                 for e in es if isinstance(e, COption))
+
+    def format(self, option=True):
+        ss = ['{}', '.']
+        ss.append(self.name)
+        ss.append('(')
+        n = len(self.params)+len(self.options)
+        if n > 1:
+            ps = [',', '{}'] * (n-1)
             ss.extend(ps[1:])
         ss.append(')')
         return ' '.join(ss)
@@ -348,15 +370,6 @@ class Reader(ParseTreeVisitor):
         self.rules = rules
         self.symbols = EMPTY
 
-    def add_rule(self, cpat: CExpr, pred: NExpr):
-        name = cpat.name
-        if name != '':
-            if name not in self.rules:
-                self.rules[name] = []
-            self.rules[name].append((cpat, pred))
-        else:
-            logger.warning('@fixme', cpat, pred)
-
     def isRuleMode(self):
         return self.symbols is not EMPTY
 
@@ -371,8 +384,18 @@ class Reader(ParseTreeVisitor):
         self.indexes = {}
         cpat = self.visit(code)
         pred = self.visit(doc)
-        self.add_rule(cpat, pred)
-        # print(">>> ", str(cpat), '##', str(pred), '@', repr(self.symbols), repr(self.indexes))
+        self.add_rule(cpat, len(self.indexes), pred)
+        print(">>> ", str(cpat), '##', str(pred), '@',
+              repr(self.symbols), repr(self.indexes))
+
+    def add_rule(self, cpat: CExpr, size, pred: NExpr):
+        name = cpat.name
+        if name != '':
+            if name not in self.rules:
+                self.rules[name] = []
+            self.rules[name].append((size, cpat, pred))
+        else:
+            logger.warning('@fixme', cpat, pred)
 
     def acceptInfix(self, tree):
         name = str(tree.name)
@@ -398,7 +421,7 @@ class Reader(ParseTreeVisitor):
         params = self.visit(tree.params)
         if isinstance(recv, CVar):
             return CApp(recv.name + '.' + name, *params)
-        return CMethod(name, *((recv,)+params))  # Fixme
+        return CMethod(name, *([recv]+params))  # Fixme
 
     def acceptGetExpr(self, tree):
         recv = self.visit(tree.recv)
@@ -533,6 +556,10 @@ class KotohaModel(object):
                 source = f.read()
                 tree = parser(source, urn=file)
                 self.reader.visit(tree)
+        for key in self.rules:
+            d = self.rules[key]
+            if len(d) > 1:
+                self.rules[key] = sorted(d)
 
     def match(self, ce: CExpr) -> NExpr:
         name = ce.name
@@ -540,7 +567,7 @@ class KotohaModel(object):
             loc = name.find('.')
             name = name[loc+1:]
         if name in self.rules:
-            for pat, pred in self.rules[name]:
+            for _, pat, pred in self.rules[name]:
                 mapped = {}
                 #print('trying .. ', pat, type(ce), ce)
                 if cmatch(pat, ce, mapped):

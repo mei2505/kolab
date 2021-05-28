@@ -19,16 +19,6 @@ SuffleOption = True
 RESULT = '結果'
 EOS = '。'
 
-
-def emitVerbalSentence(sentence, typefix):
-    if typefix.endswith(EOS):
-        if len(typefix) > 1:
-            return f'{sentence}、そして {typefix[:-1]} とする。'
-        else:
-            return sentence + EOS
-    return sentence
-
-
 class NExpr(object):
 
     def append(self, e):
@@ -162,7 +152,7 @@ def toNExpr(e):
 
 
 class NPhrase(NExpr):
-    pieces: tuple[NExpr]
+    pieces: tuple
     options: tuple
 
     def __init__(self, *pieces):
@@ -337,15 +327,6 @@ class CMethod(CExpr):
         ss.append(')')
         return ' '.join(ss)
 
-
-# e = CApp('print', 1, COption('end', ''))
-# print(e)
-
-####################################################
-
-
-#e = NPhrase('A', 'を', 'B', 'で', NPred('置き換える')).asType('文字列')
-# print(e.emit('ファイル名'))
 
 ##
 peg = pg.grammar('kotoha.tpeg')

@@ -15,7 +15,6 @@ a % n == 0   # a(整数)がnの倍数かどうか
 y == 0     # y(整数)が0かどうか
 str(x)   # xの文字列表現
 
-
 */
 
 len(a)  # aの{長さ|要素数|サイズ}
@@ -40,4 +39,11 @@ encoding = x  # x(エンコーディング)を用いて
 
 s.startswith(x)  # s(文字列)がx(接頭辞)で始まるかどうか
 s.replace(old, new)  # s(文字列)のold(文字列)をnew(文字列)で{置換する|置き換える} -> 文字列
-s.replace(x, '')  # s(文字列)からx(文字列)を全て取り除く -> 文字列
+s.replace(x, '')  # s(文字列)からx(文字列)を全て{取り除く} -> 文字列
+
+/*
+pd.read_csv(file) # file(CSVファイル)から[データを|]{読む} -> データフレーム
+*/
+
+pd.read_csv(file) # {read} data frame from file(CSV file) -> data frame
+

@@ -5,6 +5,8 @@ from pegtree.visitor import ParseTreeVisitor
 from pegtree import ParseTree
 import pegtree as pg
 
+from pj import lemma, match_predicate
+
 from logging import getLogger
 logger = getLogger(__name__)
 
@@ -12,17 +14,24 @@ EMPTY = tuple()
 
 # オプション
 
-SuffleOption = True
+ReversePolish = True  # 膠着語の場合はTrue
+ShuffleSynonym = True  # NChoiceの表現をシャッフルする
+ShuffleOrder = True
+
+
+def shuffle(x, y):
+    if ShuffleSynonym:
+        return x if random.random() < 0.6 else y
+    return x
 
 # 自然言語フレーズ
 
-RESULT = '結果'
-EOS = '。'
+
+RESULT = 'P結果'
+EOS = 'E。'
+
 
 class NExpr(object):
-
-    def append(self, e):
-        return NChoice(self, e)
 
     def asType(self, typefix):
         return self
@@ -40,9 +49,6 @@ class NChoice(NExpr):
     def __init__(self, *choices):
         self.choices = choices
 
-    def append(self, e: NExpr):
-        return NChoice(*(self.choices + (e,)))
-
     def asType(self, typefix):
         return NChoice(*[c.asType(typefix) for c in self.choices])
 
@@ -50,13 +56,13 @@ class NChoice(NExpr):
         return NChoice(*[c.apply(mapped) for c in self.choices])
 
     def __str__(self):
-        return '{' + '|'.join(map(str, self.choices)) + '}'
+        return '[' + '|'.join(map(str, self.choices)) + ']'
 
-    def emit(self, typefix):
-        if SuffleOption:
+    def emit(self, typefix, buffer=None):
+        if ShuffleSynonym:
             index = random.randrange(0, len(self.choices))
-            return self.choices[index].emit(typefix)
-        return self.choices[0].emit(typefix)
+            return self.choices[index].emit(typefix, buffer)
+        return self.choices[0].emit(typefix, buffer)
 
 
 class NPiece(NExpr):
@@ -65,40 +71,31 @@ class NPiece(NExpr):
     def __init__(self, piece):
         self.piece = piece
 
+    def asType(self, typefix):
+        return NPred(self.piece, typefix)
+
     def __str__(self):
         return self.piece
 
-    def emit(self, typefix):
+    def emit(self, typefix, buffer=None):
         return self.piece
 
 
 class NPred(NExpr):
-    verb: str
-    typefix: str   # '' のときは、名詞
+    lemma: str
+    typefix: str
 
     def __init__(self, verb, typefix=''):
-        assert isinstance(verb, str), type(verb)
-        self.verb = str(verb)
+        self.lemma = lemma(verb)
         self.typefix = typefix
-
-    def asType(self, typefix):
-        return NPred(self.verb, typefix) if typefix != self.typefix else self
 
     def __str__(self):
         if self.typefix == '':
-            return self.verb
-        return f'{self.verb} #{self.typefix}'
+            return str(self.lemma)
+        return f'{self.lemma} as {self.typefix}'
 
-    def emit(self, typefix):
-        if self.typefix == '':  # 名詞
-            if typefix == EOS:
-                return self.verb + ' を 確認する ' + EOS
-            return self.verb
-        if typefix == EOS:
-            return self.verb + ' ' + EOS
-        if typefix == RESULT:
-            typefix = self.typefix
-        return self.verb + f' #{typefix}'
+    def emit(self, typefix, buffer=None):
+        return self.lemma.emit(typefix)
 
 
 class NLiteral(NExpr):
@@ -110,10 +107,10 @@ class NLiteral(NExpr):
     def __str__(self):
         return self.value
 
-    def emit(self, typefix):
-        if typefix == RESULT:
+    def emit(self, typefix, buffer=None):
+        if not typefix.startswith('P') or typefix == 'RESULT':
             return self.value
-        return f'{typefix} {self.value}'
+        return f'{typefix[1:]} {self.value}'
 
 
 class NParam(NExpr):
@@ -137,10 +134,11 @@ class NParam(NExpr):
     def __str__(self):
         return ALPHA[self.index]
 
-    def emit(self, typefix):
+    def emit(self, typefix, buffer=None):
         if self.bound is None:
             return self.symbol
-        return self.bound.emit(RESULT if self.typefix == '' else self.typefix)
+        typefix = RESULT if self.typefix == '' else 'P' + self.typefix
+        return self.bound.emit(typefix, buffer)
 
 
 def toNExpr(e):
@@ -173,13 +171,21 @@ class NPhrase(NExpr):
             ss.append(str(p))
         return ' '.join(ss)
 
-    def emit(self, typefix):
+    def emit(self, typefix, buffer=None):
         ss = []
-        if len(self.options) > 0:
-            for p in self.options:
-                ss.append(p.emit(''))
+        if len(self.options) > 2 and ShuffleOrder:
+            os = list(self.options)
+            random.shuffle(os)
+            self.options = tuple(os)
+
+        for p in self.options:
+            if buffer is None:
+                ss.append(p.emit(shuffle('T、', 'A、')))
+            else:
+                buffer.append(p.emit('E。'))
+
         for p in self.pieces:
-            ss.append(p.emit(typefix))
+            ss.append(p.emit(typefix, buffer))
         return ' '.join(ss)
 
 
@@ -188,8 +194,9 @@ class NPhrase(NExpr):
 ALPHA = [chr(c) for c in range(ord('A'), ord('Z')+1)] + ['?']
 
 STATIC_MODULE = {
-    'math', 'pd'
+    'math', 'pd', 'sys', 'os'
 }
+
 
 def toCExpr(value):
     return value if isinstance(value, CExpr) else CValue(value)
@@ -331,7 +338,7 @@ class CMethod(CExpr):
 ##
 peg = pg.grammar('kotoha.tpeg')
 parser = pg.generate(peg)
-eparser = pg.generate(peg, start='Expression')
+eparser = pg.generate(peg, start='Snipet')
 
 
 def symbols(tree):
@@ -353,6 +360,12 @@ class Reader(ParseTreeVisitor):
         ParseTreeVisitor.__init__(self)
         self.rules = rules
         self.symbols = EMPTY
+        self.names = {
+            's': '文字列', 'c': '文字',
+            'n': '整数', 'f': 'ファイル',
+        }
+        self.modules = STATIC_MODULE
+        self.synonyms = {}
 
     def isRuleMode(self):
         return self.symbols is not EMPTY
@@ -367,11 +380,18 @@ class Reader(ParseTreeVisitor):
         self.symbols = set(symbols(doc))
         self.indexes = {}
         cpat = self.visit(code)
+        if str(doc).strip() == 'symbol':
+            name = cpat.name
+            symbol = str(cpat.params[0])[1:-1]
+            self.names[name] = symbol
+            return
+        if str(doc).strip() == 'module':
+            name = cpat.name
+            self.modules.add(name)
+            return
         pred = self.visit(doc)
         self.add_rule(cpat, len(self.indexes), pred)
         self.symbols = EMPTY
-            # print(">>> ", str(cpat), '##', str(pred), '@',
-            #       repr(self.symbols), repr(self.indexes))
 
     def add_rule(self, cpat: CExpr, size, pred: NExpr):
         name = cpat.name
@@ -379,8 +399,20 @@ class Reader(ParseTreeVisitor):
             if name not in self.rules:
                 self.rules[name] = []
             self.rules[name].append((size, cpat, pred))
+            #print('rule', (size, cpat, pred))
         else:
             logger.warning('@fixme', cpat, pred)
+
+    def acceptAssignment(self, tree):
+        left = self.visit(tree.left)  # xをyとする
+        right = self.visit(tree.right)
+        return CBinary(left, '=', right)
+
+    def acceptSelfAssignment(self, tree):
+        name = str(tree.name)
+        left = self.visit(tree.left)
+        right = self.visit(tree.right)
+        return CBinary(left, name, right)
 
     def acceptInfix(self, tree):
         name = str(tree.name)
@@ -429,9 +461,9 @@ class Reader(ParseTreeVisitor):
     def acceptString(self, tree):
         s = str(tree)
         if s.startswith("'") and s.endswith("'"):
-            s = s[1:-1].encode().decode('unicode-escape')
+            s = s[1:-1].encode('unicode-escape').decode('unicode-escape')
         if s.startswith('"') and s.endswith('"'):
-            s = s[1:-1].encode().decode('unicode-escape')
+            s = s[1:-1].encode('unicode-escape').decode('unicode-escape')
         return CValue(s)
 
     def acceptInt(self, tree):
@@ -443,9 +475,17 @@ class Reader(ParseTreeVisitor):
         return CValue(float(s))
 
     def acceptUndefined(self, tree):
-        logger.warning('@undefined', repr(tree))
+        logger.warning(f'@undefined {repr(tree)}')
         s = str(tree)
         return CValue(s)
+
+    def acceptMetaData(self, tree):
+        lines = str(tree).split('\n')
+        for line in lines:
+            ss = line.split(' ')
+            if len(ss) > 2:
+                self.synonyms[ss[1]] = tuple(lemma(t) for t in ss[1:])
+                # print(ss[1], self.synonyms[ss[1]])
 
     def acceptDocument(self, tree):
         ret = ''
@@ -453,20 +493,27 @@ class Reader(ParseTreeVisitor):
         for t in tree:
             if t.getTag() == 'Return':
                 ret = str(t).strip()
-                if ret == '':
-                    ret = EOS
+                # if ret == '':
+                #     ret = EOS
                 # print(repr(t), ret)
             else:
                 ss.append(self.visit(t))
+        if ReversePolish:
+            ss[-1] = ss[-1].asType(ret)
+        else:
+            ss[-1] = ss[-1].asType(ret)
         e = NPhrase(*ss)
-        if ret != '':
-            return e.asType(ret)
         return e
 
     def acceptSymbol(self, tree):
         s = str(tree)
         if s in self.indexes:
-            return NParam(s, self.indexes[s])
+            p = NParam(s, self.indexes[s])
+            if s[-1].isdigit():
+                s = s[:-1]
+            if s in self.names:
+                p.typefix = self.names[s]
+            return p
         return NPiece(s)
 
     def acceptParam(self, tree):
@@ -477,23 +524,27 @@ class Reader(ParseTreeVisitor):
             return piece
         return piece
 
-    def acceptVerb(self, tree):
-        e = NPred(str(tree[0]))
-        for t in tree[1:]:
-            e = e.append(NPred(str(t)))
-        return e
-
-    def acceptNoun(self, tree):
-        e = NPiece(str(tree[0]))
-        for t in tree[1:]:
-            e = e.append(NPiece(str(t)))
-        return e
+    def acceptSynonyms(self, tree):
+        ss = [str(t) for t in tree]
+        if len(ss) == 1:
+            if ss[0] in self.synonyms:
+                ss = [NPiece(str(t)) for t in self.synonyms[ss[0]]]
+                return NChoice(*ss)
+        return NChoice(*[NPiece(str(t)) for t in ss])
 
     def acceptLiteral(self, tree):
         return NLiteral(str(tree))
 
     def acceptPiece(self, tree):
-        return NPiece(str(tree))
+        s = str(tree)
+        if s in self.synonyms:
+            ss = [NPiece(str(t)) for t in self.synonyms[s]]
+            return NChoice(*ss)
+        return NPiece(s)
+
+    def accepterr(self, tree):
+        print(repr(tree))
+        sys.exit(0)
 
 
 # Matcher
@@ -565,7 +616,9 @@ class KotohaModel(object):
                         else:
                             mapped[key] = self.match(mapped[key])
                     return pred.apply(mapped)
-            logger.warning('unmatched: ' + str(ce))
+            logger.debug('unmatched: ' + str(ce))
+        if len(ce.params) > 0:
+            logger.debug('undefined? ' + str(type(ce)) + ' ' + str(ce))
         return NLiteral(str(ce))
 
     def translate(self, expression, suffix=''):
@@ -591,4 +644,12 @@ if __name__ == '__main__':
     rule_files = [s for s in sys.argv[1:] if s.endswith('rule.py')]
     input_files = [s for s in sys.argv[1:] if not s.endswith('rule.py')]
     model.load(*rule_files)
-    model.generate(*input_files)
+    if len(input_files) > 0:
+        model.generate(*input_files)
+    else:
+        while True:
+            line = input('Expression >>> ')
+            if line == '':
+                sys.exit(0)
+            code, doc = model.translate(line, suffix=EOS)
+            print(code, '\t#', doc)

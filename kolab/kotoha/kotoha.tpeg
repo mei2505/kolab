@@ -5,18 +5,33 @@ File = __ { (Rule __)* #Source} EOF
 /* Rule */
 
 Rule =
+    / MetaData / COMMENT
     / { Option Document #Rule}
-    / { Expression Document #Rule }
+    / { Statement Document #Rule }
+
+SynonymDef = {
+    ("verb" / "noun" / "synonym") Word (Word)* #SynonymDef
+}
+
+SymbolDef = {
+    "symbol" Name Word #SymbolDef
+}
+
+Word = { (![\n ] .)+ #Word } _ 
 
 Option = {
     NSName "=" (Name / Constant) 
     #Option
 }
 
+MetaData = '"""' __ { (!'"""' . )*  #MetaData } '"""'
+
+COMMENT = '#' (!'\n' .)* (__ / EOF)
+
 /* Document */
 
 Document = __ '#' _ {
-  ( VerbList / NounList / NLPart / ReturnType / _ )* LF
+  ( Synonyms / NLPart / ReturnType / _ )* LF
   #Document
 }
 
@@ -31,25 +46,18 @@ _Parameterized = '(' {^ { (!')' .)+ #Kind } #Param } ')'
 
 ESC = '\\' .
 
-VerbList = {
-    '{' Verb ( '|' Verb )* '}'
-    #Verb
-}
-
-Verb =  { (![|}] .)+ #Verb }               
-
-NounList = {
+Synonyms = {
     '[' Noun ( '|' Noun )* ']'
-    #Verb
+    #Synonyms
 }
 
 Noun =  { (![|\]] .)* #Noun }               
 
-
-
 ReturnType = "->" { (!LF .)* #Return }
 
 /* Programming */
+
+Snipet = Statement EOF
 
 Statement =
     / Assignment

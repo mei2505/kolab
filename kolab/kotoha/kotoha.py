@@ -32,7 +32,7 @@ def alt(s: str):
         if ShuffleSynonym:
             random.shuffle(ss)
         return ss[0]
-    return str
+    return s
 
 # 自然言語フレーズ
 
@@ -531,7 +531,7 @@ class Reader(ParseTreeVisitor):
             if s[-1].isdigit():
                 s = s[:-1]
             if s in self.names:
-                p.typefix = self.names[s]
+                p.typefix = alt(self.names[s])
             return p
         return NPiece(s)
 

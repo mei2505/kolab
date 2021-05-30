@@ -5,7 +5,7 @@ from pegtree.visitor import ParseTreeVisitor
 from pegtree import ParseTree
 import pegtree as pg
 
-from pj import lemma, match_predicate
+from pj import lemma, Lemma
 
 from logging import getLogger
 logger = getLogger(__name__)
@@ -17,12 +17,22 @@ EMPTY = tuple()
 ReversePolish = True  # 膠着語の場合はTrue
 ShuffleSynonym = True  # NChoiceの表現をシャッフルする
 ShuffleOrder = True
+MultipleSentence = True
 
 
 def shuffle(x, y):
     if ShuffleSynonym:
         return x if random.random() < 0.6 else y
     return x
+
+
+def alt(s: str):
+    if '|' in s:
+        ss = s.split('|')
+        if ShuffleSynonym:
+            random.shuffle(ss)
+        return ss[0]
+    return str
 
 # 自然言語フレーズ
 
@@ -82,7 +92,7 @@ class NPiece(NExpr):
 
 
 class NPred(NExpr):
-    lemma: str
+    lemma: Lemma
     typefix: str
 
     def __init__(self, verb, typefix=''):
@@ -95,6 +105,12 @@ class NPred(NExpr):
         return f'{self.lemma} as {self.typefix}'
 
     def emit(self, typefix, buffer=None):
+        if typefix != EOS and self.lemma.lemmatype == 'N':
+            return str(self.lemma)
+        if typefix == EOS:
+            return self.lemma.emit(typefix)
+        if len(self.typefix)+1 > len(typefix):
+            typefix = typefix[0] + self.typefix
         return self.lemma.emit(typefix)
 
 
@@ -108,9 +124,12 @@ class NLiteral(NExpr):
         return self.value
 
     def emit(self, typefix, buffer=None):
-        if not typefix.startswith('P') or typefix == 'RESULT':
+        if not typefix.startswith('P') or typefix == RESULT:
             return self.value
-        return f'{typefix[1:]} {self.value}'
+        prefix = typefix[1:]
+        if prefix in ['結果', '値']:
+            return self.value
+        return f'{prefix} {self.value}'
 
 
 class NParam(NExpr):
@@ -581,6 +600,13 @@ def cmatch(cpat, code, mapped: dict):
     return True
 
 
+def NOption(name, value: NExpr):
+    if MultipleSentence:
+        return NPhrase(name, 'は', value, 'に', NPred('する'))
+    else:
+        return NPhrase(name, 'を', value, 'に', NPred('する'))
+
+
 class KotohaModel(object):
     rules: dict
     reader: Reader
@@ -619,13 +645,24 @@ class KotohaModel(object):
             logger.debug('unmatched: ' + str(ce))
         if len(ce.params) > 0:
             logger.debug('undefined? ' + str(type(ce)) + ' ' + str(ce))
-        return NLiteral(str(ce))
+        if isinstance(ce, CVar) or isinstance(ce, CValue):
+            return NLiteral(str(ce))
+        if isinstance(ce, COption) and ce.name in self.reader.names:
+            name = alt(self.reader.names[ce.name])
+            return NOption(name, self.match(ce.params[0]))
+        return NPiece(str(ce))
 
     def translate(self, expression, suffix=''):
         tree = eparser(expression)
         code = self.reader.visit(tree)
         #print(type(code), code)
         pred = self.match(code)
+        if MultipleSentence:
+            buffer = []
+            main = pred.emit(suffix, buffer)
+            if len(buffer) > 0:
+                main += 'そのとき、' + (' '.join(buffer))
+            return code, main
         return code, pred.emit(suffix)
 
     def generate(self, *files):
@@ -647,6 +684,7 @@ if __name__ == '__main__':
     if len(input_files) > 0:
         model.generate(*input_files)
     else:
+        import readline
         while True:
             line = input('Expression >>> ')
             if line == '':

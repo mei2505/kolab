@@ -3,7 +3,7 @@
 synonym 置き換える 置換する
 synonym 用いる とする
 synonym 取り除く 除去する
-synonym 出力する 表示する
+synonym 表示する 出力する
 synonym 区切り 区切り記号 区切り文字列 セパレータ
 """
 

@@ -10,7 +10,7 @@ Rule =
     / { Statement Document #Rule }
 
 SynonymDef = {
-    ("verb" / "noun" / "synonym") Word (Word)* #SynonymDef
+    ("verb" / "noun" / "synonym" ) Word (Word)* #SynonymDef
 }
 
 SymbolDef = {
@@ -24,7 +24,9 @@ Option = {
     #Option
 }
 
-MetaData = '"""' __ { (!'"""' . )*  #MetaData } '"""'
+MetaData = 
+    / '"""' __ { (!'"""' . )*  #MetaData } '"""'
+    / "'''" __ { (!"'''" . )*  #MetaData } "'''"
 
 COMMENT = '#' (!'\n' .)* (__ / EOF)
 

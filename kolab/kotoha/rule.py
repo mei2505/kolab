@@ -50,5 +50,15 @@ X = Y  # a(変数)をyと する
 pd.read_csv(file)  # read data frame from file(CSV file) -> data frame
 
 df = 'データフレーム'  # symbol
-df[[col, col2]]  # dfから col(属性)と col2(属性)を 射影する -> 表データ
+col = 'カラム|属性|列' #symbol
+col2 = 'カラム|属性|列' #symbol
+row = 'インデックス|行' #symbol
+
+df[[col, col2]]  # dfから colと col2のみ 選ぶ -> 表データ
 df.columns  # dfの カラム名リスト
+
+#df.drop(['remarks'], axis=1, inplace=True)
+df.drop([col], axis=1) # df から colを 取り除く -> 表データ
+df.drop([row], axis=0) # df から rowを 取り除く -> 表データ
+
+inplace = True # 破壊的操作による

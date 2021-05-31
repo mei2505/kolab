@@ -7,7 +7,6 @@ synonym セパレータ 区切り記号 区切り文字列
 synonym 作成する 生成する
 synonym インデックス インデックス名 行の名前 行名 index
 synonym カラム カラム名 列の名前 列名 column
-
 """
 
 pd.read_csv(file) # file(CSVファイル)から [データを|] 読む -> データフレーム

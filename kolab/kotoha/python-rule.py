@@ -12,12 +12,11 @@ n = '整数'  # symbol
 
 """
 synonym 置き換える 置換する
-synonym 用いる 使う する
-synonym 取り除く 除去する
-synonym 表示する 出力する
-synonym セパレータ 区切り記号 区切り文字列
+synonym 用いる 使う する 用いる
+synonym 取り除く 除去する 
+synonym 表示する 出力する プリントする
+synonym セパレータ 区切り記号 区切り文字列 セパレータ
 """
-
 
 # 演算子
 x % 2 == 0   # xが 偶数かどうか
@@ -47,7 +46,7 @@ iterable = '列'  # symbol
 abs(x)  # xの 絶対値
 bool(x)  # xが 真かどうか
 complex(x, y)  # xと yの 複素数
-divmod(x, y)  # xとyの商と余り
+divmod(x, y)  # xと yの 商と余り
 
 float(x)  # xの 浮動小数点数
 
@@ -107,7 +106,7 @@ next(x)  # xの 次の値
 
 range(stop)  # 0から stopまでの 数列
 range(start, stop)  # startから stopまでの 数列
-range(start, stop, step)  # startから stepごとによる stopまでの  数列
+range(start, stop, step)  # startから stepごとによる stopまでの 数列
 step = x  # 間隔は xにする
 
 reversed(iterable)  # iterableの 逆順
@@ -116,7 +115,7 @@ set(iterable)  # iterableの 集合
 
 slice(stop)  # 0から stopまでの スライス
 slice(start, stop)  # startから stopまでの スライス
-slice(start, stop, step)  # startから stepごとによる stopまでの  スライス
+slice(start, stop, step)  # startから stepごとによる stopまでの スライス
 
 """
 synonym ソートする 整列する

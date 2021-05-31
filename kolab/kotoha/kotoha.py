@@ -15,24 +15,33 @@ EMPTY = tuple()
 # オプション
 
 ReversePolish = True  # 膠着語の場合はTrue
+EnglishFirst = True
+RandomIndex = 0
 ShuffleSynonym = True  # NChoiceの表現をシャッフルする
-ShuffleOrder = True
-MultipleSentence = True
+MultipleSentence = True # 複数行モード
+ShuffleOrder = True # まだ未実装
 
+def randomize():
+    global RandomIndex
+    if ShuffleSynonym:
+        RandomIndex = random.randint(1, 1789)
+
+
+def random_index(arraysize:int, seed):
+    return (RandomIndex + seed) % arraysize
+
+def alt(s: str):
+    if '|' in s:
+        ss = s.split('|')
+        if EnglishFirst:
+            return ss[-1] # 最後が英語
+        return ss[random_index(len(ss), len(s))]
+    return s
 
 def shuffle(x, y):
     if ShuffleSynonym:
         return x if random.random() < 0.6 else y
     return x
-
-
-def alt(s: str):
-    if '|' in s:
-        ss = s.split('|')
-        if ShuffleSynonym:
-            random.shuffle(ss)
-        return ss[0]
-    return s
 
 # 自然言語フレーズ
 
@@ -579,13 +588,13 @@ class Reader(ParseTreeVisitor):
         return CValue(float(s))
 
     def acceptTrueExpr(self, tree):
-        return CValue('True')
+        return CValue(True)
 
     def acceptFalseExpr(self, tree):
-        return CValue('False')
+        return CValue(False)
 
     def acceptNull(self, tree):
-        return CValue('None')
+        return CValue(None)
 
     def acceptList(self, tree):
         es = [self.visit(t) for t in tree]
@@ -694,7 +703,7 @@ def cmatch(cpat, code, mapped: dict):
         option = code.getoption(opat.name)
         if option is None:
             return False
-        if not opat.match(option, mapped):
+        if not cmatch(opat, option, mapped):
             return False
     if len(code.options) > 0:
         os = []

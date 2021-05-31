@@ -48,3 +48,7 @@ s.replace(s2, '')  # sから s2を [全て|] 取り除く -> 文字列
 X = Y  # a(変数)をyと する
 
 pd.read_csv(file)  # read data frame from file(CSV file) -> data frame
+
+df = 'データフレーム'  # symbol
+df[[col, col2]]  # dfから col(属性)と col2(属性)を 射影する -> 表データ
+df.columns  # dfの カラム名リスト

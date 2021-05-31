@@ -180,7 +180,7 @@ ListArgument = {
 
 Primary =
     / GroupExpr
-    / DataExpr
+    / TupleExpr / ListExpr / DataExpr
     / Constant
     / Name
 

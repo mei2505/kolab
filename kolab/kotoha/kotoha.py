@@ -303,6 +303,15 @@ class CBinary(CExpr):
         return f'{{}} {self.name} {{}}'
 
 
+class CUnary(CExpr):
+
+    def __init__(self, op, expr):
+        CExpr.__init__(self, op, (toCExpr(expr),))
+
+    def format(self, option=True):
+        return f'{self.name} {{}}'
+
+
 class COption(CExpr):
 
     def __init__(self, name: str, value: CExpr):
@@ -352,6 +361,72 @@ class CMethod(CExpr):
             ss.extend(ps[1:])
         ss.append(')')
         return ' '.join(ss)
+
+
+class CField(CExpr):
+
+    def __init__(self, recv: CExpr, name: str):
+        CExpr.__init__(self, name, (toCExpr(recv),))
+
+    def format(self, option=True):
+        return f'{{}} . {self.name}'
+
+
+class CTuple(CExpr):
+
+    def __init__(self, *es):
+        CExpr.__init__(self, "(,)", tuple(toCExpr(e) for e in es))
+
+    def format(self, option=True):
+        ss = []
+        ss.append('(')
+        n = len(self.params)
+        if n == 1:
+            ss.extend(['{}', ','])
+        else:
+            ps = [',', '{}'] * (n)
+            ss.extend(ps[1:])
+        ss.append(')')
+        return ' '.join(ss)
+
+
+class CList(CExpr):
+
+    def __init__(self, *es):
+        CExpr.__init__(self, "[,]", tuple(toCExpr(e) for e in es))
+
+    def format(self, option=True):
+        ss = []
+        ss.append('[')
+        n = len(self.params)
+        if n > 0:
+            ps = [',', '{}'] * (n)
+            ss.extend(ps[1:])
+        ss.append(']')
+        return ' '.join(ss)
+
+
+class CData(CExpr):
+
+    def __init__(self, *es):
+        CExpr.__init__(self, "{,}", tuple(toCExpr(e) for e in es))
+
+    def format(self, option=True):
+        ss = []
+        ss.append('{')
+        for i in range(0, len(self.params), 2):
+            ss.extend(['{}', '=', '{}', ','])
+        ss.append('}')
+        return ' '.join(ss)
+
+
+class CSlice1(CExpr):
+
+    def __init__(self, recv, index):
+        CExpr.__init__(self, "[]", (toCExpr(recv), toCExpr(index)))
+
+    def format(self, option=True):
+        return f'{{}}[{{}}]'
 
 
 ##
@@ -439,6 +514,11 @@ class Reader(ParseTreeVisitor):
         right = self.visit(tree.right)
         return CBinary(left, name, right)
 
+    def acceptUnary(self, tree):
+        name = str(tree.name)
+        expr = self.visit(tree.expr)
+        return CUnary(name, expr)
+
     def acceptApplyExpr(self, tree):
         name = str(tree.name)
         params = self.visit(tree.params)
@@ -468,6 +548,11 @@ class Reader(ParseTreeVisitor):
                 return recv
         return CField(recv, str(tree.name))  # Fixme
 
+    def acceptIndexExpr(self, tree):
+        recv = self.visit(tree.recv)
+        index = self.visit(tree.index)
+        return CSlice1(recv, index)  # Fixme
+
     def acceptName(self, tree):
         s = str(tree)
         if self.isRuleMode():
@@ -492,6 +577,27 @@ class Reader(ParseTreeVisitor):
     def acceptDouble(self, tree):
         s = str(tree)
         return CValue(float(s))
+
+    def acceptTrueExpr(self, tree):
+        return CValue('True')
+
+    def acceptFalseExpr(self, tree):
+        return CValue('False')
+
+    def acceptNull(self, tree):
+        return CValue('None')
+
+    def acceptList(self, tree):
+        es = [self.visit(t) for t in tree]
+        return CList(*es)
+
+    def acceptTuple(self, tree):
+        es = [self.visit(t) for t in tree]
+        return CTuple(*es)
+
+    def acceptList(self, tree):
+        es = [self.visit(t) for t in tree]
+        return CList(*es)
 
     def acceptUndefined(self, tree):
         logger.warning(f'@undefined {repr(tree)}')

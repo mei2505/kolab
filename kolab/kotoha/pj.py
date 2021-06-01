@@ -109,10 +109,11 @@ def emitA(lemma, typefix):  # 赤い　長さ
 
 
 def emitN(lemma, typefix):  # 距離
-    c = typefix[0]
-    if c == PAST and c == AND:
-        return lemma
-    return emitVS(lemma+' を 確認する', typefix)
+    return lemma
+    # c = typefix[0]
+    # if c == PAST and c == AND:
+    #     return lemma
+    # return emitVS(lemma+' を 確認する', typefix)
 
 
 def emitVK5(lemma, typefix):  # 書く

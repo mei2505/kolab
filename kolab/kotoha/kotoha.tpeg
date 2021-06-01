@@ -20,7 +20,7 @@ SymbolDef = {
 Word = { (![\n ] .)+ #Word } _ 
 
 Option = {
-    NSName "=" (Name / Constant) 
+    NSName "=" (Constant / Name) 
     #Option
 }
 

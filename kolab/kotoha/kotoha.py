@@ -616,10 +616,10 @@ class Reader(ParseTreeVisitor):
     def acceptMetaData(self, tree):
         lines = str(tree).split('\n')
         for line in lines:
-            ss = line.split(' ')
+            ss = line.split()
             if len(ss) > 2:
+                # print('#' + ss[1], ss[1:]) #, self.synonyms[ss[1]])
                 self.synonyms[ss[1]] = tuple(lemma(t) for t in ss[1:])
-                # print(ss[1], self.synonyms[ss[1]])
 
     def acceptDocument(self, tree):
         ret = ''

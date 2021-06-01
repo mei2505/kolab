@@ -54,6 +54,7 @@ def make(code, doc0, convert=convert_all):
                 doc.append(q2)
                 flag=1
                 continue
+            print('@', s, code)
         doc.append(s)
     #doc = [str(tok) for tok in parse(doc)]
     ws = [convert(tok, doc, mapped) for tok in parse(code)]

@@ -60,5 +60,6 @@ df.columns  # dfの カラム名リスト
 #df.drop(['remarks'], axis=1, inplace=True)
 df.drop([col], axis=1) # df から colを 取り除く -> 表データ
 df.drop([row], axis=0) # df から rowを 取り除く -> 表データ
+df.drop([row]) # df から rowを 取り除く -> 表データ
 
 inplace = True # 破壊的操作による

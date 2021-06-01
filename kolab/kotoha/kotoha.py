@@ -63,7 +63,7 @@ class NExpr(object):
 
 
 class NChoice(NExpr):
-    choices: tuple[NExpr]
+    choices: tuple
 
     def __init__(self, *choices):
         self.choices = choices

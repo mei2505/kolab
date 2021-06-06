@@ -14,37 +14,43 @@ EMPTY = tuple()
 
 # オプション
 
-ReversePolish = True  # 膠着語の場合はTrue
-EnglishFirst = True
-RandomIndex = 0
-ShuffleSynonym = True  # NChoiceの表現をシャッフルする
-MultipleSentence = True  # 複数行モード
-ShuffleOrder = True  # まだ未実装
+OPTION = {
+    'Simple': False,  # シンプルな表現を優先する
+    'Block': False,  # Expressionに <e> </e> ブロックをつける
+    'ReversePolish': True,  # 膠着語の場合はTrue
+    'EnglishFirst': True,  # 英訳の精度を優先する
+    'ShuffleSynonym': True,  # 同音異議語をシャッフルする
+    'MultipleSentence': True,  # 複数行モード
+    'ShuffleOrder': True,  # もし可能なら順序も入れ替える
+    'Verbose': True,  # デバッグ出力あり
+}
 
-VERBOSE = True  # デバッグ用出力
+RandomIndex = 0
 
 
 def randomize():
     global RandomIndex
-    if ShuffleSynonym:
+    if OPTION['ShuffleSynonym']:
         RandomIndex = random.randint(1, 1789)
 
 
 def random_index(arraysize: int, seed):
-    return (RandomIndex + seed) % arraysize
+    if OPTION['ShuffleSynonym']:
+        return (RandomIndex + seed) % arraysize
+    return 0
 
 
 def alt(s: str):
     if '|' in s:
         ss = s.split('|')
-        if EnglishFirst:
+        if OPTION['EnglishFirst']:
             return ss[-1]  # 最後が英語
         return ss[random_index(len(ss), len(s))]
     return s
 
 
 def shuffle(x, y):
-    if ShuffleSynonym:
+    if OPTION['ShuffleSynonym']:
         return x if random.random() < 0.6 else y
     return x
 
@@ -83,10 +89,29 @@ class NChoice(NExpr):
         return '[' + '|'.join(map(str, self.choices)) + ']'
 
     def emit(self, typefix, buffer=None):
-        if ShuffleSynonym:
+        if OPTION['ShuffleSynonym']:
             index = random.randrange(0, len(self.choices))
             return self.choices[index].emit(typefix, buffer)
         return self.choices[0].emit(typefix, buffer)
+
+
+class NTuple(NExpr):
+    elements: tuple
+
+    def __init__(self, *elements):
+        self.elements = tuple(toNExpr(e) for e in elements)
+
+    def asType(self, typefix):
+        return NTuple(*[c.asType(typefix) for c in self.elements])
+
+    def apply(self, mapped):
+        return NTuple(*[c.apply(mapped) for c in self.elements])
+
+    def __str__(self):
+        return '(' + ','.join(map(str, self.elements)) + ')'
+
+    def emit(self, typefix, buffer=None):
+        return '(' + ','.join(map(lambda e: e.emit(typefix, buffer), self.elements)) + ')'
 
 
 class NPiece(NExpr):
@@ -122,7 +147,7 @@ class NPred(NExpr):
             return str(self.lemma)
         return f'{self.lemma} as {self.typefix}'
 
-    def emit0(self, typefix, buffer=None):
+    def emit(self, typefix, buffer=None):
         if typefix != EOS and self.lemma.lemmatype == 'N':
             return str(self.lemma)
         if typefix == EOS:
@@ -131,8 +156,8 @@ class NPred(NExpr):
             typefix = typefix[0] + alt(self.typefix)
         return self.lemma.emit(typefix)
 
-    def emit(self, typefix, buffer=None):
-        s = self.emit(typefix, buffer)
+    def emit2(self, typefix, buffer=None):
+        s = self.emit0(typefix, buffer)
         print(self.lemma, typefix, s)
         return s
 
@@ -254,7 +279,9 @@ class NPhrase(NExpr):
 
     def emit(self, typefix, buffer=None):
         ss = []
-        if len(self.options) > 2 and ShuffleOrder:
+        if OPTION['Block']:
+            ss.append('<e>')
+        if len(self.options) > 2 and OPTION['ShuffleOrder']:
             os = list(self.options)
             random.shuffle(os)
             self.options = tuple(os)
@@ -263,10 +290,16 @@ class NPhrase(NExpr):
             if buffer is None:
                 ss.append(p.emit(shuffle('T、', 'A、')))
             else:
-                buffer.append(p.emit('E。'))
+                buffer.append(p.emit(EOS))
 
         for p in self.pieces:
             ss.append(p.emit(typefix, buffer))
+
+        if OPTION['Block']:
+            if buffer is not None:
+                ss.extend(buffer)
+                buffer.clear()
+            ss.append('</e>')
         return ' '.join(ss)
 
 
@@ -735,6 +768,7 @@ class Reader(ParseTreeVisitor):
 
     def acceptDocument(self, tree):
         ret = ''
+        typefix = ''
         ss = []
         for t in tree:
             if t.getTag() == 'Return':
@@ -743,10 +777,10 @@ class Reader(ParseTreeVisitor):
                 ss.append(self.visit(t))
         if ret != '' and ret in self.names:
             typefix = self.names[ret]
-            if ReversePolish:
-                ss[-1] = ss[-1].asType(typefix)
-            else:
-                ss[0] = ss[0].asType(typefix)
+        if OPTION['ReversePolish']:
+            ss[-1] = ss[-1].asType(typefix)
+        else:
+            ss[0] = ss[0].asType(typefix)
         e = NPhrase(*ss)
         if ret != '':
             e.ret = ret
@@ -779,6 +813,10 @@ class Reader(ParseTreeVisitor):
                 return NChoice(*ss)
         return NChoice(*[NPiece(str(t)) for t in ss])
 
+    def acceptNTuple(self, tree):
+        ss = [str(t) for t in tree]
+        return NTuple(*[NPiece(str(t)) for t in ss])
+
     def acceptLiteral(self, tree):
         symbol = str(tree)
         return NLiteral(symbol)
@@ -792,7 +830,7 @@ class Reader(ParseTreeVisitor):
 
     def accepterr(self, tree):
         print(repr(tree))
-        sys.exit(0)
+        raise InterruptedError()
 
 
 # Matcher
@@ -836,7 +874,7 @@ def cmatch(cpat, code, mapped: dict):
 
 
 def NOption(name, value: NExpr):
-    if MultipleSentence:
+    if OPTION['MultipleSentence']:
         return NPhrase(name, 'は', value, 'に', NPred('する'))
     else:
         return NPhrase(name, 'を', value, 'に', NPred('する'))
@@ -899,7 +937,7 @@ class KotohaModel(object):
         if isinstance(ce, CVar):
             name = str(ce)
             ret = stem_name(name)
-            if ret in self.reader.names:
+            if ret in self.names:
                 return NLiteral(name, ret)
             return NLiteral(name)
         if isinstance(ce, CValue):
@@ -910,28 +948,30 @@ class KotohaModel(object):
         return NPiece(str(ce))
 
     def translate(self, expression, suffix=''):
-        tree = eparser(expression)
-        code = self.reader.visit(tree)
-        #print(type(code), code)
-        pred = self.match(code)
-        if MultipleSentence:
-            buffer = []
-            main = pred.emit(suffix, buffer)
-            if len(buffer) > 0:
-                main += 'そこで、' + (' '.join(buffer))
-            return code, main
-        return code, pred.emit(suffix)
+        try:
+            tree = eparser(expression)
+            code = self.reader.visit(tree)
+            #print(type(code), code)
+            pred = self.match(code)
+            if OPTION['MultipleSentence']:
+                buffer = []
+                main = pred.emit(suffix, buffer)
+                if len(buffer) > 0:
+                    main += 'そこで、' + (' '.join(buffer))
+                return code, main
+            return code, pred.emit(suffix)
+        except InterruptedError:
+            return expression, 'syntax error'
 
-    def generate(self, tsvfile, *files):
-        with open(tsvfile, 'w') as w:
-            for file in files:
-                with open(file) as f:
-                    for line in f.readlines():
-                        line = line.strip()
-                        if line == '' or line.startswith('#'):
-                            continue
-                        code, doc = self.translate(line, suffix=EOS)
-                        print(code, '\t', doc, file=w)
+    def generate(self, w, *files):
+        for file in files:
+            with open(file) as f:
+                for line in f.readlines():
+                    line = line.strip()
+                    if line == '' or line.startswith('#'):
+                        continue
+                    code, doc = self.translate(line, suffix=EOS)
+                    print(code, '\t', doc, file=w)
 
 
 if __name__ == '__main__':
@@ -939,7 +979,7 @@ if __name__ == '__main__':
     argv = sys.argv[1:]
     rule_files = []
     input_files = []
-    tsvfile = 'corpus.tsv'
+    tsvfile = sys.stdout
     for s in sys.argv[1:]:
         if s.endswith('.py'):
             if s.endswith('rule.py'):
@@ -947,17 +987,30 @@ if __name__ == '__main__':
             else:
                 input_files.append(s)
         if s.endswith('.tsv'):
-            tsvfile = s
-        if s.endswith('True') or s.endswith('False'):
-            exec(s, globals())
+            tsvfile = open(s, 'w')
+        if s.endswith('=True'):
+            key, _ = s.split('=')
+            if key in OPTION:
+                OPTION[key] = True
+            else:
+                logger.warning(f'unknown option: {key}')
+        if s.endswith('=False'):
+            key, _ = s.split('=')
+            if key in OPTION:
+                OPTION[key] = False
+            else:
+                logger.warning(f'unknown option: {key}')
     model.load(*rule_files)
     if len(input_files) > 0:
         model.generate(tsvfile, *input_files)
     else:
         import readline
-        while True:
-            line = input('Expression >>> ')
-            if line == '':
-                sys.exit(0)
-            code, doc = model.translate(line, suffix=EOS)
-            print(code, '\t#', doc)
+        try:
+            while True:
+                line = input('Expression >>> ')
+                if line == '':
+                    sys.exit(0)
+                code, doc = model.translate(line, suffix=EOS)
+                print(code, '\t#', doc)
+        except:
+            pass

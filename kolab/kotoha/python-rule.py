@@ -20,6 +20,7 @@ synonym セパレータ 区切り記号 区切り文字列 セパレータ
 """
 
 # 演算子
+x = y  # yを x と呼ぶ
 x % 2 == 0   # xが 偶数かどうか -> bool
 x % 2 == 1   # xが 奇数かどうか -> bool
 x % 2 != 0   # xが 奇数かどうか -> bool
@@ -54,8 +55,8 @@ str * n   # strを n個、連結する -> str
 
 abs(x)  # xの 絶対値 -> int
 bool(x)  # xが 真かどうか -> bool
-complex(x, y)  # xと yの 複素数
-divmod(x, y)  # xと yの 商と余り
+complex(x, y)  # x(実数部), y(虚数部)の 複素数 -> complex
+divmod(x, y)  # xと yの (商,余り) -> tuple
 
 float(x)  # xの 浮動小数点数
 
@@ -201,7 +202,10 @@ input()  # 入力された 文字列 -> str
 input(s)  # s(プロンプト)に対し、入力される -> str
 
 memoryview(x)  # xの メモリビュー
-# open(file, mode='r', buffering=-1, encoding=None, errors=None, newline=None, closefd=True, opener=None)
+
+'''
+synonym 開く オープンする
+'''
 
 open(filename)  # filenameを 開く -> file
 open(filename, 'r')  # filenameを 読み込みモードで 開く -> file
@@ -210,8 +214,11 @@ open(filename, 'a')  # filenameを 追加書き込みモードで 開く -> file
 mode = 'r'  # 読み込みモードを 用いる
 mode = 'w'  # 書き込みモードを 用いる
 mode = 'a'  # 追加モードを 用いる
+mode = 'b'  # バイナリモードを 用いる
 mode = 'モード'
 newline = '改行コード'
+buffering = -1  # バッファリングしない
+buffering = x  # バッファリングは x サイズに する
 
 print()  # 空行を 表示する
 print(x)  # xを 表示する
@@ -229,13 +236,13 @@ flush = True  # フラッシュを 行う
 
 function = '関数'
 
-callable(object)  # objectが 関数かどうか -> bool
+callable(x)  # xが 関数かどうか -> bool
 
-eval(s)  # sを 評価する
-globals()  # グローバル変数の リスト
+eval(s)  # s(式)を 評価する -> x
+globals()  # グローバル変数の 一覧 -> list
 
-filter(function, iterable)  # iterableを functionを [用いて|適用して] フィルタする -> list
-map(function, iterable)  # iterableの 各要素に functionを 適用する -> list
+filter(function, x)  # xの各要素を functionを [用いて|適用して] フィルタする -> list
+map(function, x)  # xの 各要素に functionを 適用する -> list
 
 # 組み込み関数（オブジェクト）
 
@@ -251,8 +258,8 @@ hash(x)  # xの ハッシュ値 -> int
 
 isinstance(x, classinfo)  # xが classinfoの インスタンスかどうか -> bool
 issubclass(classinfo, classinfo2)  # classinfoが classinfo2の サブクラスかどうか -> bool
-id(object)  # xの [ユニークな|]識別値 -> int
-type(object)  # xの 型 -> type
+id(x)  # xの [ユニークな|]識別値 -> int
+type(x)  # xの 型 -> type
 
 # int
 

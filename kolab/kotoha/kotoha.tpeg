@@ -34,7 +34,7 @@ _IGNORE_MULTI_VARIABLE = [,A-Za-z0-9_ ]*
 /* Document */
 
 Document = __ '#' _ {
-  ( Synonyms / NLPart / ReturnType / _ )* LF
+  ( Synonyms / NTuple / NLPart / ReturnType / _ )* LF
   #Document
 }
 
@@ -50,11 +50,17 @@ _Parameterized = '(' {^ { (!')' .)+ #Kind } #Param } ')'
 ESC = '\\' .
 
 Synonyms = {
-    '[' Noun ( '|' Noun )* ']'
+    '[' Noun ( "|" Noun )* ']'
     #Synonyms
 }
 
-Noun =  { (![|\]] .)* #Noun }               
+NTuple = {
+    "(" Noun ( "," Noun )* ")"
+    #NTuple
+}
+
+
+Noun =  { (![|,\])] .)* #Noun }               
 
 ReturnType = "->" { (!LF .)* #Return }
 

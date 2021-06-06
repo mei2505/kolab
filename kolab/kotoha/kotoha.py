@@ -122,7 +122,7 @@ class NPred(NExpr):
             return str(self.lemma)
         return f'{self.lemma} as {self.typefix}'
 
-    def emit(self, typefix, buffer=None):
+    def emit0(self, typefix, buffer=None):
         if typefix != EOS and self.lemma.lemmatype == 'N':
             return str(self.lemma)
         if typefix == EOS:
@@ -130,6 +130,11 @@ class NPred(NExpr):
         if len(self.typefix)+1 > len(typefix):
             typefix = typefix[0] + alt(self.typefix)
         return self.lemma.emit(typefix)
+
+    def emit(self, typefix, buffer=None):
+        s = self.emit(typefix, buffer)
+        print(self.lemma, typefix, s)
+        return s
 
 
 class NLiteral(NExpr):
@@ -913,7 +918,7 @@ class KotohaModel(object):
             buffer = []
             main = pred.emit(suffix, buffer)
             if len(buffer) > 0:
-                main += 'そのとき、' + (' '.join(buffer))
+                main += 'そこで、' + (' '.join(buffer))
             return code, main
         return code, pred.emit(suffix)
 

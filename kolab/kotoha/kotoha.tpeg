@@ -5,30 +5,31 @@ File = __ { (Rule __)* #Source} EOF
 /* Rule */
 
 Rule =
-    / MetaData / COMMENT
+    / MetaData / COMMENT / Module
     / { Option Document #Rule}
+    / { Option #SymbolDef }
     / { Statement Document #Rule }
-
-SynonymDef = {
-    ("verb" / "noun" / "synonym" ) Word (Word)* #SynonymDef
-}
-
-SymbolDef = {
-    "symbol" Name Word #SymbolDef
-}
-
-Word = { (![\n ] .)+ #Word } _ 
-
-Option = {
-    NSName "=" (Constant / Name) 
-    #Option
-}
+    / { Statement #Example }
 
 MetaData = 
     / '"""' __ { (!'"""' . )*  #MetaData } '"""'
     / "'''" __ { (!"'''" . )*  #MetaData } "'''"
 
 COMMENT = '#' (!'\n' .)* (__ / EOF)
+
+Module = {
+    "import" NSName "as" Name #ModuleDef
+}
+
+Word = { (![\n ] .)+ #Word } _ 
+
+Option = {
+    NSName _IGNORE_MULTI_VARIABLE "=" (Constant / Name) 
+    #Option
+}
+
+_IGNORE_MULTI_VARIABLE = [,A-Za-z0-9_ ]*
+
 
 /* Document */
 

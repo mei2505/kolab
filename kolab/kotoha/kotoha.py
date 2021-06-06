@@ -18,8 +18,11 @@ ReversePolish = True  # 膠着語の場合はTrue
 EnglishFirst = True
 RandomIndex = 0
 ShuffleSynonym = True  # NChoiceの表現をシャッフルする
-MultipleSentence = True # 複数行モード
-ShuffleOrder = True # まだ未実装
+MultipleSentence = True  # 複数行モード
+ShuffleOrder = True  # まだ未実装
+
+VERBOSE = True  # デバッグ用出力
+
 
 def randomize():
     global RandomIndex
@@ -27,16 +30,18 @@ def randomize():
         RandomIndex = random.randint(1, 1789)
 
 
-def random_index(arraysize:int, seed):
+def random_index(arraysize: int, seed):
     return (RandomIndex + seed) % arraysize
+
 
 def alt(s: str):
     if '|' in s:
         ss = s.split('|')
         if EnglishFirst:
-            return ss[-1] # 最後が英語
+            return ss[-1]  # 最後が英語
         return ss[random_index(len(ss), len(s))]
     return s
+
 
 def shuffle(x, y):
     if ShuffleSynonym:
@@ -108,6 +113,10 @@ class NPred(NExpr):
         self.lemma = lemma(verb)
         self.typefix = typefix
 
+    def asType(self, typefix):
+        self.typefix = typefix
+        return self
+
     def __str__(self):
         if self.typefix == '':
             return str(self.lemma)
@@ -119,15 +128,22 @@ class NPred(NExpr):
         if typefix == EOS:
             return self.lemma.emit(typefix)
         if len(self.typefix)+1 > len(typefix):
-            typefix = typefix[0] + self.typefix
+            typefix = typefix[0] + alt(self.typefix)
         return self.lemma.emit(typefix)
 
 
 class NLiteral(NExpr):
     value: str
+    ret: str
 
-    def __init__(self, value):
+    def __init__(self, value: str, ret=None):
         self.value = value
+        if ret is None:
+            if value.startswith('"') or value.startswith("'"):
+                ret = 'str'
+            elif value.isdigit():
+                ret = 'int'
+        self.ret = ret
 
     def __str__(self):
         return self.value
@@ -177,20 +193,52 @@ def toNExpr(e):
     return NPiece(str(e))
 
 
+def NChunk(NExpr):
+    pieces: tuple
+    suffix: str
+
+    def __init__(self, *pieces):
+        self.pieces = [toNExpr(p) for p in pieces[:-1]]
+        self.suffix = str(pieces[-1])
+
+    def apply(self, mapped):
+        pieces = [e.apply(mapped) for e in self.pieces]
+        pieces.append(suffix)
+        return NChunk(*pieces)
+
+    def __str__(self):
+        ss = []
+        for p in self.pieces:
+            ss.append(str(p))
+        ss.append(self.suffix)
+        return ' '.join(ss)
+
+    def emit(self, typefix, buffer=None):
+        ss = []
+        for p in self.pieces:
+            ss.append(p.emit(typefix, buffer))
+        ss.append(self.suffix)
+        return ' '.join(ss)
+
+
 class NPhrase(NExpr):
     pieces: tuple
     options: tuple
+    ret: str  # 返り値の種類
 
     def __init__(self, *pieces):
         self.pieces = [toNExpr(p) for p in pieces]
         self.options = EMPTY
+        self.ret = None
 
     def asType(self, ret):
-        return NPhrase(*[e.asType(ret) for e in self.pieces])
+        self.ret = ret
+        return self
 
     def apply(self, mapped):
         pred = NPhrase(*[e.apply(mapped) for e in self.pieces])
         pred.options = mapped.get('options', EMPTY)
+        pred.ret = self.ret
         return pred
 
     def __str__(self):
@@ -261,12 +309,14 @@ class CExpr(object):  # Code Expression
         return None
 
 
-class CIndex(CExpr):
-    index: object
+class CMetaVar(CExpr):
+    index: int
+    original_name: str
 
-    def __init__(self, index):
+    def __init__(self, index: int, original_name: str):
         CExpr.__init__(self)
         self.index = index
+        self.original_name = original_name
 
     def format(self, option=True):
         return repr(self)
@@ -351,7 +401,11 @@ class CApp(CExpr):
         return ' '.join(ss)
 
 
-class CMethod(CExpr):
+class OOP(object):
+    pass
+
+
+class CMethod(CExpr, OOP):
 
     def __init__(self, name: str, *es):
         CExpr.__init__(self, name, tuple(toCExpr(e)
@@ -372,7 +426,7 @@ class CMethod(CExpr):
         return ' '.join(ss)
 
 
-class CField(CExpr):
+class CField(CExpr, OOP):
 
     def __init__(self, recv: CExpr, name: str):
         CExpr.__init__(self, name, (toCExpr(recv),))
@@ -429,13 +483,35 @@ class CData(CExpr):
         return ' '.join(ss)
 
 
-class CSlice1(CExpr):
+class CIndex(CExpr, OOP):
 
     def __init__(self, recv, index):
         CExpr.__init__(self, "[]", (toCExpr(recv), toCExpr(index)))
 
     def format(self, option=True):
-        return f'{{}}[{{}}]'
+        return f'{{}} [ {{}} ]'
+
+
+class CEmpty(CExpr, OOP):
+
+    def __init__(self):
+        CExpr.__init__(self, "")
+
+    def format(self, option=True):
+        return ''
+
+
+CEMPTY = CEmpty()
+
+
+class CSlice(CExpr):
+
+    def __init__(self, recv, start=CEMPTY, stop=CEMPTY, step=CEMPTY):
+        CExpr.__init__(self, "[]", (toCExpr(recv),
+                                    toCExpr(start),  toCExpr(stop), toCExpr(step)))
+
+    def format(self, option=True):
+        return f'{{}} [ {{}} : {{}} : {{}}]'
 
 
 ##
@@ -458,6 +534,7 @@ def symbols(tree):
 class Reader(ParseTreeVisitor):
     rules: dict
     indexes: dict
+    newnames: set
 
     def __init__(self, rules):
         ParseTreeVisitor.__init__(self)
@@ -469,6 +546,7 @@ class Reader(ParseTreeVisitor):
         }
         self.modules = STATIC_MODULE
         self.synonyms = {}
+        self.newnames = set()
 
     def isRuleMode(self):
         return self.symbols is not EMPTY
@@ -498,13 +576,36 @@ class Reader(ParseTreeVisitor):
 
     def add_rule(self, cpat: CExpr, size, pred: NExpr):
         name = cpat.name
-        if name != '':
-            if name not in self.rules:
-                self.rules[name] = []
-            self.rules[name].append((size, cpat, pred))
-            #print('rule', (size, cpat, pred))
-        else:
-            logger.warning('@fixme', cpat, pred)
+        assert name != ''
+        if len(cpat.params) > 0 and isinstance(cpat.params[0], CMetaVar):
+            ns = cpat.params[0].original_name
+            if len(ns) > 1:
+                lname = f'{ns}.{name}'
+                if lname not in self.rules:
+                    self.rules[lname] = []
+                self.rules[lname].append((size, cpat, pred))
+                if name not in self.rules or ns in self.newnames:
+                    self.newnames.add(ns)
+                else:
+                    # print(f'{lname}のみ登録', cpat, pred)
+                    return
+        if name not in self.rules:
+            self.rules[name] = []
+        self.rules[name].append((size, cpat, pred))
+
+    def acceptSymbolDef(self, tree):
+        cpat = self.visit(tree[0])
+        name = cpat.name
+        symbol = str(cpat.params[0])[1:-1]
+        self.names[name] = symbol
+
+    def acceptModuleDef(self, tree):
+        name = str(tree[0])
+        self.modules.add(name)
+
+    def acceptExample(self, tree):
+        ce = self.visit(tree[0])
+        print('Example', ce)
 
     def acceptAssignment(self, tree):
         left = self.visit(tree.left)  # xをyとする
@@ -544,23 +645,29 @@ class Reader(ParseTreeVisitor):
         recv = self.visit(tree.recv)
         name = str(tree.name)
         params = self.visit(tree.params)
-        if isinstance(recv, CVar):
-            if self.isRuleMode() or recv.name in STATIC_MODULE:
+        if self.isRuleMode() and isinstance(recv, CVar):
+            if recv.name.startswith('_'):
+                return CApp(recv.name[1:] + '.' + name, *params)
+            if recv.name in self.modules:
                 return CApp(recv.name + '.' + name, *params)
         return CMethod(name, *([recv]+params))
 
     def acceptGetExpr(self, tree):
         recv = self.visit(tree.recv)
-        if isinstance(recv, CVar):
-            if self.isRuleMode() or recv.name in STATIC_MODULE:
-                recv.name += '.' + str(tree.name)
+        name = str(tree.name)
+        if self.isRuleMode() and isinstance(recv, CVar):
+            if recv.name.startswith('_'):
+                recv.name = recv.name[1:] + '.' + name
                 return recv
-        return CField(recv, str(tree.name))  # Fixme
+            if recv.name in self.modules or '.' in recv.name:
+                recv.name += '.' + name
+                return recv
+        return CField(recv, name)  # Fixme
 
     def acceptIndexExpr(self, tree):
         recv = self.visit(tree.recv)
         index = self.visit(tree.index)
-        return CSlice1(recv, index)  # Fixme
+        return CIndex(recv, index)  # Fixme
 
     def acceptName(self, tree):
         s = str(tree)
@@ -568,7 +675,7 @@ class Reader(ParseTreeVisitor):
             if s in self.symbols:
                 if s not in self.indexes:
                     self.indexes[s] = len(self.indexes)
-                return CIndex(self.indexes[s])
+                return CMetaVar(self.indexes[s], s)
         return CVar(s)
 
     def acceptString(self, tree):
@@ -627,16 +734,17 @@ class Reader(ParseTreeVisitor):
         for t in tree:
             if t.getTag() == 'Return':
                 ret = str(t).strip()
-                # if ret == '':
-                #     ret = EOS
-                # print(repr(t), ret)
             else:
                 ss.append(self.visit(t))
-        if ReversePolish:
-            ss[-1] = ss[-1].asType(ret)
-        else:
-            ss[-1] = ss[-1].asType(ret)
+        if ret != '' and ret in self.names:
+            typefix = self.names[ret]
+            if ReversePolish:
+                ss[-1] = ss[-1].asType(typefix)
+            else:
+                ss[0] = ss[0].asType(typefix)
         e = NPhrase(*ss)
+        if ret != '':
+            e.ret = ret
         return e
 
     def acceptSymbol(self, tree):
@@ -667,7 +775,8 @@ class Reader(ParseTreeVisitor):
         return NChoice(*[NPiece(str(t)) for t in ss])
 
     def acceptLiteral(self, tree):
-        return NLiteral(str(tree))
+        symbol = str(tree)
+        return NLiteral(symbol)
 
     def acceptPiece(self, tree):
         s = str(tree)
@@ -690,7 +799,13 @@ def cmatch(cpat, code, mapped: dict):
         return False
     for e, e2 in zip(cpat.params, code.params):
         #print(':: ', type(e), e, type(e2), e2)
-        if isinstance(e, CIndex):
+        if isinstance(e, CMetaVar):
+            if e.index in mapped:
+                print("#conf", str(mapped[e.index]), str(e2))
+                if str(mapped[e.index]) != str(e2):
+                    return False
+                else:
+                    continue
             mapped[e.index] = e2
             continue
         if isinstance(e, CValue) and isinstance(e2, CValue):
@@ -722,13 +837,21 @@ def NOption(name, value: NExpr):
         return NPhrase(name, 'を', value, 'に', NPred('する'))
 
 
+def stem_name(name: str):
+    if name[-1].isdigit():
+        return stem_name(name[:-1])
+    return name
+
+
 class KotohaModel(object):
     rules: dict
     reader: Reader
+    names: dict
 
     def __init__(self):
         self.rules = {}
         self.reader = Reader(self.rules)
+        self.names = {}
 
     def load(self, *files):
         for file in files:
@@ -740,10 +863,18 @@ class KotohaModel(object):
             d = self.rules[key]
             if len(d) > 1:
                 self.rules[key] = sorted(d)
+        self.names = self.reader.names
 
     def match(self, ce: CExpr) -> NExpr:
         name = ce.name
-        if name not in self.rules and '.' in name:
+        if len(ce.params) > 0:  # レシーバの型を調べる
+            recv = self.match(ce.params[0])
+            if hasattr(recv, 'ret') and recv.ret is not None:
+                lname = f'{recv.ret}.{name}'
+                #print('@レシーバの型', recv.ret, lname)
+                if lname in self.rules:
+                    name = lname
+        while name not in self.rules and '.' in name:
             loc = name.find('.')
             name = name[loc+1:]
         if name in self.rules:
@@ -760,7 +891,13 @@ class KotohaModel(object):
             logger.debug('unmatched: ' + str(ce))
         if len(ce.params) > 0:
             logger.debug('undefined? ' + str(type(ce)) + ' ' + str(ce))
-        if isinstance(ce, CVar) or isinstance(ce, CValue):
+        if isinstance(ce, CVar):
+            name = str(ce)
+            ret = stem_name(name)
+            if ret in self.reader.names:
+                return NLiteral(name, ret)
+            return NLiteral(name)
+        if isinstance(ce, CValue):
             return NLiteral(str(ce))
         if isinstance(ce, COption) and ce.name in self.reader.names:
             name = alt(self.reader.names[ce.name])
@@ -780,24 +917,37 @@ class KotohaModel(object):
             return code, main
         return code, pred.emit(suffix)
 
-    def generate(self, *files):
-        for file in files:
-            with open(file) as f:
-                for line in f.readlines():
-                    line = line.strip()
-                    if line == '' or line.startswith('#'):
-                        continue
-                    code, doc = self.translate(line, suffix=EOS)
-                    print(code, '\t#', doc)
+    def generate(self, tsvfile, *files):
+        with open(tsvfile, 'w') as w:
+            for file in files:
+                with open(file) as f:
+                    for line in f.readlines():
+                        line = line.strip()
+                        if line == '' or line.startswith('#'):
+                            continue
+                        code, doc = self.translate(line, suffix=EOS)
+                        print(code, '\t', doc, file=w)
 
 
 if __name__ == '__main__':
     model = KotohaModel()
-    rule_files = [s for s in sys.argv[1:] if s.endswith('rule.py')]
-    input_files = [s for s in sys.argv[1:] if not s.endswith('rule.py')]
+    argv = sys.argv[1:]
+    rule_files = []
+    input_files = []
+    tsvfile = 'corpus.tsv'
+    for s in sys.argv[1:]:
+        if s.endswith('.py'):
+            if s.endswith('rule.py'):
+                rule_files.append(s)
+            else:
+                input_files.append(s)
+        if s.endswith('.tsv'):
+            tsvfile = s
+        if s.endswith('True') or s.endswith('False'):
+            exec(s, globals())
     model.load(*rule_files)
     if len(input_files) > 0:
-        model.generate(*input_files)
+        model.generate(tsvfile, *input_files)
     else:
         import readline
         while True:

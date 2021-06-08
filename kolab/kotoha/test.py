@@ -1,5 +1,6 @@
 print('abc', 1)
 print(end='a')
+print(math.pi)
 open('file.txt')
 open('file.txt', 'w')
 file = open('file.txt', encoding='sjis', mode='r', errors='strict', errors='ignore')

@@ -132,20 +132,18 @@ class NPiece(NExpr):
 
 class NPred(NExpr):
     lemma: Lemma
+    ret: str
     typefix: str
 
-    def __init__(self, verb, typefix=''):
+    def __init__(self, verb, ret, typefix):
         self.lemma = lemma(verb)
+        self.ret = ret
         self.typefix = typefix
-
-    def asType(self, typefix):
-        self.typefix = typefix
-        return self
 
     def __str__(self):
-        if self.typefix == '':
+        if self.ret == '':
             return str(self.lemma)
-        return f'{self.lemma} as {self.typefix}'
+        return f'({self.lemma} : {self.ret})'
 
     def emit(self, typefix, buffer=None):
         if typefix != EOS and self.lemma.lemmatype == 'N':
@@ -223,32 +221,31 @@ def toNExpr(e):
     return NPiece(str(e))
 
 
-def NChunk(NExpr):
+class NChunk(NExpr):
     pieces: tuple
     suffix: str
 
-    def __init__(self, *pieces):
-        self.pieces = [toNExpr(p) for p in pieces[:-1]]
-        self.suffix = str(pieces[-1])
+    def __init__(self, suffix, *pieces):
+        self.pieces = [toNExpr(p) for p in pieces]
+        self.suffix = suffix
 
     def apply(self, mapped):
         pieces = [e.apply(mapped) for e in self.pieces]
-        pieces.append(suffix)
-        return NChunk(*pieces)
+        return NChunk(self.suffix, *pieces)
 
     def __str__(self):
         ss = []
         for p in self.pieces:
             ss.append(str(p))
         ss.append(self.suffix)
-        return ' '.join(ss)
+        return '{{ ' + ''.join(ss) + ' }}'
 
     def emit(self, typefix, buffer=None):
         ss = []
         for p in self.pieces:
             ss.append(p.emit(typefix, buffer))
         ss.append(self.suffix)
-        return ' '.join(ss)
+        return ''.join(ss)
 
 
 class NPhrase(NExpr):
@@ -593,58 +590,6 @@ class Reader(ParseTreeVisitor):
         for t in tree:
             self.visit(t)
 
-    def acceptRule(self, tree):
-        code = tree[0]
-        doc = tree[1]
-        self.symbols = set(symbols(doc))
-        self.indexes = {}
-        cpat = self.visit(code)
-        if str(doc).strip() == 'symbol':
-            name = cpat.name
-            symbol = str(cpat.params[0])[1:-1]
-            self.names[name] = symbol
-            return
-        if str(doc).strip() == 'module':
-            name = cpat.name
-            self.modules.add(name)
-            return
-        pred = self.visit(doc)
-        self.add_rule(cpat, len(self.indexes), pred)
-        self.symbols = EMPTY
-
-    def add_rule(self, cpat: CExpr, size, pred: NExpr):
-        name = cpat.name
-        assert name != ''
-        if len(cpat.params) > 0 and isinstance(cpat.params[0], CMetaVar):
-            ns = cpat.params[0].original_name
-            if len(ns) > 1:
-                lname = f'{ns}.{name}'
-                if lname not in self.rules:
-                    self.rules[lname] = []
-                self.rules[lname].append((size, cpat, pred))
-                if name not in self.rules or ns in self.newnames:
-                    self.newnames.add(ns)
-                else:
-                    # print(f'{lname}のみ登録', cpat, pred)
-                    return
-        if name not in self.rules:
-            self.rules[name] = []
-        self.rules[name].append((size, cpat, pred))
-
-    def acceptSymbolDef(self, tree):
-        cpat = self.visit(tree[0])
-        name = cpat.name
-        symbol = str(cpat.params[0])[1:-1]
-        self.names[name] = symbol
-
-    def acceptModuleDef(self, tree):
-        name = str(tree[0])
-        self.modules.add(name)
-
-    def acceptExample(self, tree):
-        ce = self.visit(tree[0])
-        print('Example', ce)
-
     def acceptAssignment(self, tree):
         left = self.visit(tree.left)  # xをyとする
         right = self.visit(tree.right)
@@ -758,6 +703,59 @@ class Reader(ParseTreeVisitor):
         s = str(tree)
         return CValue(s)
 
+    def acceptNRule(self, tree):
+        code = tree[0]
+        doc = tree[1]
+        self.symbols = set(symbols(doc))
+        self.indexes = {}
+        cpat = self.visit(code)
+        if str(doc).strip() == 'symbol':
+            name = cpat.name
+            symbol = str(cpat.params[0])[1:-1]
+            self.names[name] = symbol
+            return
+        if str(doc).strip() == 'module':
+            name = cpat.name
+            self.modules.add(name)
+            return
+        pred = self.visit(doc)
+        self.add_rule(cpat, len(self.indexes), pred)
+        self.symbols = EMPTY
+
+    def add_rule(self, cpat: CExpr, size, pred: NExpr):
+        name = cpat.name
+        assert name != ''
+        if len(cpat.params) > 0 and isinstance(cpat.params[0], CMetaVar):
+            ns = cpat.params[0].original_name
+            if len(ns) > 1:
+                lname = f'{ns}.{name}'
+                if lname not in self.rules:
+                    self.rules[lname] = []
+                self.rules[lname].append((size, cpat, pred))
+                if name not in self.rules or ns in self.newnames:
+                    self.newnames.add(ns)
+                else:
+                    # print(f'{lname}のみ登録', cpat, pred)
+                    return
+        if name not in self.rules:
+            self.rules[name] = []
+        self.rules[name].append((size, cpat, pred))
+
+    def acceptNSymbolDef(self, tree):
+        cpat = self.visit(tree[0])
+        name = cpat.name
+        symbol = str(cpat.params[0])[1:-1]
+        self.names[name] = symbol
+
+    def acceptNImport(self, tree):
+        name = str(tree[0 if len(tree) == 1 else 0])
+        self.modules.add(name)
+        STATIC_MODULE.add(name)
+
+    def acceptNExample(self, tree):
+        ce = self.visit(tree[0])
+        print('Example', str(tree))
+
     def acceptMetaData(self, tree):
         lines = str(tree).split('\n')
         for line in lines:
@@ -766,38 +764,39 @@ class Reader(ParseTreeVisitor):
                 # print('#' + ss[1], ss[1:]) #, self.synonyms[ss[1]])
                 self.synonyms[ss[1]] = tuple(lemma(t) for t in ss[1:])
 
-    def acceptDocument(self, tree):
-        ret = ''
-        typefix = ''
+    def acceptNDocument(self, tree):
         ss = []
         for t in tree:
-            if t.getTag() == 'Return':
-                ret = str(t).strip()
-            else:
-                ss.append(self.visit(t))
-        if ret != '' and ret in self.names:
-            typefix = self.names[ret]
-        if OPTION['ReversePolish']:
-            ss[-1] = ss[-1].asType(typefix)
-        else:
-            ss[0] = ss[0].asType(typefix)
-        e = NPhrase(*ss)
-        if ret != '':
-            e.ret = ret
-        return e
+            ss.append(self.visit(t))
+        print(ss)
+        return NPhrase(*ss)
 
-    def acceptSymbol(self, tree):
+    def acceptNChunk(self, tree):
+        ss = []
+        for t in tree[:-1]:
+            ss.append(self.visit(t))
+        suffix = str(tree[-1])
+        return NChunk(suffix, *ss)
+
+    def acceptNPred(self, tree):
+        pred = str(tree[0])
+        ret = str(tree[1]).strip()
+        if pred.endswith('かどうか'):
+            ret = 'bool'
+        return NPred(pred, ret, self.names.get(ret, '結果'))
+
+    def acceptNSymbol(self, tree):
         s = str(tree)
         if s in self.indexes:
             p = NParam(s, self.indexes[s])
             if s[-1].isdigit():
                 s = s[:-1]
             if s in self.names:
-                p.typefix = alt(self.names[s])
+                p.typefix = self.names[s]
             return p
         return NPiece(s)
 
-    def acceptParam(self, tree):
+    def acceptNParam(self, tree):
         piece = self.visit(tree[0])
         typefix = str(tree[1])
         if isinstance(piece, NParam):
@@ -805,23 +804,24 @@ class Reader(ParseTreeVisitor):
             return piece
         return piece
 
-    def acceptSynonyms(self, tree):
+    def acceptNSynonym(self, tree):
         ss = [str(t) for t in tree]
         if len(ss) == 1:
             if ss[0] in self.synonyms:
                 ss = [NPiece(str(t)) for t in self.synonyms[ss[0]]]
                 return NChoice(*ss)
+            return NPiece(ss[0])
         return NChoice(*[NPiece(str(t)) for t in ss])
 
     def acceptNTuple(self, tree):
         ss = [str(t) for t in tree]
         return NTuple(*[NPiece(str(t)) for t in ss])
 
-    def acceptLiteral(self, tree):
+    def acceptNLiteral(self, tree):
         symbol = str(tree)
         return NLiteral(symbol)
 
-    def acceptPiece(self, tree):
+    def acceptNPiece(self, tree):
         s = str(tree)
         if s in self.synonyms:
             ss = [NPiece(str(t)) for t in self.synonyms[s]]

@@ -5,11 +5,11 @@ File = __ { (Rule __)* #Source} EOF
 /* Rule */
 
 Rule =
-    / MetaData / COMMENT / Module
-    / { Option Document #Rule}
-    / { Option #SymbolDef }
-    / { Statement Document #Rule }
-    / { Statement #Example }
+    / MetaData / COMMENT / Import
+    / { Option Document #NRule}
+    / { Option #NSymbolDef }
+    / { Statement Document #NRule }
+    / { Statement (!LF .)* #NExample }
 
 MetaData = 
     / '"""' __ { (!'"""' . )*  #MetaData } '"""'
@@ -17,11 +17,9 @@ MetaData =
 
 COMMENT = '#' (!'\n' .)* (__ / EOF)
 
-Module = {
-    "import" NSName "as" Name #ModuleDef
+Import = {
+    "import" NSName ("as" Name)? #NImport
 }
-
-Word = { (![\n ] .)+ #Word } _ 
 
 Option = {
     NSName _IGNORE_MULTI_VARIABLE "=" (Constant / Name) 
@@ -30,39 +28,49 @@ Option = {
 
 _IGNORE_MULTI_VARIABLE = [,A-Za-z0-9_ ]*
 
-
 /* Document */
 
 Document = __ '#' _ {
-  ( Synonyms / NTuple / NLPart / ReturnType / _ )* LF
-  #Document
+  NChunk+ NPred LF
+  #NDocument
 }
 
-NLPart = 
-  / {'"' (ESC / !'"' .)* '"' #Literal }
-  / {'\'' (ESC / !'\'' .)* '\'' #Literal }
-  / {'-'? [0-9]+ ('.' [0-9]+)* #Literal }
-  / { [A-Za-z] W* #Symbol } _Parameterized? _
-  / { (![{[<@'" A-Za-z0-9\-\n] .)+  #Piece } _
-
-_Parameterized = '(' {^ { (!')' .)+ #Kind } #Param } ')'
-
-ESC = '\\' .
-
-Synonyms = {
-    '[' Noun ( "|" Noun )* ']'
-    #Synonyms
+NChunk = {
+    (NBody / _ )+ NSuffix
+    #NChunk
 }
 
-NTuple = {
-    "(" Noun ( "," Noun )* ")"
-    #NTuple
-}
+NSuffix = {
+    NSUFFIX #NSuffix
+} '、'? _
+
+NSUFFIX = 
+    / 'が' / 'を' / '、' / 'の' / 'は' / 'で'　
+    / 'から' 'の'? / 'まで' 'の'?
+    / 'に' ('ついて' / '基づいて' / '用いて' / '使って' )? 
+    / 'として' /  'と'
+
+NPred = { NPiece "->"? { (!LF .)* #NType } #NPred }
+
+NBody = 
+  / { "[" Noun ( "|" Noun )* ")" #NSynonym }
+  / { "(" Noun ( "," Noun )* ")" #NTuple }
+  / {'"' (ESC / !'"' .)* '"' #NLiteral }
+  / {'\'' (ESC / !'\'' .)* '\'' #NLiteral }
+  / {'-'? [0-9]+ ('.' [0-9]+)* #NLiteral }
+  / { [A-Za-z] W* #NSymbol } _Param? _
+  / NPiece
+
+NPiece = { (![{[<@'" A-Za-z0-9\-\n] !NSUFFIX .)+  #NPiece } _
 
 
 Noun =  { (![|,\])] .)* #Noun }               
 
-ReturnType = "->" { (!LF .)* #Return }
+ESC = '\\' .
+
+_Param = "(" {^ { (!')' .)+ #Noun } #NParam } ")"
+
+
 
 /* Programming */
 

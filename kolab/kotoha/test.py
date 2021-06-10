@@ -1,9 +1,14 @@
+
+print('file')
 print('abc', 1)
 print(end='a')
 print(math.pi)
 open('file.txt')
 open('file.txt', 'w')
-file = open('file.txt', encoding='sjis', mode='r', errors='strict', errors='ignore')
+open('file.txt', encoding='sjis', mode='r', errors='strict', errors='ignore')
+
+file = open('file.txt')
+
 # print('file.txt')
 #print(x+1, end=x)
 #print(math.pi, sep='\n')

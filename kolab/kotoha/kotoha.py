@@ -131,33 +131,37 @@ class NPiece(NExpr):
 
 
 class NPred(NExpr):
-    lemma: Lemma
+    prefix: tuple
+    verb: str
     ret: str
     typefix: str
 
-    def __init__(self, verb, ret, typefix):
-        self.lemma = lemma(verb)
+    def __init__(self, prefix, verb, ret, typefix):
+        self.prefix = prefix
+        self.verb = verb
         self.ret = ret
         self.typefix = typefix
 
     def __str__(self):
         if self.ret == '':
-            return str(self.lemma)
-        return f'({self.lemma} : {self.ret})'
+            return str(self.verb)
+        return f'({self.verb} : {self.ret})'
 
     def emit(self, typefix, buffer=None):
-        if typefix != EOS and self.lemma.lemmatype == 'N':
-            return str(self.lemma)
-        if typefix == EOS:
-            return self.lemma.emit(typefix)
-        if len(self.typefix)+1 > len(typefix):
-            typefix = typefix[0] + alt(self.typefix)
-        return self.lemma.emit(typefix)
-
-    def emit2(self, typefix, buffer=None):
-        s = self.emit0(typefix, buffer)
-        print(self.lemma, typefix, s)
-        return s
+        ss = []
+        for e in self.prefix:
+            ss.append(e.emit(EOS, buffer))
+        tok = lemma(alt(self.verb))
+        if tok.lemmatype == 'N':
+            s = str(tok)
+        elif typefix == EOS:
+            s = tok.emit(typefix)
+        else:
+            if len(self.typefix)+1 > len(typefix):
+                typefix = typefix[0] + alt(self.typefix)
+            s = tok.emit(typefix)
+        ss.append(s)
+        return ''.join(ss)
 
 
 class NLiteral(NExpr):
@@ -555,15 +559,15 @@ parser = pg.generate(peg)
 eparser = pg.generate(peg, start='Snipet')
 
 
-def symbols(tree):
-    ss = []
+def traverse_symbols(tree, ss):
     for _, child in tree.subs():
         tag = child.getTag()
-        if tag == 'Name' or tag == 'Symbol':
+        if tag == 'NSymbol':
             ss.append(str(child))
-        if tag == 'Param':
+        if tag == 'NParam':
             ss.append(str(child[0]))
-    return ss
+        if tag == 'NChunk':
+            traverse_symbols(child, ss)
 
 
 class Reader(ParseTreeVisitor):
@@ -628,8 +632,8 @@ class Reader(ParseTreeVisitor):
         recv = self.visit(tree.recv)
         name = str(tree.name)
         params = self.visit(tree.params)
-        if self.isRuleMode() and isinstance(recv, CVar):
-            if recv.name.startswith('_'):
+        if isinstance(recv, CVar):
+            if self.isRuleMode() and recv.name.startswith('_'):
                 return CApp(recv.name[1:] + '.' + name, *params)
             if recv.name in self.modules:
                 return CApp(recv.name + '.' + name, *params)
@@ -638,8 +642,8 @@ class Reader(ParseTreeVisitor):
     def acceptGetExpr(self, tree):
         recv = self.visit(tree.recv)
         name = str(tree.name)
-        if self.isRuleMode() and isinstance(recv, CVar):
-            if recv.name.startswith('_'):
+        if isinstance(recv, CVar):
+            if self.isRuleMode() and recv.name.startswith('_'):
                 recv.name = recv.name[1:] + '.' + name
                 return recv
             if recv.name in self.modules or '.' in recv.name:
@@ -706,7 +710,8 @@ class Reader(ParseTreeVisitor):
     def acceptNRule(self, tree):
         code = tree[0]
         doc = tree[1]
-        self.symbols = set(symbols(doc))
+        self.symbols = []
+        traverse_symbols(doc, self.symbols)
         self.indexes = {}
         cpat = self.visit(code)
         if str(doc).strip() == 'symbol':
@@ -731,6 +736,7 @@ class Reader(ParseTreeVisitor):
                 lname = f'{ns}.{name}'
                 if lname not in self.rules:
                     self.rules[lname] = []
+                #print('adding', lname, (size, cpat, pred))
                 self.rules[lname].append((size, cpat, pred))
                 if name not in self.rules or ns in self.newnames:
                     self.newnames.add(ns)
@@ -739,13 +745,17 @@ class Reader(ParseTreeVisitor):
                     return
         if name not in self.rules:
             self.rules[name] = []
+        #print('adding', name, (size, cpat, pred))
         self.rules[name].append((size, cpat, pred))
 
     def acceptNSymbolDef(self, tree):
-        cpat = self.visit(tree[0])
-        name = cpat.name
-        symbol = str(cpat.params[0])[1:-1]
-        self.names[name] = symbol
+        name = str(tree[0])
+        symbol = str(tree[1])[1:-1]
+        if tree[0] == 'Noun':
+            self.synonyms[name] = symbol
+            pass
+        else:
+            self.names[name] = symbol
 
     def acceptNImport(self, tree):
         name = str(tree[0 if len(tree) == 1 else 0])
@@ -756,19 +766,19 @@ class Reader(ParseTreeVisitor):
         ce = self.visit(tree[0])
         print('Example', str(tree))
 
-    def acceptMetaData(self, tree):
-        lines = str(tree).split('\n')
-        for line in lines:
-            ss = line.split()
-            if len(ss) > 2:
-                # print('#' + ss[1], ss[1:]) #, self.synonyms[ss[1]])
-                self.synonyms[ss[1]] = tuple(lemma(t) for t in ss[1:])
+    # def acceptMetaData(self, tree):
+    #     lines = str(tree).split('\n')
+    #     for line in lines:
+    #         ss = line.split()
+    #         if len(ss) > 2:
+    #             # print('#' + ss[1], ss[1:]) #, self.synonyms[ss[1]])
+    #             self.synonyms[ss[1]] = tuple(lemma(t) for t in ss[1:])
 
     def acceptNDocument(self, tree):
         ss = []
         for t in tree:
             ss.append(self.visit(t))
-        print(ss)
+        # print(ss)
         return NPhrase(*ss)
 
     def acceptNChunk(self, tree):
@@ -779,11 +789,27 @@ class Reader(ParseTreeVisitor):
         return NChunk(suffix, *ss)
 
     def acceptNPred(self, tree):
-        pred = str(tree[0])
-        ret = str(tree[1]).strip()
-        if pred.endswith('かどうか'):
-            ret = 'bool'
-        return NPred(pred, ret, self.names.get(ret, '結果'))
+        ret = ''
+        typefix = ''
+        prefix = EMPTY
+        if tree[-1] == 'NType':
+            ntype = tree[-1][0]
+            if ntype == 'NSymbol':
+                ret = str(ntype)
+            else:
+                ret = str(ntype[0])
+                typefix = str(ntype[1])
+            pred = str(tree[-2])
+            if len(tree) > 2:
+                prefix = tuple(self.visit(t) for t in tree[:-2])
+        else:
+            pred = str(tree[-1])
+            ret = 'bool' if pred.endswith('かどうか') else ''
+            prefix = tuple(self.visit(t) for t in tree[:-1])
+        if typefix == '':
+            typefix = self.names.get(ret, '結果')
+        pred = self.synonyms.get(pred, pred)
+        return NPred(prefix, pred, ret, typefix)
 
     def acceptNSymbol(self, tree):
         s = str(tree)
@@ -844,7 +870,7 @@ def cmatch(cpat, code, mapped: dict):
         #print(':: ', type(e), e, type(e2), e2)
         if isinstance(e, CMetaVar):
             if e.index in mapped:
-                print("#conf", str(mapped[e.index]), str(e2))
+                # print("#conf", str(mapped[e.index]), str(e2))
                 if str(mapped[e.index]) != str(e2):
                     return False
                 else:
@@ -875,9 +901,9 @@ def cmatch(cpat, code, mapped: dict):
 
 def NOption(name, value: NExpr):
     if OPTION['MultipleSentence']:
-        return NPhrase(name, 'は', value, 'に', NPred('する'))
+        return NPhrase(name, 'は', value, 'に', NPred(EMPTY, 'する', '', ''))
     else:
-        return NPhrase(name, 'を', value, 'に', NPred('する'))
+        return NPhrase(value, 'を', name, 'と', NPred(EMPTY, 'する', '', ''))
 
 
 def stem_name(name: str):
@@ -923,7 +949,7 @@ class KotohaModel(object):
         if name in self.rules:
             for _, pat, pred in self.rules[name]:
                 mapped = {}
-                # print('trying .. ', pat, type(ce), ce)
+                #print(f'trying {name}.. ', pat, type(ce), ce)
                 if cmatch(pat, ce, mapped):
                     for key in mapped.keys():
                         if key == 'options':
@@ -931,7 +957,7 @@ class KotohaModel(object):
                         else:
                             mapped[key] = self.match(mapped[key])
                     return pred.apply(mapped)
-            logger.debug('unmatched: ' + str(ce))
+            print(f'unmatched: {name}', str(ce), type(ce))
         if len(ce.params) > 0:
             logger.debug('undefined? ' + str(type(ce)) + ' ' + str(ce))
         if isinstance(ce, CVar):
@@ -950,6 +976,7 @@ class KotohaModel(object):
     def translate(self, expression, suffix=''):
         try:
             tree = eparser(expression)
+            print(repr(tree))
             code = self.reader.visit(tree)
             #print(type(code), code)
             pred = self.match(code)

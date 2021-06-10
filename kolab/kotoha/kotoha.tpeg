@@ -7,7 +7,7 @@ File = __ { (Rule __)* #Source} EOF
 Rule =
     / MetaData / COMMENT / Import
     / { Option Document #NRule}
-    / { Option #NSymbolDef }
+    / SymbolDef
     / { Statement Document #NRule }
     / { Statement (!LF .)* #NExample }
 
@@ -22,8 +22,13 @@ Import = {
 }
 
 Option = {
-    NSName _IGNORE_MULTI_VARIABLE "=" (Constant / Name) 
+    ('_' Noun / NSName _IGNORE_MULTI_VARIABLE ) "=" (Constant / Name) 
     #Option
+}
+
+SymbolDef = {
+    ('_' Noun / NSName _IGNORE_MULTI_VARIABLE ) "=" Constant 
+    #NSymbolDef
 }
 
 _IGNORE_MULTI_VARIABLE = [,A-Za-z0-9_ ]*
@@ -31,7 +36,7 @@ _IGNORE_MULTI_VARIABLE = [,A-Za-z0-9_ ]*
 /* Document */
 
 Document = __ '#' _ {
-  NChunk+ NPred LF
+  NChunk* NPred LF
   #NDocument
 }
 
@@ -45,29 +50,35 @@ NSuffix = {
 } '、'? _
 
 NSUFFIX = 
-    / 'が' / 'を' / '、' / 'の' / 'は' / 'で'　
-    / 'から' 'の'? / 'まで' 'の'?
-    / 'に' ('ついて' / '基づいて' / '用いて' / '使って' )? 
-    / 'として' /  'と'
+    / 'が' / 'を' / '、' / 'の' / 'は' / 'で' / 'ば'
+    / 'から' 'の'? / 'まで' 'の'?　
+    / 'に' ('ついて' / 'よる' / '基づいて' / '用いて' / '使って' )? 
+    / 'として' /  'と' / ' '
 
-NPred = { NPiece "->"? { (!LF .)* #NType } #NPred }
+NPred = { (( NBody "->" { NSymbol #NType }) / NBody)+ #NPred }
+
+example NPred [順に]表示する -> bool
+example Document # dictのkey(エントリ) -> x
+example Document # dictのkey(エントリ)か、もし[存在し|]なければ x -> x
 
 NBody = 
-  / { "[" Noun ( "|" Noun )* ")" #NSynonym }
+  / { "[" Noun ( "|" Noun )* "]" #NSynonym }
   / { "(" Noun ( "," Noun )* ")" #NTuple }
-  / {'"' (ESC / !'"' .)* '"' #NLiteral }
-  / {'\'' (ESC / !'\'' .)* '\'' #NLiteral }
-  / {'-'? [0-9]+ ('.' [0-9]+)* #NLiteral }
-  / { [A-Za-z] W* #NSymbol } _Param? _
+  / {'"' (ESC / !'"' .)* '"' #NLiteral } _
+  / {'\'' (ESC / !'\'' .)* '\'' #NLiteral } _
+  / {'-'? [0-9]+ ('.' [0-9]+)* #NLiteral } _
+  / NSymbol
   / NPiece
 
-NPiece = { (![{[<@'" A-Za-z0-9\-\n] !NSUFFIX .)+  #NPiece } _
+NPiece = 
+    / '`' { (!'`' .)* #NPiece } '`' _
+    / { (![{[<@'" A-Za-z0-9\-\n] !NSUFFIX .)+  #NPiece } _
 
-
-Noun =  { (![|,\])] .)* #Noun }               
+Noun =  { (![|,\]) =] .)* #Noun } _           
 
 ESC = '\\' .
 
+NSymbol = { [A-Za-z] W* #NSymbol } _Param? _
 _Param = "(" {^ { (!')' .)+ #Noun } #NParam } ")"
 
 
@@ -354,32 +365,3 @@ SPC          = ( S / BLOCKCOMMENT )+
 
 BLOCKCOMMENT = '/*' ( !'*/' . )* '*/'
 
-example File '''
-print() 　#空行を{出力する|表示する}
-print(a) #aを空行を{出力する|表示する}
-'''
-
-example File '''
-open(file) 　#file(ファイル名)を開く -> ファイル
-open(file, 'w') 　#file(ファイル名)を書き込みモードで開く -> ファイル
-'''
-
-example File '''
-a%2==0   # a(整数)が偶数かどうか
-a%2!=0   # a(整数)が奇数かどうか
-a%2==0   # a(整数)が奇数かどうか
-a%n==0   # a(整数)がnの倍数かどうか
-'''
-
-example File '''
-str.center(width)　# strをwidthの幅で{中央寄せする}　-> 文字列
-fillchar # パディング文字
-'''
-
-example File '''
-f(1,1.0,a,"\n", '\\') # 1と1.0とaと"\n"と'\\'
-'''
-
-example Document '''
-# 1 と1.0とaと"\n"と'\\'
-'''

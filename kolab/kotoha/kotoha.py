@@ -957,7 +957,7 @@ class KotohaModel(object):
                         else:
                             mapped[key] = self.match(mapped[key])
                     return pred.apply(mapped)
-            print(f'unmatched: {name}', str(ce), type(ce))
+            #print(f'unmatched: {name}', str(ce), type(ce))
         if len(ce.params) > 0:
             logger.debug('undefined? ' + str(type(ce)) + ' ' + str(ce))
         if isinstance(ce, CVar):
@@ -976,7 +976,7 @@ class KotohaModel(object):
     def translate(self, expression, suffix=''):
         try:
             tree = eparser(expression)
-            print(repr(tree))
+            # print(repr(tree))
             code = self.reader.visit(tree)
             #print(type(code), code)
             pred = self.match(code)

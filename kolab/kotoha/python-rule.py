@@ -56,8 +56,8 @@ x / y  # x / y
 x // y  # x / y
 x + y + z  # x + y + z
 str + x  # strと xを連結する -> str
-str + x + y  # strと x, yを連結する -> str
-str * n   # strをn個、連結する -> str
+str + x + y  # strとxとyを連結する -> str
+str * x   # strをx個、連結する -> str
 
 # 組み込み関数（計算）
 

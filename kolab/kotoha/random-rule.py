@@ -1,32 +1,33 @@
-import collections as collections  # collections
-import datetime as datetime
-import subprocess as subprocess
-import re as re
-import sys as sys
-import math as math
-import os as os
-import functools as functools
-import itertools as itertools
-import bisect as bisect
-import copy as copy
-import random as random
+import collections   # collections
+import datetime
+import subprocess
+import re
+import sys
+import math
+import os
+import functools
+import itertools
+import bisect
+import copy
+import random
 x, y, z, n, i, j = ''
 s = '文字列'
 
-_サンプリングする='サンプルを選ぶ|サンプリングする'
+_サンプリングする = 'サンプルを選ぶ|サンプリングする'
+_乱数シード = '乱数生成列|乱数シード'
 
-random.random()  # [0.0〜1.0の|] 乱数 -> float
-random.choice(list)  # listからランダムに選んだ 要素 -> x
+random.random()  # 乱数 -> float
+random.choice(list)  # listからランダムに選ぶ -> x(要素)
 random.shuffle(list)  # listをランダムに シャッフルする -> list
-random.sample(list)  # list からサンプルを選ぶ -> list
-random.sample(list, n)  # listからn個、サンプルを選ぶ -> list
+random.sample(list)  # list からサンプリングする -> list
+random.sample(list, n)  # listからn個、サンプリングする -> list
 random.randrange(x)  # 0からx[未満]までの整数乱数 -> int
 random.randrange(x, y)  # xからy[未満|]までの整数乱数 -> int
 random.randint(x, y)  # xからyまでの整数乱数 -> int
-random.seed()  # 乱数生成を初期化する
-random.seed(x)  # xをシードとして 乱数生成を初期化する
+random.seed()  # 乱数シードを初期化する
+random.seed(x)  # 乱数シードをxで初期化する
 
-copy.deepcopy(x)  # xを深く コピーする -> x
+copy.deepcopy(x)  # xを深くコピーする -> x
 copy.copy(x)  # xをコピーする-> x
 
 bisect.bisect_left(x, y)  # xの順序を保ったまま、yを左から挿入できる位置
@@ -40,8 +41,8 @@ bisect.insort_right(x, y)  # 　xにyをソート順で右から挿入する
 bisect.insort(x, y)  # xにyをソート順で挿入する
 
 itertools.repeat(x)  # xの無限列 -> list
-itertools.repeat(x, n)  # xのn回続く列 -> list
-itertools.count()  # 無限の整数列 -> list
+itertools.repeat(x, n)  # xをn回繰り返した列 -> list
+itertools.count()  # 0から始まる 無限の整数列 -> list
 itertools.count(x)  # xから始まる 無限の整数列 -> list
 itertools.count(x, y)  # xから始まり x間隔で続く 無限の整数列 ->list
 itertools.cycle(x)  # xを無限に繰り返した列 -> list
@@ -53,26 +54,27 @@ itertools.combinations(x, n)  # xのx個までのコンビネーション -> lis
 itertools.combinations_with_replacement(x)  # xの重複コンビネーション -> list
 itertools.combinations_with_replacement(x, n)  # xのx個までの重複コンビネーション -> list
 
-functools.reduce(function, x)  # xをfunctionで集約する -> list
-functools.reduce(function, x, y)  # zを初期値として 、xをfunctionで集約する -> list
+_リデュースする = '削減する|集約計算する|リデュースする'
+functools.reduce(function, x)  # xをfunctionでリデュースする -> list
+functools.reduce(function, x, y)  # zを初期値として 、xをfunctionでリデュースする -> list
 
 deq = '両端キュー'
 
 collections.deque(x)  # xの両端キュー
 maxlen = x  # xを最大長とする
 
-deq.appendleft(x)  # deqの先頭に xを追加する
+deq.appendleft(x)  # deqの先頭にxを追加する
 deq.extendleft(x)  # deqの先頭をxで伸長する
-deq.popleft()  # deqの先頭から取り除いく
+deq.popleft()  # deqの先頭から取り除く
 deq.rotate()  # deqの要素を右に ひとつ回転する
 deq.rotate(n)  # deqの要素を右に n回、回転する
 
 counter = '辞書カウンタ'
-collections.Counter(x)  # xの辞書カウンタ
-counter.most_common()  # counterの出現頻度順の列
-counter.most_common(n)  # counterの上位 n個の出現頻度順の列
+collections.Counter(x)  # xの辞書カウンタ -> counter
+counter.most_common()  # counterの出現頻度[が高い|]順の列
+counter.most_common(n)  # counterの上位 n位までの出現頻度順[が高い|]の列
 
-os.sep  # ファイルパスのセパレータ記号
+os.sep  # ファイルパスのセパレータ
 os.getcwd()  # 現在の作業ディレクトリ
 os.system(x)  # x(システムコマンド)を実行する
 
@@ -109,12 +111,12 @@ math.fabs(x)  # xの絶対値
 math.factorial(x)  # xの階乗
 math.floor(x)  # xの切り捨て整数値
 math.frexp(x)  # xの(仮数,指数)
-math.gcd(x)  # xとxの最大公約数
+math.gcd(x, y)  # xとyの最大公約数
 math.isclose(x, y)  # xとyが近いかどうか
 math.isfinite(x)  # xが有限かどうか
 math.isinf(x)  # xが無限大かどうか
 math.isnan(x)  # xがNaNかどうか
-math.lcm(x, y)  # xとxの最小公倍数
+math.lcm(x, y)  # xとyの最小公倍数
 math.modf(x)  # xの(小数部,整数部)
 math.perm
 math.prod

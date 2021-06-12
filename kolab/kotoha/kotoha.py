@@ -18,7 +18,7 @@ OPTION = {
     'Simple': False,  # シンプルな表現を優先する
     'Block': False,  # Expressionに <e> </e> ブロックをつける
     'ReversePolish': True,  # 膠着語の場合はTrue
-    'EnglishFirst': True,  # 英訳の精度を優先する
+    'EnglishFirst': False,  # 英訳の精度を優先する
     'ShuffleSynonym': True,  # 同音異議語をシャッフルする
     'MultipleSentence': True,  # 複数行モード
     'ShuffleOrder': True,  # もし可能なら順序も入れ替える
@@ -317,6 +317,43 @@ def toCExpr(value):
     return value if isinstance(value, CExpr) else CValue(value)
 
 
+def cmatch(cpat, code, mapped: dict):
+    if cpat.__class__ is not code.__class__:
+        return False
+    if cpat.name != code.name or len(cpat.params) != len(code.params):
+        return False
+    for e, e2 in zip(cpat.params, code.params):
+        #print(':: ', type(e), e, type(e2), e2)
+        if isinstance(e, CMetaVar):
+            if e.index in mapped:
+                if str(mapped[e.index]) != str(e2):
+                    return False
+                else:
+                    continue
+            mapped[e.index] = e2
+            continue
+        if isinstance(e, CValue) and isinstance(e2, CValue):
+            if e.value != e2.value:
+                return False
+            continue
+        if not cmatch(e, e2, mapped):
+            return False
+    for opat in cpat.options:
+        option = code.getoption(opat.name)
+        if option is None:
+            return False
+        if not cmatch(opat, option, mapped):
+            return False
+    if len(code.options) > 0:
+        os = []
+        for option in code.options:
+            opat = cpat.getoption(option.name)
+            if opat is None:
+                os.append(option)
+        mapped['options'] = os
+    return True
+
+
 class CExpr(object):  # Code Expression
     name: str
     params: tuple
@@ -346,6 +383,47 @@ class CExpr(object):  # Code Expression
             if name == option.name:
                 return option
         return None
+
+    def match(self, model) -> NExpr:
+        name = self.name
+        # print('matching', name)
+        if len(self.params) > 0:  # レシーバの型を調べる
+            recv = self.params[0].match(model)
+            if hasattr(recv, 'ret') and recv.ret is not None:
+                lname = f'{recv.ret}.{name}'
+                #print('@レシーバの型', recv.ret, lname)
+                if lname in model.rules:
+                    name = lname
+        while name not in model.rules and '.' in name:
+            loc = name.find('.')
+            name = name[loc+1:]
+        if name in model.rules:
+            for _, pat, pred in model.rules[name]:
+                mapped = {}
+                # print(f'trying {name}.. ', pat, type(self), self)
+                if cmatch(pat, self, mapped):
+                    for key in mapped.keys():
+                        if key == 'options':
+                            mapped[key] = [e.match(model) for e in mapped[key]]
+                        else:
+                            mapped[key] = mapped[key].match(model)
+                    return pred.apply(mapped)
+            #print(f'unmatched: {name}', str(self), type(self))
+            if len(self.params) > 0:  # パラメータ圧縮する print(1,2,3) -> print(1,(2,3))
+                paramsize = max(size for size, _, _ in model.rules[name])
+                # print('減らす', name, paramsize,
+                #       self.params[:paramsize-1], self.params[paramsize-1:])
+                if len(self.params) > paramsize > 0:
+                    ss = list(self.params[:paramsize-1])
+                    ss.append(CSeq(self.params[paramsize-1:]))
+                    self.params = tuple(ss)
+                    return self.match(model)
+        return self.unmatched(model)
+
+    def unmatched(self, model) -> NExpr:
+        logger.debug('undefined? ' + str(type(self)) + ' ' + str(self))
+        #print('unmatched? ' + str(type(self)) + ' ' + str(self))
+        return NPiece(str(self))
 
 
 class CMetaVar(CExpr):
@@ -379,6 +457,15 @@ class CValue(CExpr):
     def format(self, option=True):
         return repr(self)
 
+    def match(self, model) -> NExpr:
+        return NLiteral(str(self))
+
+
+def stem_name(name: str):
+    if name[-1].isdigit():
+        return stem_name(name[:-1])
+    return name
+
 
 class CVar(CExpr):
 
@@ -390,6 +477,13 @@ class CVar(CExpr):
 
     def __repr__(self):
         return self.name
+
+    def unmatched(self, model) -> NExpr:
+        name = str(self.name)
+        ret = stem_name(name)
+        if ret in model.names:
+            return NLiteral(name, ret)
+        return NLiteral(name)
 
 
 class CBinary(CExpr):
@@ -417,6 +511,15 @@ class COption(CExpr):
 
     def format(self, option=True):
         return f'{self.name} = {{}}'
+
+    def unmatched(self, model) -> NExpr:
+        name = alt(model.names[self.name]
+                   ) if self.name in model.names else self.name
+        value = self.params[0].match(model)
+        if OPTION['MultipleSentence']:
+            return NPhrase(name, 'は', value, 'に', NPred(EMPTY, 'する', '', ''))
+        else:
+            return NPhrase(value, 'を', name, 'と', NPred(EMPTY, 'する', '', ''))
 
 
 class CApp(CExpr):
@@ -506,6 +609,27 @@ class CList(CExpr):
             ss.extend(ps[1:])
         ss.append(']')
         return ' '.join(ss)
+
+
+class CSeq(CExpr):
+
+    def __init__(self, es):
+        CExpr.__init__(self, "", es)
+
+    def format(self, option=True):
+        ss = []
+        n = len(self.params)
+        if n > 0:
+            ps = [',', '{}'] * (n)
+            ss.extend(ps[1:])
+        return ' '.join(ss)
+
+    def match(self, model):
+        ss = []
+        for e in self.params:
+            ss.append(NPiece('、'))
+            ss.append(e.match(model))
+        return NPhrase(*ss[1:])
 
 
 class CData(CExpr):
@@ -763,16 +887,8 @@ class Reader(ParseTreeVisitor):
         STATIC_MODULE.add(name)
 
     def acceptNExample(self, tree):
-        ce = self.visit(tree[0])
-        print('Example', str(tree))
-
-    # def acceptMetaData(self, tree):
-    #     lines = str(tree).split('\n')
-    #     for line in lines:
-    #         ss = line.split()
-    #         if len(ss) > 2:
-    #             # print('#' + ss[1], ss[1:]) #, self.synonyms[ss[1]])
-    #             self.synonyms[ss[1]] = tuple(lemma(t) for t in ss[1:])
+        #ce = self.visit(tree[0])
+        logger.debug('example', str(tree))
 
     def acceptNDocument(self, tree):
         ss = []
@@ -856,66 +972,13 @@ class Reader(ParseTreeVisitor):
 
     def accepterr(self, tree):
         print(repr(tree))
-        raise InterruptedError()
-
-
-# Matcher
-
-def cmatch(cpat, code, mapped: dict):
-    if cpat.__class__ is not code.__class__:
-        return False
-    if cpat.name != code.name or len(cpat.params) != len(code.params):
-        return False
-    for e, e2 in zip(cpat.params, code.params):
-        #print(':: ', type(e), e, type(e2), e2)
-        if isinstance(e, CMetaVar):
-            if e.index in mapped:
-                # print("#conf", str(mapped[e.index]), str(e2))
-                if str(mapped[e.index]) != str(e2):
-                    return False
-                else:
-                    continue
-            mapped[e.index] = e2
-            continue
-        if isinstance(e, CValue) and isinstance(e2, CValue):
-            if e.value != e2.value:
-                return False
-            continue
-        if not cmatch(e, e2, mapped):
-            return False
-    for opat in cpat.options:
-        option = code.getoption(opat.name)
-        if option is None:
-            return False
-        if not cmatch(opat, option, mapped):
-            return False
-    if len(code.options) > 0:
-        os = []
-        for option in code.options:
-            opat = cpat.getoption(option.name)
-            if opat is None:
-                os.append(option)
-        mapped['options'] = os
-    return True
-
-
-def NOption(name, value: NExpr):
-    if OPTION['MultipleSentence']:
-        return NPhrase(name, 'は', value, 'に', NPred(EMPTY, 'する', '', ''))
-    else:
-        return NPhrase(value, 'を', name, 'と', NPred(EMPTY, 'する', '', ''))
-
-
-def stem_name(name: str):
-    if name[-1].isdigit():
-        return stem_name(name[:-1])
-    return name
+        raise InterruptedError
 
 
 class KotohaModel(object):
     rules: dict
-    reader: Reader
     names: dict
+    reader: Reader
 
     def __init__(self):
         self.rules = {}
@@ -934,61 +997,23 @@ class KotohaModel(object):
                 self.rules[key] = sorted(d)
         self.names = self.reader.names
 
-    def match(self, ce: CExpr) -> NExpr:
-        name = ce.name
-        if len(ce.params) > 0:  # レシーバの型を調べる
-            recv = self.match(ce.params[0])
-            if hasattr(recv, 'ret') and recv.ret is not None:
-                lname = f'{recv.ret}.{name}'
-                #print('@レシーバの型', recv.ret, lname)
-                if lname in self.rules:
-                    name = lname
-        while name not in self.rules and '.' in name:
-            loc = name.find('.')
-            name = name[loc+1:]
-        if name in self.rules:
-            for _, pat, pred in self.rules[name]:
-                mapped = {}
-                #print(f'trying {name}.. ', pat, type(ce), ce)
-                if cmatch(pat, ce, mapped):
-                    for key in mapped.keys():
-                        if key == 'options':
-                            mapped[key] = [self.match(e) for e in mapped[key]]
-                        else:
-                            mapped[key] = self.match(mapped[key])
-                    return pred.apply(mapped)
-            #print(f'unmatched: {name}', str(ce), type(ce))
-        if len(ce.params) > 0:
-            logger.debug('undefined? ' + str(type(ce)) + ' ' + str(ce))
-        if isinstance(ce, CVar):
-            name = str(ce)
-            ret = stem_name(name)
-            if ret in self.names:
-                return NLiteral(name, ret)
-            return NLiteral(name)
-        if isinstance(ce, CValue):
-            return NLiteral(str(ce))
-        if isinstance(ce, COption) and ce.name in self.reader.names:
-            name = alt(self.reader.names[ce.name])
-            return NOption(name, self.match(ce.params[0]))
-        return NPiece(str(ce))
-
     def translate(self, expression, suffix=''):
+        randomize()
         try:
             tree = eparser(expression)
             # print(repr(tree))
             code = self.reader.visit(tree)
-            #print(type(code), code)
-            pred = self.match(code)
+            # print(type(code), code)
+            pred = code.match(self)
             if OPTION['MultipleSentence']:
                 buffer = []
                 main = pred.emit(suffix, buffer)
                 if len(buffer) > 0:
-                    main += 'そこで、' + (' '.join(buffer))
+                    main += 'その際、' + (' '.join(buffer))
                 return code, main
             return code, pred.emit(suffix)
         except InterruptedError:
-            return expression, 'syntax error'
+            return expression, 'err'
 
     def generate(self, w, *files):
         for file in files:
@@ -1036,8 +1061,9 @@ if __name__ == '__main__':
             while True:
                 line = input('Expression >>> ')
                 if line == '':
+                    print('Bye')
                     sys.exit(0)
                 code, doc = model.translate(line, suffix=EOS)
                 print(code, '\t#', doc)
-        except:
-            pass
+        except EOFError:
+            print('Bye')

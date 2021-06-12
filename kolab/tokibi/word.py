@@ -569,6 +569,6 @@ print(pj('書く#can'), pj('書く#can#not'))
 print(pj('高める#can'), pj('高める#can#not'))
 print(pj('検索する#can'), pj('検索する#can#not'))
 
-print(pj('書く#passive'), pj('書く#passive#not'))
+print(pj('書く#passive#past'), pj('書く#passive#not#past'))
 print(pj('高める#passive'), pj('高める#passive#not'))
 print(pj('検索する#passive'), pj('検索する#passive#not'))

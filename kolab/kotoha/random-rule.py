@@ -149,13 +149,15 @@ math.e  # ネイピア数
 math.inf  # 無限大
 math.nan  # NaN
 
+_マッチする = 'マッチする|含まれる|マッチする'
+
 re.search(x, y)  # x(正規表現)がyにマッチする 最初の位置 -> int
-re.match(x, y)  # yに x(正規表現)が[マッチする|含まれる]かどうか -> bool
-re.fullmatch(x, y)  # x(正規表現)をy全体を　[マッチする|含まれる]かどうか -> bool
-re.split(x, y)  # x(正規表現)を用いて、yを分割する -> list
-re.sub(x, y, z)  # zがx(正規表現)にマッチした箇所をyに置き換えた文字列
-re.subn(x, y, z)  # zがx(正規表現)にマッチした箇所をyに置き換えた文字列の組
-re.findall(x, y)  # yがx(正規表現)にマッチした文字列の列
+re.match(x, y)  # yに x(正規表現)がマッチするかどうか -> bool
+re.fullmatch(x, y)  # x(正規表現)をy全体をマッチするかどうか -> bool
+re.split(x, y)  # x(正規表現)を用いて、yをスプリットする -> list
+re.sub(x, y, z)  # x(正規表現)にマッチしたyの部分をzに置き換える -> str
+re.subn(x, y, z)  # x(正規表現)にマッチしたyの部分をzに置き換える -> list
+re.findall(x, y)  # x(正規表現)にマッチしたz内の文字列リスト -> list
 re.compile(x)  # xを正規表現に コンパイルする
 flag = 'オプションフラグ'
 

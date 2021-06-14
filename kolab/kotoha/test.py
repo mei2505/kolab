@@ -1,6 +1,8 @@
 
+print()
 print('file')
 print('abc', 1)
+print('abc', 1, 2)
 print(end='a')
 print(math.pi)
 open('file.txt')

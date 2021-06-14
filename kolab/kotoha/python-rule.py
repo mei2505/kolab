@@ -230,10 +230,11 @@ newline = '改行コード'
 buffering = -1  # バッファリングしない
 buffering = x  # バッファリングは x サイズにする
 
-print()  # 空行を表示する
-print(x)  # xを表示する
-print(x, y)  # xと yを[順に]表示する
-print(x, y, z)  # x、y、zを[順に]表示する
+_プリントする = '表示する|出力する|プリントする'
+print()  # 空行をプリントする
+print(x)  # xをプリントする
+print(x, y)  # xと yを[順に]プリントする
+print(x, y, z)  # x、y、zを[順に]プリントする
 
 sep = s  # sをセパレータに用いる
 end = ''  # 改行がない

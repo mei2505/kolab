@@ -112,7 +112,7 @@ SelfAssignment = {
 }
 
 SelfAssignOp = {
-    ('<<' / '>>' / '**' / '//' / '-' / [+=*/%&|^＋＝＊／％＆｜＾×÷]) ('='/'＝')
+    ('<<' / '>>' / '**' / '//' / '-' / [+*/%&|^＋＝＊／％＆｜＾×÷]) ('='/'＝')
 } _
 
 
@@ -128,12 +128,12 @@ Expression = Operator {
 Operator = OrExpr
 
 OrExpr =
-	AndExpr (left:^ { OR _ right: AndExpr #Or })*
+	AndExpr ( {left:^ OR _ right: AndExpr #Or })*
 
 OR = 'or' !W / '||' / '｜｜'
 
 AndExpr =
-	NotExpr (left:^ { AND _ right: NotExpr #And })*
+	NotExpr ( {left:^ AND _ right: NotExpr #And })*
 
 AND = 'and' !W / '&&' / '＆＆'
 
@@ -143,7 +143,10 @@ NotExpr =
 NOT = 'not' !W / '!' / '！'
 
 EqExpr =
-	SumExpr (left:^ { name: { EQ #Name } _ right: SumExpr #Infix })*
+    / { SumExpr Eq SumExpr (Eq SumExpr )+ #PyCompr }
+	/ SumExpr {left:^  name: Eq right: SumExpr #Infix }*
+
+Eq = { EQ #Name } _
 
 EQ =
 	/ '==' '='? / '＝＝' 
@@ -365,3 +368,4 @@ SPC          = ( S / BLOCKCOMMENT )+
 
 BLOCKCOMMENT = '/*' ( !'*/' . )* '*/'
 
+example Statement a == 1 and b

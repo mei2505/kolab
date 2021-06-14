@@ -73,26 +73,42 @@ class NExpr(object):
         return str(self)
 
 
-class NChoice(NExpr):
-    choices: tuple
+class NPiece(NExpr):
+    piece: str
 
-    def __init__(self, *choices):
-        self.choices = choices
+    def __init__(self, piece):
+        self.piece = piece
 
     def asType(self, typefix):
-        return NChoice(*[c.asType(typefix) for c in self.choices])
-
-    def apply(self, mapped):
-        return NChoice(*[c.apply(mapped) for c in self.choices])
+        return NPred(self.piece, typefix)
 
     def __str__(self):
-        return '[' + '|'.join(map(str, self.choices)) + ']'
+        return self.piece
 
     def emit(self, typefix, buffer=None):
-        if OPTION['ShuffleSynonym']:
-            index = random.randrange(0, len(self.choices))
-            return self.choices[index].emit(typefix, buffer)
-        return self.choices[0].emit(typefix, buffer)
+        return alt(self.piece)
+
+
+# class NChoice(NExpr):
+#     choices: tuple
+
+#     def __init__(self, *choices):
+#         self.choices = choices
+
+#     def asType(self, typefix):
+#         return NChoice(*[c.asType(typefix) for c in self.choices])
+
+#     def apply(self, mapped):
+#         return NChoice(*[c.apply(mapped) for c in self.choices])
+
+#     def __str__(self):
+#         return '[' + '|'.join(map(str, self.choices)) + ']'
+
+#     def emit(self, typefix, buffer=None):
+#         if OPTION['ShuffleSynonym']:
+#             index = random.randrange(0, len(self.choices))
+#             return self.choices[index].emit(typefix, buffer)
+#         return self.choices[0].emit(typefix, buffer)
 
 
 class NTuple(NExpr):
@@ -112,22 +128,6 @@ class NTuple(NExpr):
 
     def emit(self, typefix, buffer=None):
         return '(' + ','.join(map(lambda e: e.emit(typefix, buffer), self.elements)) + ')'
-
-
-class NPiece(NExpr):
-    piece: str
-
-    def __init__(self, piece):
-        self.piece = piece
-
-    def asType(self, typefix):
-        return NPred(self.piece, typefix)
-
-    def __str__(self):
-        return self.piece
-
-    def emit(self, typefix, buffer=None):
-        return self.piece
 
 
 class NPred(NExpr):
@@ -323,7 +323,7 @@ def cmatch(cpat, code, mapped: dict):
     if cpat.name != code.name or len(cpat.params) != len(code.params):
         return False
     for e, e2 in zip(cpat.params, code.params):
-        #print(':: ', type(e), e, type(e2), e2)
+        # print(':: ', type(e), e, type(e2), e2)
         if isinstance(e, CMetaVar):
             if e.index in mapped:
                 if str(mapped[e.index]) != str(e2):
@@ -363,7 +363,7 @@ class CExpr(object):  # Code Expression
         self.params = params
         self.options = EMPTY
 
-    def format(self, option=True):
+    def format(self):
         return f'undefined({self.__class__.__name__})'
 
     def __repr__(self):
@@ -391,7 +391,7 @@ class CExpr(object):  # Code Expression
             recv = self.params[0].match(model)
             if hasattr(recv, 'ret') and recv.ret is not None:
                 lname = f'{recv.ret}.{name}'
-                #print('@レシーバの型', recv.ret, lname)
+                # print('@レシーバの型', recv.ret, lname)
                 if lname in model.rules:
                     name = lname
         while name not in model.rules and '.' in name:
@@ -408,7 +408,7 @@ class CExpr(object):  # Code Expression
                         else:
                             mapped[key] = mapped[key].match(model)
                     return pred.apply(mapped)
-            #print(f'unmatched: {name}', str(self), type(self))
+            # print(f'unmatched: {name}', str(self), type(self))
             if len(self.params) > 0:  # パラメータ圧縮する print(1,2,3) -> print(1,(2,3))
                 paramsize = max(size for size, _, _ in model.rules[name])
                 # print('減らす', name, paramsize,
@@ -422,7 +422,7 @@ class CExpr(object):  # Code Expression
 
     def unmatched(self, model) -> NExpr:
         logger.debug('undefined? ' + str(type(self)) + ' ' + str(self))
-        #print('unmatched? ' + str(type(self)) + ' ' + str(self))
+        # print('unmatched? ' + str(type(self)) + ' ' + str(self))
         return NPiece(str(self))
 
 
@@ -435,7 +435,7 @@ class CMetaVar(CExpr):
         self.index = index
         self.original_name = original_name
 
-    def format(self, option=True):
+    def format(self):
         return repr(self)
 
     def __repr__(self):
@@ -454,7 +454,7 @@ class CValue(CExpr):
             return repr(self.value)  # FIXME
         return str(self.value)
 
-    def format(self, option=True):
+    def format(self):
         return repr(self)
 
     def match(self, model) -> NExpr:
@@ -472,7 +472,7 @@ class CVar(CExpr):
     def __init__(self, name):
         CExpr.__init__(self, name)
 
-    def format(self, option=True):
+    def format(self):
         return self.name
 
     def __repr__(self):
@@ -491,8 +491,36 @@ class CBinary(CExpr):
     def __init__(self, left, op, right):
         CExpr.__init__(self, op, (toCExpr(left), toCExpr(right)))
 
-    def format(self, option=True):
+    def format(self):
         return f'{{}} {self.name} {{}}'
+
+
+class CAnd(CExpr):
+
+    def __init__(self, left, right):
+        CExpr.__init__(self, 'and', (toCExpr(left), toCExpr(right)))
+
+    def format(self):
+        return f'{{}} and {{}}'
+
+    def match(self, model) -> NExpr:
+        left = self.params[0].match(model)
+        right = self.params[1].match(model)
+        return NPhrase(left, NPiece('かつ'), right)
+
+
+class COr(CExpr):
+
+    def __init__(self, left, right):
+        CExpr.__init__(self, 'or', (toCExpr(left), toCExpr(right)))
+
+    def format(self):
+        return f'{{}} or {{}}'
+
+    def match(self, model) -> NExpr:
+        left = self.params[0].match(model)
+        right = self.params[1].match(model)
+        return NPhrase(left, NPiece('または'), right)
 
 
 class CUnary(CExpr):
@@ -500,8 +528,21 @@ class CUnary(CExpr):
     def __init__(self, op, expr):
         CExpr.__init__(self, op, (toCExpr(expr),))
 
-    def format(self, option=True):
+    def format(self):
         return f'{self.name} {{}}'
+
+
+class CNot(CExpr):
+
+    def __init__(self, expr):
+        CExpr.__init__(self, 'not', (toCExpr(expr),))
+
+    def format(self):
+        return f'not {{}}'
+
+    def match(self, model) -> NExpr:
+        value = self.params[0].match(model)
+        return NPhrase(value, NPred(EMPTY, 'ない', '', ''))
 
 
 class COption(CExpr):
@@ -509,7 +550,7 @@ class COption(CExpr):
     def __init__(self, name: str, value: CExpr):
         CExpr.__init__(self, name, (toCExpr(value),))
 
-    def format(self, option=True):
+    def format(self):
         return f'{self.name} = {{}}'
 
     def unmatched(self, model) -> NExpr:
@@ -531,7 +572,7 @@ class CApp(CExpr):
             self.options = tuple(toCExpr(e)
                                  for e in es if isinstance(e, COption))
 
-    def format(self, option=True):
+    def format(self):
         ss = []
         ss.append(self.name)
         ss.append('(')
@@ -556,7 +597,7 @@ class CMethod(CExpr, OOP):
             self.options = tuple(toCExpr(e)
                                  for e in es if isinstance(e, COption))
 
-    def format(self, option=True):
+    def format(self):
         ss = ['{}', '.']
         ss.append(self.name)
         ss.append('(')
@@ -573,7 +614,7 @@ class CField(CExpr, OOP):
     def __init__(self, recv: CExpr, name: str):
         CExpr.__init__(self, name, (toCExpr(recv),))
 
-    def format(self, option=True):
+    def format(self):
         return f'{{}} . {self.name}'
 
 
@@ -582,7 +623,7 @@ class CTuple(CExpr):
     def __init__(self, *es):
         CExpr.__init__(self, "(,)", tuple(toCExpr(e) for e in es))
 
-    def format(self, option=True):
+    def format(self):
         ss = []
         ss.append('(')
         n = len(self.params)
@@ -600,7 +641,7 @@ class CList(CExpr):
     def __init__(self, *es):
         CExpr.__init__(self, "[,]", tuple(toCExpr(e) for e in es))
 
-    def format(self, option=True):
+    def format(self):
         ss = []
         ss.append('[')
         n = len(self.params)
@@ -616,7 +657,7 @@ class CSeq(CExpr):
     def __init__(self, es):
         CExpr.__init__(self, "", es)
 
-    def format(self, option=True):
+    def format(self):
         ss = []
         n = len(self.params)
         if n > 0:
@@ -637,7 +678,7 @@ class CData(CExpr):
     def __init__(self, *es):
         CExpr.__init__(self, "{,}", tuple(toCExpr(e) for e in es))
 
-    def format(self, option=True):
+    def format(self):
         ss = []
         ss.append('{')
         for i in range(0, len(self.params), 2):
@@ -651,7 +692,7 @@ class CIndex(CExpr, OOP):
     def __init__(self, recv, index):
         CExpr.__init__(self, "[]", (toCExpr(recv), toCExpr(index)))
 
-    def format(self, option=True):
+    def format(self):
         return f'{{}} [ {{}} ]'
 
 
@@ -660,7 +701,7 @@ class CEmpty(CExpr, OOP):
     def __init__(self):
         CExpr.__init__(self, "")
 
-    def format(self, option=True):
+    def format(self):
         return ''
 
 
@@ -673,7 +714,7 @@ class CSlice(CExpr):
         CExpr.__init__(self, "[]", (toCExpr(recv),
                                     toCExpr(start),  toCExpr(stop), toCExpr(step)))
 
-    def format(self, option=True):
+    def format(self):
         return f'{{}} [ {{}} : {{}} : {{}}]'
 
 
@@ -735,10 +776,24 @@ class Reader(ParseTreeVisitor):
         right = self.visit(tree.right)
         return CBinary(left, name, right)
 
+    def acceptAnd(self, tree):
+        left = self.visit(tree.get('left'))
+        right = self.visit(tree.get('right'))
+        return CAnd(left, right)
+
+    def acceptOr(self, tree):
+        left = self.visit(tree.get('left'))
+        right = self.visit(tree.get('right'))
+        return COr(left, right)
+
     def acceptUnary(self, tree):
         name = str(tree.name)
         expr = self.visit(tree.expr)
         return CUnary(name, expr)
+
+    def acceptNot(self, tree):
+        expr = self.visit(tree[0])
+        return CNot(expr)
 
     def acceptApplyExpr(self, tree):
         name = str(tree.name)
@@ -860,7 +915,7 @@ class Reader(ParseTreeVisitor):
                 lname = f'{ns}.{name}'
                 if lname not in self.rules:
                     self.rules[lname] = []
-                #print('adding', lname, (size, cpat, pred))
+                # print('adding', lname, (size, cpat, pred))
                 self.rules[lname].append((size, cpat, pred))
                 if name not in self.rules or ns in self.newnames:
                     self.newnames.add(ns)
@@ -869,7 +924,7 @@ class Reader(ParseTreeVisitor):
                     return
         if name not in self.rules:
             self.rules[name] = []
-        #print('adding', name, (size, cpat, pred))
+        # print('adding', name, (size, cpat, pred))
         self.rules[name].append((size, cpat, pred))
 
     def acceptNSymbolDef(self, tree):
@@ -877,7 +932,6 @@ class Reader(ParseTreeVisitor):
         symbol = str(tree[1])[1:-1]
         if tree[0] == 'Noun':
             self.synonyms[name] = symbol
-            pass
         else:
             self.names[name] = symbol
 
@@ -887,7 +941,7 @@ class Reader(ParseTreeVisitor):
         STATIC_MODULE.add(name)
 
     def acceptNExample(self, tree):
-        #ce = self.visit(tree[0])
+        # ce = self.visit(tree[0])
         logger.debug('example', str(tree))
 
     def acceptNDocument(self, tree):
@@ -950,10 +1004,9 @@ class Reader(ParseTreeVisitor):
         ss = [str(t) for t in tree]
         if len(ss) == 1:
             if ss[0] in self.synonyms:
-                ss = [NPiece(str(t)) for t in self.synonyms[ss[0]]]
-                return NChoice(*ss)
-            return NPiece(ss[0])
-        return NChoice(*[NPiece(str(t)) for t in ss])
+                return NPiece(self.synonyms[ss[0]])
+            return NPiece(ss[0]+'|')
+        return NPiece('|'.join(ss))
 
     def acceptNTuple(self, tree):
         ss = [str(t) for t in tree]
@@ -966,8 +1019,7 @@ class Reader(ParseTreeVisitor):
     def acceptNPiece(self, tree):
         s = str(tree)
         if s in self.synonyms:
-            ss = [NPiece(str(t)) for t in self.synonyms[s]]
-            return NChoice(*ss)
+            return NPiece(s)
         return NPiece(s)
 
     def accepterr(self, tree):

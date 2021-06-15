@@ -87,9 +87,15 @@ _Param = "(" {^ { (!')' .)+ #Noun } #NParam } ")"
 Snipet = Statement EOF
 
 Statement =
+    / IfStatement
     / Assignment
     / SelfAssignment
     / Expression
+
+IfStatement = {
+    "if" Expression ":"
+    #If
+}
 
 Assignment = {
     left: LeftHand

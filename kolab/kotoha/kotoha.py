@@ -880,6 +880,10 @@ class Reader(ParseTreeVisitor):
     def acceptList(self, tree):
         es = [self.visit(t) for t in tree]
         return CList(*es)
+    
+    def acceptIf(self, tree):
+        e = self.visit(tree[0])
+        return CApp('if', e) # if 関数にします
 
     def acceptUndefined(self, tree):
         logger.warning(f'@undefined {repr(tree)}')

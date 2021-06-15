@@ -82,7 +82,6 @@ NSymbol = { [A-Za-z] W* #NSymbol } _Param? _
 _Param = "(" {^ { (!')' .)+ #Noun } #NParam } ")"
 
 
-
 /* Programming */
 
 Snipet = Statement EOF

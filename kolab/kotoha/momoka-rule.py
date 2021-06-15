@@ -18,6 +18,7 @@ col = '列|属性|カラム' #symbol
 col2 = '列|属性|カラム' #symbol
 row = '行|インデックス' #symbol
 
+df[col]  # dfの col -> 表データ
 df[[col, col2]]  # dfから colと col2のみ 選ぶ -> 表データ
 df.columns  # dfの カラム名リスト
 

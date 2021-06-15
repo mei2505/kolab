@@ -721,7 +721,7 @@ class CSlice(CExpr):
 ##
 peg = pg.grammar('kotoha.tpeg')
 parser = pg.generate(peg)
-eparser = pg.generate(peg, start='Snipet')
+snipet_parser = pg.generate(peg, start='Snipet')
 
 
 def traverse_symbols(tree, ss):
@@ -1052,7 +1052,7 @@ class KotohaModel(object):
     def translate(self, expression, suffix=''):
         randomize()
         try:
-            tree = eparser(expression)
+            tree = snipet_parser(expression)
             # print(repr(tree))
             code = self.reader.visit(tree)
             # print(type(code), code)
@@ -1074,6 +1074,8 @@ class KotohaModel(object):
                     line = line.strip()
                     if line == '' or line.startswith('#'):
                         continue
+                    if '\t' in line:
+                        line = line.split('\t')[0]
                     code, doc = self.translate(line, suffix=EOS)
                     print(code, '\t', doc, file=w)
 
@@ -1111,7 +1113,7 @@ if __name__ == '__main__':
         import readline
         try:
             while True:
-                line = input('Expression >>> ')
+                line = input('Snipet >>> ')
                 if line == '':
                     print('Bye')
                     sys.exit(0)

@@ -61,8 +61,12 @@ df.min() # dfの各列の最小値をゲットする -> Series
 np.amix(df) # dfの各列の最小値をゲットする -> Series
 df.min(axis=1) # dfの各行の最小値をゲットする -> Series
 np.amin(df, axis=1) # dfの各行の最小値をゲットする -> Series
-df.count() # dfの[要素|データ]数をカウントする -> DataFrame
+
 df.describe() # dfの各列の要約統計量をゲットする -> DataFrame
+df.count() # dfの[要素|データ|値]の数をカウントする -> Series
+df.nunique() # dfの[一意|ユニーク]な[要素|データ|値]の数をカウントする -> Series
+df.std() # dfの各列の最頻値をゲットする -> Series
+df.median() # dfの各列の中央値をゲットする -> Series
 
 df.copy() # dfをコピーする -> DataFrame
 
